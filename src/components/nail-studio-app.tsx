@@ -60,12 +60,12 @@ function EntityModal({ state, close, save }: { state: EntityModalState; close: (
   return <div className="fixed inset-0 z-[60] flex items-center justify-center p-4"><button onClick={close} className="absolute inset-0 bg-navy-dark/40" /><div className="relative w-full max-w-lg rounded-xl bg-white p-5 shadow-2xl sm:p-7"><div className="mb-6 flex items-start justify-between"><div><Badge tone="primary">{state.mode === "create" ? "Novo cadastro" : state.mode === "view" ? "Detalhes" : "Edição"}</Badge><h2 className="mt-2 text-xl font-bold">{state.name || "Novo registro"}</h2></div><button onClick={close} className="rounded-md p-1.5 text-muted hover:bg-bg hover:text-ink"><X size={20} /></button></div><div className="space-y-4"><div><label className="field-label">Nome</label><input className="field-input" value={name} onChange={e => setName(e.target.value)} disabled={readOnly} /></div><div><label className="field-label">{detailLabel}</label><input className="field-input" value={detail} onChange={e => setDetail(e.target.value)} disabled={readOnly} /></div><div><label className="field-label">Observações</label><textarea className="field-input h-24" placeholder="Informações adicionais do cadastro" disabled={readOnly} /></div></div><div className="mt-6 flex justify-end gap-3"><button onClick={close} className="btn-outline">Cancelar</button>{!readOnly && <button onClick={() => save(name, detail)} className="btn-primary"><Check size={16} />Salvar alterações</button>}</div></div></div>;
 }
 
-function ProfessionalModal({ mode, professional, close, save }: { mode: "create" | "view" | "edit"; professional?: ProfessionalItem; close: () => void; save: (data: any) => void }) {
+function ProfessionalModal({ mode, professional, specialtiesList = [], close, save }: { mode: "create" | "view" | "edit"; professional?: ProfessionalItem; specialtiesList?: {id: string, name: string}[]; close: () => void; save: (data: any) => void }) {
   const [formData, setFormData] = useState({
     name: professional?.name || "",
     email: professional?.email || "",
     phone: professional?.phone || "",
-    specialty: professional?.specialty || "",
+    specialties: professional?.specialty ? professional.specialty.split(",").map(s=>s.trim()).filter(Boolean) : [],
     default_commission: professional?.default_commission || 0,
     notes: professional?.notes || ""
   });
@@ -96,8 +96,27 @@ function ProfessionalModal({ mode, professional, close, save }: { mode: "create"
             <input className="field-input" type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} disabled={readOnly} />
           </div>
           <div className="sm:col-span-2">
-            <label className="field-label">Especialidades (separadas por vírgula)</label>
-            <input className="field-input" value={formData.specialty} onChange={e => setFormData({ ...formData, specialty: e.target.value })} disabled={readOnly} placeholder="Gel, Fibra, etc." />
+            <label className="field-label mb-2">Especialidades</label>
+            <div className="flex flex-wrap gap-2">
+              {specialtiesList.map(s => {
+                const active = formData.specialties.includes(s.name);
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    disabled={readOnly}
+                    onClick={() => {
+                      if (active) setFormData({ ...formData, specialties: formData.specialties.filter(x => x !== s.name) });
+                      else setFormData({ ...formData, specialties: [...formData.specialties, s.name] });
+                    }}
+                    className={`rounded-full border px-3 py-1.5 text-xs transition ${active ? "border-primary bg-primary text-white" : "border-[#DBE3EC] bg-white text-ink hover:border-primary/50"}`}
+                  >
+                    {s.name}
+                  </button>
+                );
+              })}
+              {specialtiesList.length === 0 && <span className="text-xs text-muted">Nenhuma especialidade cadastrada.</span>}
+            </div>
           </div>
           <div className="sm:col-span-2">
             <label className="field-label">Comissão Padrão (%)</label>
@@ -503,11 +522,11 @@ function FinishModal({ close, done }: { close: () => void; done: () => void }) {
 
 function Toast({ text }: { text: string }) { return <div className="fixed bottom-5 right-5 z-[80] flex max-w-sm items-center gap-3 rounded-md bg-navy-dark px-4 py-3 text-sm text-white shadow-xl"><div className="rounded-full bg-primary p-1"><Check size={12} /></div>{text}</div> }
 
-export function NailStudioApp({ initialClients = demoClients, initialProfessionals = demoProfessionals }: { initialClients?: ClientItem[]; initialProfessionals?: ProfessionalItem[] }) {
+export function NailStudioApp({ initialClients = demoClients, initialProfessionals = demoProfessionals, initialSpecialties = [] }: { initialClients?: ClientItem[]; initialProfessionals?: ProfessionalItem[]; initialSpecialties?: {id: string, name: string}[] }) {
   const [view, setView] = useState<View>("dashboard"); const [menu, setMenu] = useState(false); const [booking, setBooking] = useState(false); const [finish, setFinish] = useState(false); const [toast, setToast] = useState(""); const [rows, setRows] = useState(initialAppointments);
   const [clientRows, setClientRows] = useState(() => [...initialClients]); const [serviceRows, setServiceRows] = useState(() => [...services]);
   const [professionalRows, setProfessionalRows] = useState(() => [...initialProfessionals]); const [productRows, setProductRows] = useState(() => [...inventory]);
-  const [automationRows, setAutomationRows] = useState(() => [...initialTemplates]); const [financialRows, setFinancialRows] = useState(() => [...initialFinancialRows]); const [entityModal, setEntityModal] = useState<EntityModalState | null>(null);
+  const [automationRows, setAutomationRows] = useState(() => [...initialTemplates]); const [specialtyList, setSpecialtyList] = useState(() => [...initialSpecialties]); const [financialRows, setFinancialRows] = useState(() => [...initialFinancialRows]); const [entityModal, setEntityModal] = useState<EntityModalState | null>(null);
   const notify = (message: string) => { setToast(message); window.setTimeout(() => setToast(""), 3200); };
   const openEntity = (kind: EntityKind, mode: "view" | "edit" | "create", index?: number) => {
     if (mode === "create") { setEntityModal({ kind, mode, name: "", detail: kind === "service" ? "R$ 0,00" : "" }); return; }
@@ -545,8 +564,7 @@ export function NailStudioApp({ initialClients = demoClients, initialProfessiona
     const { mode, index } = entityModal;
     const creating = mode === "create";
     
-    const specialties = formData.specialty.split(",").map((s: string) => s.trim()).filter(Boolean);
-    const dataToSave = { ...formData, specialties };
+    const dataToSave = { ...formData, specialty: formData.specialties.join(", "), specialties: formData.specialties };
 
     if (creating) {
       const res = await createProfessionalRecord(dataToSave);
