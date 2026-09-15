@@ -12,6 +12,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { logout } from "@/lib/actions/auth";
 import { createClientRecord, updateClientRecord, archiveClientRecord, type ClientItem } from "@/lib/actions/clients";
 import { createProfessionalRecord, updateProfessionalRecord, archiveProfessionalRecord, type ProfessionalItem } from "@/lib/actions/professionals";
+import { createSpecialtyRecord } from "@/lib/actions/specialties";
 
 type View = "dashboard" | "agenda" | "clients" | "services" | "professionals" | "attendance" | "finance" | "inventory" | "automations" | "online";
 
@@ -116,6 +117,24 @@ function ProfessionalModal({ mode, professional, specialtiesList = [], close, sa
                 );
               })}
               {specialtiesList.length === 0 && <span className="text-xs text-muted">Nenhuma especialidade cadastrada.</span>}
+              {!readOnly && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const name = window.prompt("Nome da nova especialidade:");
+                    if (name && name.trim()) {
+                      const res = await createSpecialtyRecord(name.trim());
+                      if (res.success && res.data) {
+                         // We reload the page to get the updated specialties
+                         window.location.reload();
+                      }
+                    }
+                  }}
+                  className="rounded-full border border-dashed border-[#DBE3EC] px-3 py-1.5 text-xs text-muted hover:border-primary hover:text-primary transition"
+                >
+                  + Nova
+                </button>
+              )}
             </div>
           </div>
           <div className="sm:col-span-2">
