@@ -154,3 +154,15 @@ export async function cancelAppointmentRecord(id: string) {
   revalidatePath("/");
   return { success: true };
 }
+
+export async function updateAppointmentStatus(id: string, status: string) {
+  const supabase = await createClient();
+  if (!supabase) return { success: false };
+  const { error } = await supabase.from('appointments').update({ status }).eq('id', id);
+  if (error) {
+    console.error(error);
+    return { success: false, error: error.message };
+  }
+  revalidatePath("/");
+  return { success: true };
+}
