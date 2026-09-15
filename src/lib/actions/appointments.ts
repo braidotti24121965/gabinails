@@ -108,6 +108,9 @@ export async function createAppointmentRecord(data: {
 
   if (appError || !appointment) {
     console.error("Error creating appointment:", appError);
+    if (appError?.message?.includes("appointments_no_overlap")) {
+      return { success: false, error: "Este horário já está ocupado para esta profissional. Por favor, escolha outro horário." };
+    }
     return { success: false, error: appError?.message || "Failed to create appointment" };
   }
 
