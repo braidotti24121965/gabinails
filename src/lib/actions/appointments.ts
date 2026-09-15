@@ -1,15 +1,12 @@
 "use server";
 
-import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import { appointments as demoAppointments, type Appointment, type AppointmentStatus } from "@/lib/demo-data";
+import { createClient } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
+import type { Appointment, AppointmentStatus } from "@/lib/demo-data"; // We will map DB to this for now to not break the UI
 
 export async function getAppointments(): Promise<Appointment[]> {
-  if (!isSupabaseConfigured()) {
-    return demoAppointments;
-  }
-
   const supabase = await createClient();
-  if (!supabase) return demoAppointments;
+  if (!supabase) return [];
 
   const { data, error } = await supabase
     .from("appointments")
@@ -19,180 +16,133 @@ export async function getAppointments(): Promise<Appointment[]> {
       ends_at,
       status,
       source,
-      clients (name, phone),
-      professionals (name),
-      appointment_items (description, unit_price, quantity)
+      client:clients(name, phone),
+      professional:professionals(name),
+      items:appointment_items(
+        service:services(name),
+        unit_price
+      )
     `)
     .order("starts_at", { ascending: true });
 
-  if (error || !data || data.length === 0) {
-    return demoAppointments;
+  if (error) {
+    console.error("Error fetching appointments:", error);
+    return [];
   }
 
-  const statusMap: Record<string, AppointmentStatus> = {
-    pending: "Pendente",
-    awaiting_deposit: "Aguardando sinal",
-    scheduled: "Agendado",
-    confirmed: "Confirmado",
-    arrived: "Cliente chegou",
-    in_progress: "Em atendimento",
-    completed: "Concluído",
-    rescheduled: "Reagendado",
-    cancelled: "Cancelado",
-    no_show: "Não compareceu",
-  };
+  // Map DB structure to the UI structure (Appointment interface)
+  return data.map((row: any) => {
+    // Format times
+    const dStart = new Date(row.starts_at);
+    const dEnd = new Date(row.ends_at);
+    const time = dStart.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    const end = dEnd.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
-  return data.map((item) => {
-    const client = Array.isArray(item.clients) ? item.clients[0] : item.clients;
-    const professional = Array.isArray(item.professionals) ? item.professionals[0] : item.professionals;
-    const items = Array.isArray(item.appointment_items) ? item.appointment_items : [];
+    // Sum prices
+    const price = row.items?.reduce((acc: number, item: any) => acc + Number(item.unit_price || 0), 0) || 0;
+    
+    // Service name (first service or generic)
+    const serviceName = row.items?.[0]?.service?.name || "Serviço";
 
-    const startTime = new Date(item.starts_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-    const endTime = new Date(item.ends_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-
-    const totalCalculated = items.reduce(
-      (sum: number, it: { unit_price: number | string; quantity: number | string }) =>
-        sum + Number(it.unit_price) * Number(it.quantity),
-      0
-    );
+    // Map status from db to UI readable
+    const statusMap: Record<string, string> = {
+      pending: "Pendente",
+      awaiting_deposit: "Aguardando sinal",
+      scheduled: "Agendado",
+      confirmed: "Confirmado",
+      arrived: "Aguardando atendimento",
+      in_progress: "Em atendimento",
+      completed: "Concluído",
+      cancelled: "Cancelado",
+      no_show: "Não compareceu"
+    };
 
     return {
-      id: item.id,
-      time: startTime,
-      end: endTime,
-      client: client?.name || "Cliente",
-      phone: client?.phone || "",
-      service: items[0]?.description || "Serviço",
-      professional: professional?.name || "Profissional",
-      status: statusMap[item.status] || "Confirmado",
-      price: totalCalculated || 130,
-      paid: item.status === "completed" ? totalCalculated : undefined,
-      source: item.source === "online" ? "Online" : "Interno",
+      id: row.id,
+      time,
+      end,
+      client: row.client?.name || "Desconhecida",
+      phone: row.client?.phone || "",
+      professional: row.professional?.name || "Desconhecida",
+      service: serviceName,
+      status: (statusMap[row.status] || "Pendente") as AppointmentStatus,
+      price,
+      source: row.source === "online" ? "Online" : "Interno"
     };
   });
 }
 
-export async function createAppointment(data: {
-  clientId?: string;
-  clientName: string;
-  clientPhone: string;
-  serviceId?: string;
-  serviceName: string;
-  professionalId?: string;
-  professionalName: string;
-  date: string;
-  time: string;
+export async function createAppointmentRecord(data: {
+  clientId: string;
+  professionalId: string;
+  serviceId: string;
+  dateStr: string; // YYYY-MM-DD
+  timeStr: string; // HH:MM
   durationMinutes: number;
   price: number;
-  requiresDeposit: boolean;
 }) {
-  if (!isSupabaseConfigured()) {
-    const startParts = data.time.split(":");
-    const startHour = parseInt(startParts[0], 10);
-    const startMin = parseInt(startParts[1], 10);
-    const endMinutesTotal = startHour * 60 + startMin + data.durationMinutes;
-    const endHour = Math.floor(endMinutesTotal / 60) % 24;
-    const endMin = endMinutesTotal % 60;
-    const endTime = `${String(endHour).padStart(2, "0")}:${String(endMin).padStart(2, "0")}`;
-
-    const newAppointment: Appointment = {
-      id: `a${Date.now()}`,
-      time: data.time,
-      end: endTime,
-      client: data.clientName,
-      phone: data.clientPhone,
-      service: data.serviceName,
-      professional: data.professionalName,
-      status: data.requiresDeposit ? "Aguardando sinal" : "Confirmado",
-      price: data.price,
-      source: "Interno",
-    };
-
-    return { success: true, mode: "demo", appointment: newAppointment };
-  }
-
   const supabase = await createClient();
-  if (!supabase) return { success: false, error: "Supabase indisponível" };
+  if (!supabase) return { success: false, error: "No connection" };
 
-  const startsAt = new Date(`${data.date}T${data.time}:00`);
-  const endsAt = new Date(startsAt.getTime() + data.durationMinutes * 60 * 1000);
+  // Calculate timestamps
+  const startsAt = new Date(`${data.dateStr}T${data.timeStr}:00`).toISOString();
+  const endsAt = new Date(new Date(startsAt).getTime() + data.durationMinutes * 60000).toISOString();
 
-  const status = data.requiresDeposit ? "awaiting_deposit" : "confirmed";
-
-  // Se não temos IDs reais do banco, operamos com fallback
-  if (!data.clientId || !data.professionalId) {
-    return {
-      success: true,
-      mode: "demo",
-      message: "Agendamento registrado em modo compatibilidade.",
-    };
-  }
-
-  const { data: appointment, error } = await supabase
+  // Insert appointment
+  const { data: appointment, error: appError } = await supabase
     .from("appointments")
-    .insert({
+    .insert([{
       client_id: data.clientId,
       professional_id: data.professionalId,
-      starts_at: startsAt.toISOString(),
-      ends_at: endsAt.toISOString(),
-      status,
-      source: "internal",
-    })
+      starts_at: startsAt,
+      ends_at: endsAt,
+      status: "awaiting_deposit",
+      source: "internal"
+    }])
     .select()
     .single();
 
+  if (appError || !appointment) {
+    console.error("Error creating appointment:", appError);
+    return { success: false, error: appError?.message || "Failed to create appointment" };
+  }
+
+  // Insert appointment item (service)
+  const { error: itemError } = await supabase
+    .from("appointment_items")
+    .insert([{
+      appointment_id: appointment.id,
+      service_id: data.serviceId,
+      professional_id: data.professionalId,
+      description: "Agendamento",
+      duration_minutes: data.durationMinutes,
+      unit_price: data.price,
+      commission_type: "percentage",
+      commission_value: 0 // Ideally this comes from the professional's default commission
+    }]);
+
+  if (itemError) {
+    console.error("Error creating appointment item:", itemError);
+  }
+
+  revalidatePath("/");
+  return { success: true, data: appointment };
+}
+
+export async function cancelAppointmentRecord(id: string) {
+  const supabase = await createClient();
+  if (!supabase) return { success: false, error: "No connection" };
+
+  const { error } = await supabase
+    .from("appointments")
+    .update({ status: "cancelled" })
+    .eq("id", id);
+
   if (error) {
+    console.error("Error cancelling appointment:", error);
     return { success: false, error: error.message };
   }
 
-  return { success: true, mode: "supabase", appointment };
-}
-
-export async function finishAppointmentRecord(params: {
-  appointmentId: string;
-  totalAmount: number;
-  depositAmount: number;
-  paymentMethod: string;
-}) {
-  if (!isSupabaseConfigured()) {
-    return { success: true, mode: "demo" };
-  }
-
-  const supabase = await createClient();
-  if (!supabase) return { success: false, error: "Supabase não conectado" };
-
-  // 1. Atualiza status do agendamento para completed
-  const { error: appError } = await supabase
-    .from("appointments")
-    .update({
-      status: "completed",
-      actual_end_at: new Date().toISOString(),
-    })
-    .eq("id", params.appointmentId);
-
-  if (appError) {
-    return { success: false, error: appError.message };
-  }
-
-  // 2. Registra o pagamento complementar recebido
-  const balanceToReceive = params.totalAmount - params.depositAmount;
-  if (balanceToReceive > 0) {
-    const methodMap: Record<string, string> = {
-      PIX: "pix",
-      Dinheiro: "cash",
-      Débito: "debit",
-      Crédito: "credit",
-    };
-
-    await supabase.from("payments").insert({
-      appointment_id: params.appointmentId,
-      kind: "payment",
-      method: methodMap[params.paymentMethod] || "pix",
-      amount: balanceToReceive,
-      status: "paid",
-      paid_at: new Date().toISOString(),
-    });
-  }
-
-  return { success: true, mode: "supabase" };
+  revalidatePath("/");
+  return { success: true };
 }
