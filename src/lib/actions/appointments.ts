@@ -84,6 +84,9 @@ export async function createAppointmentRecord(data: {
   const supabase = await createClient();
   if (!supabase) return { success: false, error: "No connection" };
 
+  const { data: profile } = await supabase.from('profiles').select('organization_id').single();
+  if (!profile?.organization_id) return { success: false, error: "Organização não encontrada" };
+
   // Calculate timestamps
   const startsAt = new Date(`${data.dateStr}T${data.timeStr}:00`).toISOString();
   const endsAt = new Date(new Date(startsAt).getTime() + data.durationMinutes * 60000).toISOString();
@@ -92,6 +95,7 @@ export async function createAppointmentRecord(data: {
   const { data: appointment, error: appError } = await supabase
     .from("appointments")
     .insert([{
+      organization_id: profile.organization_id,
       client_id: data.clientId,
       professional_id: data.professionalId,
       starts_at: startsAt,
@@ -111,6 +115,7 @@ export async function createAppointmentRecord(data: {
   const { error: itemError } = await supabase
     .from("appointment_items")
     .insert([{
+      organization_id: profile.organization_id,
       appointment_id: appointment.id,
       service_id: data.serviceId,
       professional_id: data.professionalId,
