@@ -178,7 +178,7 @@ function OnlineBooking() {
 
   // Checa Whitelist pelo telefone digitado (estado derivado)
   const cleanPhone = clientPhone.replace(/\D/g, "");
-  const isWhitelisted = cleanPhone.length >= 8 && Boolean(clients.find(c => c.phone.replace(/\D/g, "").includes(cleanPhone) && c.whitelist));
+  const isWhitelisted = cleanPhone.length >= 8 && Boolean(demoClients.find(c => c.phone.replace(/\D/g, "").includes(cleanPhone) && c.whitelist));
 
   const loadSlots = (date: string, duration: number) => {
     setLoadingSlots(true);
@@ -293,7 +293,7 @@ function OnlineBooking() {
                   <p className="font-medium text-primary">Primeira profissional disponível</p>
                   <p className="text-xs text-muted">Maior flexibilidade de horários</p>
                 </button>
-                {professionals.map(p => (
+                {demoProfessionals.map(p => (
                   <button
                     onClick={() => { setSelectedProfessional(p.name); setStep(3); loadSlots(selectedDate, selectedService.duration); }}
                     key={p.name}
@@ -589,8 +589,8 @@ export function NailStudioApp({ initialClients = demoClients, initialProfessiona
     if (view === "services") return <Services data={serviceRows} onNew={() => openEntity("service", "create")} onAction={(mode, index) => openEntity("service", mode, index)} onDelete={index => confirmAction("Excluir este serviço da demonstração?", () => { setServiceRows(current => current.filter((_, i) => i !== index)); notify("Serviço removido."); })} />;
     if (view === "professionals") return <Professionals data={professionalRows} onNew={() => openEntity("professional", "create")} onAction={(mode, index) => openEntity("professional", mode, index)} onDelete={index => confirmAction("Arquivar esta profissional? Agendamentos anteriores serão preservados.", async () => { const item = professionalRows[index]; if (item.id) await archiveProfessionalRecord(item.id); setProfessionalRows(current => current.filter((_, i) => i !== index)); notify("Profissional arquivada."); })} />;
     if (view === "attendance") return <Attendance onFinish={() => setFinish(true)} />; if (view === "finance") return <Finance data={financialRows} onNew={() => openEntity("financial", "create")} onAction={(mode, index) => openEntity("financial", mode, index)} onReverse={index => confirmAction("Estornar este movimento? Um lançamento de compensação será registrado.", () => { setFinancialRows(current => current.map((item, i) => i === index ? { ...item, status: "Estornado" } : item)); notify("Movimento estornado por compensação; registro original preservado."); })} />;
-    if (view === "inventory") return <Inventory data={productRows} onNew={() => openEntity("product", "create")} onAction={(mode, index) => openEntity("product", mode, index)} onAdjust={() => notify("Ajuste manual indisponível na demonstração.")} />;
-    if (view === "automations") return <Automations data={automationRows} onNew={() => openEntity("automation", "create")} onAction={(mode, index) => openEntity("automation", mode, index)} onToggle={index => { setAutomationRows(current => current.map((item, i) => i === index ? { ...item, active: !item.active } : item)); notify("Status da automação atualizado."); }} />;
+    if (view === "inventory") return <Inventory data={productRows} onNew={() => openEntity("product", "create")} onAction={(mode, index) => openEntity("product", mode, index)} onDelete={() => notify("Ajuste manual indisponível na demonstração.")} />;
+    if (view === "automations") return <Automations data={automationRows} onNew={() => openEntity("automation", "create")} onAction={(mode, index) => openEntity("automation", mode, index)} onDelete={() => notify("Status da automação atualizado.")} go={setView} />;
     if (view === "online") return <OnlineBooking />;
   })();
 
