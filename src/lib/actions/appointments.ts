@@ -50,7 +50,7 @@ export async function getAppointments(): Promise<Appointment[]> {
       awaiting_deposit: "Aguardando sinal",
       scheduled: "Agendado",
       confirmed: "Confirmado",
-      arrived: "Aguardando atendimento",
+      arrived: "Cliente chegou",
       in_progress: "Em atendimento",
       completed: "Concluído",
       cancelled: "Cancelado",
