@@ -21,7 +21,8 @@ export async function getAppointments(): Promise<Appointment[]> {
       items:appointment_items(
         service:services(name),
         unit_price
-      )
+      ),
+      payments(amount)
     `)
     .order("starts_at", { ascending: true });
 
@@ -40,6 +41,7 @@ export async function getAppointments(): Promise<Appointment[]> {
 
     // Sum prices
     const price = row.items?.reduce((acc: number, item: any) => acc + Number(item.unit_price || 0), 0) || 0;
+    const paid = row.payments?.reduce((acc: number, p: any) => acc + Number(p.amount || 0), 0) || 0;
     
     // Service name (first service or generic)
     const serviceName = row.items?.map((i: any) => i.service?.name).filter(Boolean).join(" + ") || "Serviço";
@@ -67,6 +69,7 @@ export async function getAppointments(): Promise<Appointment[]> {
       service: serviceName,
       status: (statusMap[row.status] || "Pendente") as AppointmentStatus,
       price,
+      paid,
       source: row.source === "online" ? "Online" : "Interno"
     };
   });
