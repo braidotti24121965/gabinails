@@ -1,33 +1,13 @@
 const fs = require('fs');
-const path = 'src/components/nail-studio-app.tsx';
-let content = fs.readFileSync(path, 'utf8');
+let code = fs.readFileSync('src/components/nail-studio-app.tsx', 'utf8');
 
-// 1. Re-add demoAppointments alias if missing
-if (!content.includes('import { appointments as demoAppointments')) {
-  content = content.replace(
-    'import { appointments as initialAppointments,',
-    'import { appointments as demoAppointments,'
-  );
-}
-
-// 2. Fix Dashboard usage of initialAppointments -> demoAppointments
-content = content.replace(
-  '{initialAppointments.slice(1, 5).map((a, i)',
-  '{demoAppointments.slice(1, 5).map((a, i)'
+// Fix signature
+code = code.replace(
+  'function Attendance({ appointment, services, onFinish, onSelect, onStatusChange, onAddExtra, allAppointments = [] }: { appointment: Appointment | null; services: any[]; onFinish: () => void; onSelect: (a: Appointment | null) => void; onStatusChange: (status: string) => void; onAddExtra: (service: any) => void; allAppointments: Appointment[] }) {',
+  'function Attendance({ appointment, services, onFinish, onSelect, onStatusChange, onAddExtra, onRemoveItem, allAppointments = [] }: { appointment: Appointment | null; services: any[]; onFinish: () => void; onSelect: (a: Appointment | null) => void; onStatusChange: (status: string) => void; onAddExtra: (service: any) => void; onRemoveItem: (itemId: string) => void; allAppointments: Appointment[] }) {'
 );
 
-// 3. Fix the map variable 'item' -> 'a' in Agenda
-content = content.replace(
-  'onDelete={() => onCancel(index, item.id)}',
-  'onDelete={() => onCancel(index, a.id)}'
-);
+// Fix setExtraServices
+code = code.replace('setExtraServices(current => [...current, svc]);', '');
 
-// 4. Ensure import of appointments actions
-if (!content.includes('import { createAppointmentRecord')) {
-  content = content.replace(
-    'import { createSpecialtyRecord } from "@/lib/actions/specialties";',
-    'import { createSpecialtyRecord } from "@/lib/actions/specialties";\nimport { createAppointmentRecord, cancelAppointmentRecord } from "@/lib/actions/appointments";'
-  );
-}
-
-fs.writeFileSync(path, content);
+fs.writeFileSync('src/components/nail-studio-app.tsx', code);

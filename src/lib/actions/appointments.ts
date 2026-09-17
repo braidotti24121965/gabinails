@@ -19,6 +19,7 @@ export async function getAppointments(): Promise<Appointment[]> {
       client:clients(name, phone),
       professional:professionals(name),
       items:appointment_items(
+        id,
         service:services(name),
         unit_price
       ),
@@ -70,7 +71,8 @@ export async function getAppointments(): Promise<Appointment[]> {
       status: (statusMap[row.status] || "Pendente") as AppointmentStatus,
       price,
       paid,
-      source: row.source === "online" ? "Online" : "Interno"
+      source: row.source === "online" ? "Online" : "Interno",
+      items: row.items?.map((i: any) => ({ id: i.id, name: i.service?.name || "Serviço", price: Number(i.unit_price) })) || []
     };
   });
 }
@@ -249,6 +251,14 @@ export async function addServiceToAppointment(appointmentId: string, professiona
   }]);
 
   if (error) return { success: false, error: error.message };
+  revalidatePath("/");
+  return { success: true };
+}
+
+export async function removeServiceFromAppointment(itemId: string) {
+  const supabase = await createClient();
+  if (!supabase) return { success: false };
+  await supabase.from("appointment_items").delete().eq("id", itemId);
   revalidatePath("/");
   return { success: true };
 }

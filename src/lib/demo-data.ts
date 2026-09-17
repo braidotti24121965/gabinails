@@ -1,6 +1,6 @@
 export type AppointmentStatus = "Pendente" | "Agendado" | "Confirmado" | "Cliente chegou" | "Em atendimento" | "Concluído" | "Reagendado" | "Cancelado" | "Não compareceu" | "Aguardando sinal";
 
-export interface Appointment { id: string; time: string; end: string; client: string; phone: string; service: string; professional: string; status: AppointmentStatus; price: number; paid?: number; source: string; }
+export interface Appointment { items?: { id: string; name: string; price: number }[]; id: string; time: string; end: string; client: string; phone: string; service: string; professional: string; status: AppointmentStatus; price: number; paid?: number; source: string; }
 
 export const appointments: Appointment[] = [
   { id: "a1", time: "08:00", end: "09:15", client: "Mariana Costa", phone: "(51) 99912-3044", service: "Alongamento em gel", professional: "Gabi Ludwig", status: "Concluído", price: 185, paid: 185, source: "Instagram" },
