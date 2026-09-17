@@ -168,3 +168,60 @@ export async function updateAppointmentStatus(id: string, status: string) {
   revalidatePath("/");
   return { success: true };
 }
+
+export async function updateAppointmentRecord(appointmentId: string, data: {
+  clientId: string;
+  professionalId: string;
+  services: { id: string; price: number; durationMinutes: number }[];
+  dateStr: string;
+  timeStr: string;
+  durationMinutes: number;
+  price: number;
+}) {
+  const supabase = await createClient();
+  if (!supabase) return { success: false, error: "No connection" };
+  
+  const { data: profile } = await supabase.from('profiles').select('organization_id').single();
+  if (!profile?.organization_id) return { success: false, error: "Organização não encontrada" };
+
+  const startsAt = new Date(`${data.dateStr}T${data.timeStr}:00`).toISOString();
+  const endsAt = new Date(new Date(startsAt).getTime() + data.durationMinutes * 60000).toISOString();
+
+  // Update appointment
+  const { error: appError } = await supabase
+    .from("appointments")
+    .update({
+      client_id: data.clientId,
+      professional_id: data.professionalId,
+      starts_at: startsAt,
+      ends_at: endsAt
+    })
+    .eq("id", appointmentId);
+
+  if (appError) {
+    if (appError.message?.includes("appointments_no_overlap")) {
+      return { success: false, error: "Este horário já está ocupado para esta profissional." };
+    }
+    return { success: false, error: appError.message };
+  }
+
+  // Replace items
+  await supabase.from("appointment_items").delete().eq("appointment_id", appointmentId);
+  
+  const itemsToInsert = data.services.map(s => ({
+    organization_id: profile.organization_id!,
+    appointment_id: appointmentId,
+    service_id: s.id,
+    professional_id: data.professionalId,
+    description: "Agendamento (Editado)",
+    duration_minutes: s.durationMinutes,
+    unit_price: s.price,
+    commission_type: "percentage",
+    commission_value: 0
+  }));
+
+  await supabase.from("appointment_items").insert(itemsToInsert);
+
+  revalidatePath("/");
+  return { success: true };
+}
