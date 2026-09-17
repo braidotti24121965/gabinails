@@ -42,7 +42,7 @@ export async function getAppointments(): Promise<Appointment[]> {
     const price = row.items?.reduce((acc: number, item: any) => acc + Number(item.unit_price || 0), 0) || 0;
     
     // Service name (first service or generic)
-    const serviceName = row.items?.[0]?.service?.name || "Serviço";
+    const serviceName = row.items?.map((i: any) => i.service?.name).filter(Boolean).join(" + ") || "Serviço";
 
     // Map status from db to UI readable
     const statusMap: Record<string, string> = {
@@ -75,7 +75,7 @@ export async function getAppointments(): Promise<Appointment[]> {
 export async function createAppointmentRecord(data: {
   clientId: string;
   professionalId: string;
-  serviceId: string;
+  services: { id: string; price: number; durationMinutes: number }[];
   dateStr: string; // YYYY-MM-DD
   timeStr: string; // HH:MM
   durationMinutes: number;
@@ -115,19 +115,21 @@ export async function createAppointmentRecord(data: {
   }
 
   // Insert appointment item (service)
-  const { error: itemError } = await supabase
-    .from("appointment_items")
-    .insert([{
-      organization_id: profile.organization_id,
+  const itemsToInsert = data.services.map((s: any) => ({
+      organization_id: profile.organization_id!,
       appointment_id: appointment.id,
-      service_id: data.serviceId,
+      service_id: s.id,
       professional_id: data.professionalId,
       description: "Agendamento",
-      duration_minutes: data.durationMinutes,
-      unit_price: data.price,
+      duration_minutes: s.durationMinutes,
+      unit_price: s.price,
       commission_type: "percentage",
-      commission_value: 0 // Ideally this comes from the professional's default commission
-    }]);
+      commission_value: 0
+    }));
+
+    const { error: itemError } = await supabase
+      .from("appointment_items")
+      .insert(itemsToInsert);
 
   if (itemError) {
     console.error("Error creating appointment item:", itemError);

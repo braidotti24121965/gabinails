@@ -563,18 +563,21 @@ function OnlineBooking() {
 function BookingModal({ clients, professionals, services, close, save }: { clients: any[]; professionals: any[]; services: any[]; close: () => void; save: (a: Appointment, rawData?: any) => void }) {
   const [clientId, setClientId] = useState(clients[0]?.id || "");
   const [profId, setProfId] = useState(professionals[0]?.id || "");
-  const [serviceId, setServiceId] = useState(services[0]?.id || "");
+  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([services[0]?.id || ""]);
   const [dateStr, setDateStr] = useState(new Date().toISOString().split("T")[0]);
   const [timeStr, setTimeStr] = useState("09:00");
   const [submitting, setSubmitting] = useState(false);
 
   const selectedClient = clients.find(c => c.id === clientId);
   const selectedProf = professionals.find(p => p.id === profId);
-  const selectedSvc = services.find(s => s.id === serviceId);
+  const selectedSvcs = selectedServiceIds.map((id: string) => services.find((s: any) => s.id === id)).filter(Boolean);
+  const totalDuration = selectedSvcs.reduce((acc: number, s: any) => acc + s.duration, 0);
+  const totalPrice = selectedSvcs.reduce((acc: number, s: any) => acc + s.price, 0);
+  const serviceNames = selectedSvcs.map((s: any) => s.name).join(" + ");
 
   return <div className="fixed inset-0 z-[70] flex items-end justify-center bg-navy-dark/45 p-0 sm:items-center sm:p-4"><form onSubmit={async e => {
     e.preventDefault();
-    if (!selectedClient || !selectedProf || !selectedSvc) return;
+    if (!selectedClient || !selectedProf || selectedSvcs.length === 0) return;
     setSubmitting(true);
     await save({
       id: `temp-${Date.now()}`,
@@ -583,23 +586,39 @@ function BookingModal({ clients, professionals, services, close, save }: { clien
       client: selectedClient.name,
       phone: selectedClient.phone,
       professional: selectedProf.name,
-      service: selectedSvc.name,
+      service: serviceNames,
       status: "Aguardando sinal",
-      price: selectedSvc.price,
+      price: totalPrice,
       source: "Interno"
     }, {
       clientId,
       professionalId: profId,
-      serviceId: selectedSvc.id, // Dummy UUID for MVP until we do services table
+      services: selectedSvcs.map((s: any) => ({ id: s.id, price: s.price, durationMinutes: s.duration })),
       dateStr,
       timeStr,
-      durationMinutes: selectedSvc.duration,
-      price: selectedSvc.price
+      durationMinutes: totalDuration,
+      price: totalPrice
     });
   }} className="w-full max-w-xl rounded-t-lg bg-white p-5 shadow-xl sm:rounded-lg"><div className="flex items-center justify-between"><div><h2 className="text-lg font-semibold">Novo agendamento</h2><p className="text-xs text-muted">Selecione os dados reais do banco.</p></div><button type="button" onClick={close} className="rounded-md p-2 text-muted hover:bg-bg"><X size={18} /></button></div><div className="mt-5 grid gap-4 sm:grid-cols-2">
     <label><span className="field-label">Cliente</span><select value={clientId} onChange={e => setClientId(e.target.value)} className="field-input" required>{clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
     <label><span className="field-label">Profissional</span><select value={profId} onChange={e => setProfId(e.target.value)} className="field-input" required>{professionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
-    <label className="sm:col-span-2"><span className="field-label">Serviço</span><select value={serviceId} onChange={e => setServiceId(e.target.value)} className="field-input" required>{services.map(s => <option key={s.id} value={s.id}>{s.name} ({s.duration} min - R$ {s.price})</option>)}</select></label>
+    <div className="sm:col-span-2 space-y-2"><span className="field-label">Serviços</span>
+            {selectedServiceIds.map((srvId: string, index: number) => (
+              <div key={index} className="flex gap-2">
+                <select value={srvId} onChange={e => {
+                  const newIds = [...selectedServiceIds];
+                  newIds[index] = e.target.value;
+                  setSelectedServiceIds(newIds);
+                }} className="field-input flex-1" required>
+                  {services.map((s: any) => <option key={s.id} value={s.id}>{s.name} ({s.duration} min - R$ {s.price})</option>)}
+                </select>
+                {selectedServiceIds.length > 1 && (
+                  <button type="button" onClick={() => setSelectedServiceIds(selectedServiceIds.filter((_, i) => i !== index))} className="btn-outline !px-3 !min-h-0"><X size={16}/></button>
+                )}
+              </div>
+            ))}
+            <button type="button" onClick={() => setSelectedServiceIds([...selectedServiceIds, services[0]?.id])} className="text-sm font-medium text-primary hover:underline">+ Adicionar outro serviço</button>
+          </div>
     <label><span className="field-label">Data</span><input className="field-input" type="date" value={dateStr} onChange={e=>setDateStr(e.target.value)} required /></label>
     <label><span className="field-label">Horário</span><input className="field-input" type="time" step="900" value={timeStr} onChange={e=>setTimeStr(e.target.value)} required /></label>
   </div><div className="mt-5 flex justify-end gap-2"><button type="button" disabled={submitting} onClick={close} className="btn-outline">Cancelar</button><button disabled={submitting} className="btn-primary">{submitting ? "Salvando..." : "Criar agendamento"}</button></div></form></div> }
