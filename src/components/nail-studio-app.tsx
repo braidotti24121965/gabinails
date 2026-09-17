@@ -873,7 +873,12 @@ export function NailStudioApp({ initialClients = demoClients, initialProfessiona
     const dbStatus = map[statusUI];
     if (dbStatus) {
       setRows(current => current.map(item => item.id === a.id ? { ...item, status: statusUI as any } : item));
-      await updateAppointmentStatus(a.id, dbStatus);
+      updateAppointmentStatus(a.id, dbStatus); // Don't block UI waiting for this
+      
+      if (statusUI === "Em atendimento" || statusUI === "Cliente chegou") {
+        setActiveAppointment(a);
+        setView("attendance");
+      }
     }
   }}
   onCancel={(index, id) => confirmAction("Cancelar este agendamento? O histórico será preservado.", () => { cancelAppointmentRecord(id).then(res => { if(res.success) { setRows(current => current.map((item, i) => i === index ? { ...item, status: "Cancelado" } : item)); notify("Agendamento cancelado e horário liberado."); } else alert(res.error); }) })} />;
