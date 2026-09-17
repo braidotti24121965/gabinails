@@ -273,9 +273,42 @@ function Services({ data, onNew, onAction, onDelete }: { data: any[]; onNew: () 
 
 function Professionals({ data, onNew, onAction, onDelete }: { data: ProfessionalItem[]; onNew: () => void; onAction: (mode: "view" | "edit", index: number) => void; onDelete: (index: number) => void }) { return <main className="page-content"><div className="mb-5 flex justify-end"><button onClick={onNew} className="btn-primary"><Plus size={16} />Nova profissional</button></div><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{data.map((p, index) => <div className="card" key={p.name}><div className="flex items-center gap-4"><div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-lg font-bold text-primary">{p.initials}</div><div><h3 className="font-semibold">{p.name}</h3><p className="text-xs text-muted">{p.specialty}</p></div></div><div className="mt-5 space-y-3 border-t border-[#E7EDF3] pt-4"><div className="flex justify-between text-xs"><span className="text-muted">Atendimentos hoje</span><span className="font-semibold">{p.today}</span></div><div className="flex justify-between text-xs"><span className="text-muted">Produção mensal</span><span className="font-semibold">{money.format(p.production)}</span></div><div className="space-y-1.5"><div className="flex justify-between text-xs"><span className="text-muted">Ocupação</span><span className="font-semibold">{p.occupation}%</span></div><div className="h-1.5 w-full rounded-full bg-[#E7EDF3]"><div className="h-full rounded-full bg-primary" style={{ width: `${p.occupation}%` }} /></div></div><div className="flex justify-between pt-1 text-xs"><span className="text-muted">Comissão gerada</span><span className="font-semibold">{money.format(p.commission)}</span></div></div><div className="mt-4 border-t border-[#E7EDF3] pt-2"><RowActions onView={() => onAction("view", index)} onEdit={() => onAction("edit", index)} onDelete={() => onDelete(index)} deleteLabel="Arquivar" /></div></div>)}</div></main> }
 
-function Attendance({ appointment, onFinish }: { appointment: Appointment | null; onFinish: () => void }) { 
+function Attendance({ appointment, onFinish, onSelect, allAppointments = [] }: { appointment: Appointment | null; onFinish: () => void; onSelect: (a: Appointment) => void; allAppointments: Appointment[] }) { 
     const [extra, setExtra] = useState(false); 
-    if (!appointment) return <div className="p-8 text-center">Nenhum atendimento selecionado</div>;
+    if (!appointment) {
+      const activeList = allAppointments.filter(a => a.status === "Em atendimento" || a.status === "Cliente chegou");
+      return (
+        <main className="page-content">
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-navy-dark">Atendimentos em andamento</h1>
+            <p className="text-muted">Selecione uma cliente para conduzir o serviço.</p>
+          </div>
+          {activeList.length === 0 ? (
+            <div className="flex flex-col items-center justify-center p-12 text-center border border-dashed border-[#DBE3EC] rounded-lg bg-[#F7F9FC]">
+              <p className="text-muted mb-2">Nenhum atendimento em andamento no momento.</p>
+              <p className="text-sm text-muted">Mude o status de um agendamento na Agenda para "Em atendimento" ou "Cliente chegou".</p>
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {activeList.map(a => (
+                <div key={a.id} onClick={() => onSelect(a)} className="card hover:border-primary hover:shadow-md transition-all cursor-pointer">
+                  <div className="flex justify-between items-start mb-3">
+                    <Badge tone={a.status === "Em atendimento" ? "green" : "blue"}>{a.status}</Badge>
+                    <span className="text-xs font-medium text-muted">{a.time}</span>
+                  </div>
+                  <h3 className="font-semibold text-lg text-navy-dark">{a.client}</h3>
+                  <p className="text-sm text-muted mb-4">{a.service}</p>
+                  <div className="flex justify-between items-center text-sm border-t border-bg pt-3">
+                    <span className="text-muted">{a.professional}</span>
+                    <span className="font-medium text-navy-dark">R$ {a.price.toFixed(2).replace(".", ",")}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </main>
+      );
+    }
     return <main className="page-content"><div className="mb-5 flex flex-wrap items-center justify-between gap-3"><div><Badge tone="primary">{appointment.status}</Badge><p className="mt-2 text-xs text-muted">Horário agendado: {appointment.time}</p></div><button onClick={onFinish} className="btn-primary"><Check size={16} />Concluir atendimento</button></div><div className="grid gap-5 xl:grid-cols-[1fr_360px]"><section className="card"><SectionTitle title={appointment.client} subtitle={appointment.phone} /><div className="rounded-md border border-[#E7EDF3] p-4"><div className="flex justify-between gap-3"><div><p className="font-medium">{appointment.service}</p><p className="text-xs text-muted">{appointment.professional}</p></div><p className="font-semibold">{money.format(appointment.price)}</p></div></div>{extra && <div className="mt-2 rounded-md border border-[#E7EDF3] p-4"><div className="flex justify-between"><div><p className="font-medium">Nail art premium</p><p className="text-xs text-muted">{appointment.professional} · adicional</p></div><p className="font-semibold">R$ 50,00</p></div></div>}<button onClick={() => setExtra(true)} className="btn-ghost mt-3"><Plus size={15} />Adicionar serviço ou adicional</button><div className="mt-6"><label className="field-label">Observações do atendimento</label><textarea className="field-input h-24 py-2.5" placeholder="Preferências, intercorrências ou detalhes..." /></div><div className="mt-5 rounded-md border border-dashed border-[#C8D5E3] p-5 text-center"><Sparkles className="mx-auto text-primary" size={20} /><p className="mt-2 text-xs font-medium">Fotos antes e depois</p><p className="text-[11px] text-muted">Anexe imagens ao histórico desta cliente</p><button className="btn-outline mt-3 !min-h-8">Adicionar fotos</button></div></section><aside className="card h-fit"><SectionTitle title="Resumo financeiro" /><div className="space-y-3 text-sm"><div className="flex justify-between"><span className="text-muted">Serviços</span><span>{money.format(extra ? appointment.price + 50 : appointment.price)}</span></div><div className="flex justify-between border-t border-[#E7EDF3] pt-3 text-base font-semibold"><span>Saldo a receber</span><span>{money.format(extra ? appointment.price + 50 : appointment.price)}</span></div></div><div className="mt-5 rounded-md bg-bg p-3 text-xs text-muted"><p className="font-medium text-ink">Ao concluir</p><p className="mt-1">Comissão calculada e estoque baixado.</p></div></aside></div></main> }
 
 const initialFinancialRows = [{ date: "14/09 09:12", name: "Mariana Costa", type: "Recebimento", method: "PIX", status: "Pago", value: 185 }, { date: "14/09 08:40", name: "Compra de materiais", type: "Despesa", method: "Crédito", status: "Pendente", value: -428 }, { date: "13/09 18:05", name: "Luiza Torres", type: "Sinal", method: "PIX", status: "Pago", value: 30 }];
@@ -885,7 +918,14 @@ export function NailStudioApp({ initialClients = demoClients, initialProfessiona
     if (view === "clients") return <Clients data={clientRows} onNew={() => openEntity("client", "create")} onAction={(mode, index) => openEntity("client", mode, index)} onArchive={index => confirmAction("Arquivar esta cliente? O histórico será preservado.", async () => { const item = clientRows[index]; if (item.id) await archiveClientRecord(item.id); setClientRows(current => current.map((c, i) => i === index ? { ...c, status: "Inativa" } : c)); notify("Cliente arquivada; histórico preservado."); })} />;
     if (view === "services") return <Services data={serviceRows} onNew={() => openEntity("service", "create")} onAction={(mode, index) => openEntity("service", mode, index)} onDelete={index => confirmAction("Excluir este serviço da demonstração?", () => { setServiceRows(current => current.filter((_, i) => i !== index)); notify("Serviço removido."); })} />;
     if (view === "professionals") return <Professionals data={professionalRows} onNew={() => openEntity("professional", "create")} onAction={(mode, index) => openEntity("professional", mode, index)} onDelete={index => confirmAction("Arquivar esta profissional? Agendamentos anteriores serão preservados.", async () => { const item = professionalRows[index]; if (item.id) await archiveProfessionalRecord(item.id); setProfessionalRows(current => current.filter((_, i) => i !== index)); notify("Profissional arquivada."); })} />;
-    if (view === "attendance") return <Attendance appointment={activeAppointment} onFinish={() => setFinish(true)} />; if (view === "finance") return <Finance stats={initialStats} data={financialRows} onNew={() => openEntity("financial", "create")} onAction={(mode, index) => openEntity("financial", mode, index)} onReverse={index => confirmAction("Estornar este movimento? Um lançamento de compensação será registrado.", () => { setFinancialRows(current => current.map((item, i) => i === index ? { ...item, status: "Estornado" } : item)); notify("Movimento estornado por compensação; registro original preservado."); })} />;
+    if (view === "attendance") return (
+      <Attendance 
+        appointment={activeAppointment} 
+        allAppointments={rows}
+        onSelect={(a) => setActiveAppointment(a)}
+        onFinish={() => setFinish(true)} 
+      />
+    ); if (view === "finance") return <Finance stats={initialStats} data={financialRows} onNew={() => openEntity("financial", "create")} onAction={(mode, index) => openEntity("financial", mode, index)} onReverse={index => confirmAction("Estornar este movimento? Um lançamento de compensação será registrado.", () => { setFinancialRows(current => current.map((item, i) => i === index ? { ...item, status: "Estornado" } : item)); notify("Movimento estornado por compensação; registro original preservado."); })} />;
     if (view === "inventory") return <Inventory data={productRows} onNew={() => openEntity("product", "create")} onAction={(mode, index) => openEntity("product", mode, index)} onDelete={() => notify("Ajuste manual indisponível na demonstração.")} />;
     if (view === "automations") return <Automations data={automationRows} onNew={() => openEntity("automation", "create")} onAction={(mode, index) => openEntity("automation", mode, index)} onDelete={() => notify("Status da automação atualizado.")} go={setView} />;
     if (view === "online") return <OnlineBooking />;
