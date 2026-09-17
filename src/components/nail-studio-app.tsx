@@ -1,5 +1,5 @@
-import { updateAppointmentRecord } from "@/lib/actions/appointments";
 "use client";
+import { updateAppointmentRecord } from "@/lib/actions/appointments";
 
 import { useState, useEffect } from "react";
 import {
