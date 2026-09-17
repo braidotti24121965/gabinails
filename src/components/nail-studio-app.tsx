@@ -714,6 +714,23 @@ export function NailStudioApp({ initialClients = demoClients, initialProfessiona
     if (kind === "financial") { const value = Number(detail.replace(/[^0-9,]/g, "").replace(",", ".")) || 0; setFinancialRows(current => creating ? [...current, { date: "Hoje", name, type: "Despesa", method: "PIX", status: "Pendente", value: -value }] : current.map((item, i) => i === index ? { ...item, name, value: item.value < 0 ? -value : value } : item)); }
     setEntityModal(null); notify(creating ? "Cadastro criado com sucesso." : "Alterações salvas com sucesso.");
   };
+  const saveService = async (data: any) => {
+    if (!entityModal) return;
+    if (entityModal.mode === "create") {
+      const res = await createServiceRecord(data);
+      if (res.success) {
+        setServiceRows(current => [...current, { ...data, id: res.data?.id || "tmp", active: true }]);
+        notify("Serviço salvo com sucesso.");
+      } else {
+        alert(res.error);
+      }
+    } else {
+      // optimistic edit (no backend update yet, just for UI)
+      setServiceRows(current => current.map((item, i) => i === entityModal.index ? { ...item, ...data } : item));
+      notify("Serviço salvo com sucesso (local).");
+    }
+    setEntityModal(null);
+  };
   const saveProfessional = async (formData: any) => {
     if (!entityModal) return;
     const { mode, index } = entityModal;
@@ -797,7 +814,14 @@ export function NailStudioApp({ initialClients = demoClients, initialProfessiona
         {content}
       </div>
       {entityModal && (
-        entityModal.kind === "professional" ? (
+        entityModal.kind === "service" ? (
+          <ServiceModal
+            mode={entityModal.mode}
+            service={entityModal.index !== undefined ? serviceRows[entityModal.index] : undefined}
+            close={() => setEntityModal(null)}
+            save={saveService}
+          />
+        ) : entityModal.kind === "professional" ? (
           <ProfessionalModal
             mode={entityModal.mode}
             professional={entityModal.index !== undefined ? professionalRows[entityModal.index] : undefined}
