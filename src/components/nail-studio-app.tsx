@@ -977,9 +977,13 @@ export function NailStudioApp({ initialClients = demoClients, initialProfessiona
             setRows(current => current.map(item => item.id === activeAppointment.id ? { ...item, price: newPrice, service: newService, items: newItems } : item));
             setActiveAppointment({ ...activeAppointment, price: newPrice, service: newService, items: newItems });
             
-            await addServiceToAppointment(activeAppointment.id, profId, svc.id, svc.price, svc.duration);
-            // Refresh to get real IDs
-            window.location.reload();
+            const res = await addServiceToAppointment(activeAppointment.id, profId, svc.id, svc.price, svc.duration);
+            if (res.success && res.id) {
+              // Update with real ID so they can remove it
+              const finalItems = newItems.map(i => i.id === tempId ? { ...i, id: res.id } : i);
+              setRows(current => current.map(item => item.id === activeAppointment.id ? { ...item, items: finalItems } : item));
+              setActiveAppointment(curr => curr ? { ...curr, items: finalItems } : null);
+            }
           }
         }}
         onRemoveItem={async (itemId) => {

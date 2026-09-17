@@ -238,7 +238,7 @@ export async function addServiceToAppointment(appointmentId: string, professiona
   const { data: profile } = await supabase.from('profiles').select('organization_id').single();
   if (!profile?.organization_id) return { success: false, error: "Organização não encontrada" };
 
-  const { error } = await supabase.from("appointment_items").insert([{
+  const { data, error } = await supabase.from("appointment_items").insert([{
     organization_id: profile.organization_id,
     appointment_id: appointmentId,
     service_id: serviceId,
@@ -248,11 +248,11 @@ export async function addServiceToAppointment(appointmentId: string, professiona
     unit_price: price,
     commission_type: "percentage",
     commission_value: 0
-  }]);
+  }]).select("id").single();
 
   if (error) return { success: false, error: error.message };
   revalidatePath("/");
-  return { success: true };
+  return { success: true, id: data?.id };
 }
 
 export async function removeServiceFromAppointment(itemId: string) {
