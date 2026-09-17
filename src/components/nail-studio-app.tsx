@@ -7,12 +7,13 @@ import {
   MoreHorizontal, Package, Plus, Search, Settings, ShieldCheck, ShoppingBag, Sparkles, TrendingUp,
   Eye, Pencil, Trash2, UserRound, Users, Wallet, WandSparkles, X, Database, Copy
 } from "lucide-react";
-import { appointments as demoAppointments, clients as demoClients, inventory, money, professionals as demoProfessionals, recovery, services, type Appointment, type AppointmentStatus } from "@/lib/demo-data";
+import { appointments as demoAppointments, clients as demoClients, inventory, money, professionals as demoProfessionals, recovery, services as demoServices, type Appointment, type AppointmentStatus } from "@/lib/demo-data";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { logout } from "@/lib/actions/auth";
 import { createClientRecord, updateClientRecord, archiveClientRecord, type ClientItem } from "@/lib/actions/clients";
 import { createProfessionalRecord, updateProfessionalRecord, archiveProfessionalRecord, type ProfessionalItem } from "@/lib/actions/professionals";
 import { createSpecialtyRecord } from "@/lib/actions/specialties";
+import { createServiceRecord, type ServiceItem } from "@/lib/actions/services";
 import { createAppointmentRecord, cancelAppointmentRecord, updateAppointmentStatus } from "@/lib/actions/appointments";
 import { finishAppointment } from "@/lib/actions/attendance";
 
@@ -188,7 +189,7 @@ function Dashboard({ go, onAttendance }: { go: (v: View) => void, onAttendance?:
 }
 
 function Agenda({ rows, onNew, onAttendance, onAction, onCancel, onStatusChange }: { rows: Appointment[]; onNew: () => void; onAttendance: (a: Appointment) => void; onAction: (mode: "view" | "edit", index: number) => void; onCancel: (index: number, id: string) => void; onStatusChange: (a: Appointment, status: string) => void }) {
-  return <main className="page-content"><div className="mb-5 flex flex-wrap items-center justify-between gap-3"><div className="flex rounded-md border border-[#DBE3EC] bg-white p-1"><button className="rounded-sm bg-primary px-4 py-2 text-xs font-medium text-white">Dia</button><button className="px-4 py-2 text-xs text-muted">Semana</button><button className="px-4 py-2 text-xs text-muted">Mês</button></div><button onClick={onNew} className="btn-primary"><Plus size={16} />Novo agendamento</button></div><div className="mb-4 grid gap-3 sm:grid-cols-3"><select className="field-input" aria-label="Profissional"><option>Todas as profissionais</option>{demoProfessionals.map(p => <option key={p.name}>{p.name}</option>)}</select><select className="field-input" aria-label="Serviço"><option>Todos os serviços</option>{services.map(s => <option key={s.name}>{s.name}</option>)}</select><select className="field-input" aria-label="Status"><option>Todos os status</option><option>Confirmado</option><option>Em atendimento</option><option>Aguardando sinal</option></select></div><section className="card !p-0 overflow-hidden"><div className="border-b border-[#E7EDF3] bg-[#F7F9FC] px-5 py-3 text-xs text-muted">08:00 — 19:00 · Intervalos de 15 minutos</div><div className="divide-y divide-[#E7EDF3]">{rows.map((a, index) => <div key={a.id} className="flex w-full items-center gap-3 px-4 py-3 hover:bg-bg sm:px-5"><button onClick={a.status === "Em atendimento" || a.status === "Cliente chegou" ? () => onAttendance(a) : () => onAction("view", index)} className="flex min-w-0 flex-1 items-center gap-3 text-left"><div className="w-14 shrink-0"><p className="font-semibold">{a.time}</p><p className="text-[10px] text-muted">{a.end}</p></div><div className="h-12 w-1 rounded-full bg-primary" /><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><p className="truncate font-medium">{a.client}</p>{a.source === "Online" && <Badge tone="blue">Online</Badge>}</div><p className="truncate text-xs text-muted">{a.service} · {a.professional}</p></div><div className="hidden text-right md:block"><p className="font-medium">{money.format(a.price)}</p><p className="text-[10px] text-muted">{a.paid ? `${money.format(a.paid)} recebido` : "Pagamento pendente"}</p></div><div className="hidden sm:block">
+  return <main className="page-content"><div className="mb-5 flex flex-wrap items-center justify-between gap-3"><div className="flex rounded-md border border-[#DBE3EC] bg-white p-1"><button className="rounded-sm bg-primary px-4 py-2 text-xs font-medium text-white">Dia</button><button className="px-4 py-2 text-xs text-muted">Semana</button><button className="px-4 py-2 text-xs text-muted">Mês</button></div><button onClick={onNew} className="btn-primary"><Plus size={16} />Novo agendamento</button></div><div className="mb-4 grid gap-3 sm:grid-cols-3"><select className="field-input" aria-label="Profissional"><option>Todas as profissionais</option>{demoProfessionals.map(p => <option key={p.name}>{p.name}</option>)}</select><select className="field-input" aria-label="Serviço"><option>Todos os serviços</option>{demoServices.map(s => <option key={s.name}>{s.name}</option>)}</select><select className="field-input" aria-label="Status"><option>Todos os status</option><option>Confirmado</option><option>Em atendimento</option><option>Aguardando sinal</option></select></div><section className="card !p-0 overflow-hidden"><div className="border-b border-[#E7EDF3] bg-[#F7F9FC] px-5 py-3 text-xs text-muted">08:00 — 19:00 · Intervalos de 15 minutos</div><div className="divide-y divide-[#E7EDF3]">{rows.map((a, index) => <div key={a.id} className="flex w-full items-center gap-3 px-4 py-3 hover:bg-bg sm:px-5"><button onClick={a.status === "Em atendimento" || a.status === "Cliente chegou" ? () => onAttendance(a) : () => onAction("view", index)} className="flex min-w-0 flex-1 items-center gap-3 text-left"><div className="w-14 shrink-0"><p className="font-semibold">{a.time}</p><p className="text-[10px] text-muted">{a.end}</p></div><div className="h-12 w-1 rounded-full bg-primary" /><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><p className="truncate font-medium">{a.client}</p>{a.source === "Online" && <Badge tone="blue">Online</Badge>}</div><p className="truncate text-xs text-muted">{a.service} · {a.professional}</p></div><div className="hidden text-right md:block"><p className="font-medium">{money.format(a.price)}</p><p className="text-[10px] text-muted">{a.paid ? `${money.format(a.paid)} recebido` : "Pagamento pendente"}</p></div><div className="hidden sm:block">
      <select 
        value={a.status}
        onClick={(e) => e.stopPropagation()} 
@@ -207,7 +208,7 @@ function Agenda({ rows, onNew, onAttendance, onAction, onCancel, onStatusChange 
 
 function Clients({ data, onNew, onAction, onArchive }: { data: ClientItem[]; onNew: () => void; onAction: (mode: "view" | "edit", index: number) => void; onArchive: (index: number) => void }) { return <main className="page-content"><div className="mb-5 flex flex-wrap justify-between gap-3"><div className="relative w-full max-w-md"><Search className="absolute left-3 top-3 text-muted" size={16} /><input className="field-input pl-9" placeholder="Buscar por nome ou telefone" /></div><button onClick={onNew} className="btn-primary"><Plus size={16} />Nova cliente</button></div><section className="card !p-0 overflow-hidden"><div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Cliente</th><th>Última visita</th><th>Próxima manutenção</th><th>Atendimentos</th><th>Total gasto</th><th>Confiança</th><th>Status</th><th className="text-right">Ações</th></tr></thead><tbody>{data.map((c, index) => <tr key={c.name}><td><button onClick={() => onAction("view", index)} className="text-left hover:text-primary"><p className="font-medium">{c.name}</p><p className="text-[11px] text-muted">{c.phone}</p></button></td><td>{c.last}</td><td>{c.next}</td><td>{c.visits}</td><td>{money.format(c.spent)}</td><td>{c.whitelist ? <Badge tone="success"><ShieldCheck size={11} className="mr-1" />Sem sinal</Badge> : <span className="text-xs text-muted">Sinal obrigatório</span>}</td><td><Badge tone={c.status === "Ativa" ? "primary" : "neutral"}>{c.status}</Badge></td><td><RowActions onView={() => onAction("view", index)} onEdit={() => onAction("edit", index)} onDelete={() => onArchive(index)} deleteLabel="Arquivar" /></td></tr>)}</tbody></table></div></section></main> }
 
-function Services({ data, onNew, onAction, onDelete }: { data: typeof services; onNew: () => void; onAction: (mode: "view" | "edit", index: number) => void; onDelete: (index: number) => void }) { return <main className="page-content"><div className="mb-5 flex justify-end"><button onClick={onNew} className="btn-primary"><Plus size={16} />Novo serviço</button></div><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{data.map((s, index) => <div className="card transition hover:border-primary/40" key={s.name}><button onClick={() => onAction("view", index)} className="w-full text-left"><div className="flex justify-between"><Badge tone="primary">{s.category}</Badge><Badge tone={s.active ? "success" : "neutral"}>{s.active ? "Ativo" : "Inativo"}</Badge></div><h3 className="mt-4 font-semibold">{s.name}</h3><div className="mt-4 grid grid-cols-3 gap-2 border-t border-[#E7EDF3] pt-4"><div><p className="text-[10px] text-muted">Duração</p><p className="mt-1 text-xs font-medium">{s.duration} min</p></div><div><p className="text-[10px] text-muted">Preço</p><p className="mt-1 text-xs font-medium">{money.format(s.price)}</p></div><div><p className="text-[10px] text-muted">Manutenção</p><p className="mt-1 text-xs font-medium">{s.maintenance ? `${s.maintenance} dias` : "—"}</p></div></div></button><div className="mt-3 border-t border-[#E7EDF3] pt-2"><RowActions onView={() => onAction("view", index)} onEdit={() => onAction("edit", index)} onDelete={() => onDelete(index)} /></div></div>)}</div></main> }
+function Services({ data, onNew, onAction, onDelete }: { data: any[]; onNew: () => void; onAction: (mode: "view" | "edit", index: number) => void; onDelete: (index: number) => void }) { return <main className="page-content"><div className="mb-5 flex justify-end"><button onClick={onNew} className="btn-primary"><Plus size={16} />Novo serviço</button></div><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{data.map((s, index) => <div className="card transition hover:border-primary/40" key={s.name}><button onClick={() => onAction("view", index)} className="w-full text-left"><div className="flex justify-between"><Badge tone="primary">{s.category}</Badge><Badge tone={s.active ? "success" : "neutral"}>{s.active ? "Ativo" : "Inativo"}</Badge></div><h3 className="mt-4 font-semibold">{s.name}</h3><div className="mt-4 grid grid-cols-3 gap-2 border-t border-[#E7EDF3] pt-4"><div><p className="text-[10px] text-muted">Duração</p><p className="mt-1 text-xs font-medium">{s.duration} min</p></div><div><p className="text-[10px] text-muted">Preço</p><p className="mt-1 text-xs font-medium">{money.format(s.price)}</p></div><div><p className="text-[10px] text-muted">Manutenção</p><p className="mt-1 text-xs font-medium">{s.maintenance ? `${s.maintenance} dias` : "—"}</p></div></div></button><div className="mt-3 border-t border-[#E7EDF3] pt-2"><RowActions onView={() => onAction("view", index)} onEdit={() => onAction("edit", index)} onDelete={() => onDelete(index)} /></div></div>)}</div></main> }
 
 function Professionals({ data, onNew, onAction, onDelete }: { data: ProfessionalItem[]; onNew: () => void; onAction: (mode: "view" | "edit", index: number) => void; onDelete: (index: number) => void }) { return <main className="page-content"><div className="mb-5 flex justify-end"><button onClick={onNew} className="btn-primary"><Plus size={16} />Nova profissional</button></div><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{data.map((p, index) => <div className="card" key={p.name}><div className="flex items-center gap-4"><div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-lg font-bold text-primary">{p.initials}</div><div><h3 className="font-semibold">{p.name}</h3><p className="text-xs text-muted">{p.specialty}</p></div></div><div className="mt-5 space-y-3 border-t border-[#E7EDF3] pt-4"><div className="flex justify-between text-xs"><span className="text-muted">Atendimentos hoje</span><span className="font-semibold">{p.today}</span></div><div className="flex justify-between text-xs"><span className="text-muted">Produção mensal</span><span className="font-semibold">{money.format(p.production)}</span></div><div className="space-y-1.5"><div className="flex justify-between text-xs"><span className="text-muted">Ocupação</span><span className="font-semibold">{p.occupation}%</span></div><div className="h-1.5 w-full rounded-full bg-[#E7EDF3]"><div className="h-full rounded-full bg-primary" style={{ width: `${p.occupation}%` }} /></div></div><div className="flex justify-between pt-1 text-xs"><span className="text-muted">Comissão gerada</span><span className="font-semibold">{money.format(p.commission)}</span></div></div><div className="mt-4 border-t border-[#E7EDF3] pt-2"><RowActions onView={() => onAction("view", index)} onEdit={() => onAction("edit", index)} onDelete={() => onDelete(index)} deleteLabel="Arquivar" /></div></div>)}</div></main> }
 
@@ -226,7 +227,7 @@ function Automations({ data, onNew, onAction, onDelete, go }: { data: typeof ini
 
 function OnlineBooking() {
   const [step, setStep] = useState(1);
-  const [selectedService, setSelectedService] = useState(services[0]);
+  const [selectedService, setSelectedService] = useState(demoServices[0]);
   const [selectedProfessional, setSelectedProfessional] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState("2026-09-15");
   const [slots, setSlots] = useState<string[]>(["09:00", "10:30", "13:30", "15:00", "16:30", "18:00"]);
@@ -324,7 +325,7 @@ function OnlineBooking() {
               <h2 className="text-lg font-semibold">Qual serviço você deseja?</h2>
               <p className="mt-1 text-xs text-muted">Escolha um procedimento para ver a disponibilidade.</p>
               <div className="mt-5 space-y-2">
-                {services.map(s => (
+                {demoServices.map(s => (
                   <button
                     onClick={() => { setSelectedService(s); setStep(2); }}
                     key={s.name}
@@ -562,14 +563,14 @@ function OnlineBooking() {
 function BookingModal({ clients, professionals, services, close, save }: { clients: any[]; professionals: any[]; services: any[]; close: () => void; save: (a: Appointment, rawData?: any) => void }) {
   const [clientId, setClientId] = useState(clients[0]?.id || "");
   const [profId, setProfId] = useState(professionals[0]?.id || "");
-  const [serviceId, setServiceId] = useState(services[0]?.name || "");
+  const [serviceId, setServiceId] = useState(services[0]?.id || "");
   const [dateStr, setDateStr] = useState(new Date().toISOString().split("T")[0]);
   const [timeStr, setTimeStr] = useState("09:00");
   const [submitting, setSubmitting] = useState(false);
 
   const selectedClient = clients.find(c => c.id === clientId);
   const selectedProf = professionals.find(p => p.id === profId);
-  const selectedSvc = services.find(s => s.name === serviceId);
+  const selectedSvc = services.find(s => s.id === serviceId);
 
   return <div className="fixed inset-0 z-[70] flex items-end justify-center bg-navy-dark/45 p-0 sm:items-center sm:p-4"><form onSubmit={async e => {
     e.preventDefault();
@@ -589,7 +590,7 @@ function BookingModal({ clients, professionals, services, close, save }: { clien
     }, {
       clientId,
       professionalId: profId,
-      serviceId: "11111111-1111-4111-8111-111111111111", // Dummy UUID for MVP until we do services table
+      serviceId: selectedSvc.id, // Dummy UUID for MVP until we do services table
       dateStr,
       timeStr,
       durationMinutes: selectedSvc.duration,
@@ -598,7 +599,7 @@ function BookingModal({ clients, professionals, services, close, save }: { clien
   }} className="w-full max-w-xl rounded-t-lg bg-white p-5 shadow-xl sm:rounded-lg"><div className="flex items-center justify-between"><div><h2 className="text-lg font-semibold">Novo agendamento</h2><p className="text-xs text-muted">Selecione os dados reais do banco.</p></div><button type="button" onClick={close} className="rounded-md p-2 text-muted hover:bg-bg"><X size={18} /></button></div><div className="mt-5 grid gap-4 sm:grid-cols-2">
     <label><span className="field-label">Cliente</span><select value={clientId} onChange={e => setClientId(e.target.value)} className="field-input" required>{clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
     <label><span className="field-label">Profissional</span><select value={profId} onChange={e => setProfId(e.target.value)} className="field-input" required>{professionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
-    <label className="sm:col-span-2"><span className="field-label">Serviço</span><select value={serviceId} onChange={e => setServiceId(e.target.value)} className="field-input" required>{services.map(s => <option key={s.name} value={s.name}>{s.name} ({s.duration} min - R$ {s.price})</option>)}</select></label>
+    <label className="sm:col-span-2"><span className="field-label">Serviço</span><select value={serviceId} onChange={e => setServiceId(e.target.value)} className="field-input" required>{services.map(s => <option key={s.id} value={s.id}>{s.name} ({s.duration} min - R$ {s.price})</option>)}</select></label>
     <label><span className="field-label">Data</span><input className="field-input" type="date" value={dateStr} onChange={e=>setDateStr(e.target.value)} required /></label>
     <label><span className="field-label">Horário</span><input className="field-input" type="time" step="900" value={timeStr} onChange={e=>setTimeStr(e.target.value)} required /></label>
   </div><div className="mt-5 flex justify-end gap-2"><button type="button" disabled={submitting} onClick={close} className="btn-outline">Cancelar</button><button disabled={submitting} className="btn-primary">{submitting ? "Salvando..." : "Criar agendamento"}</button></div></form></div> }
@@ -610,9 +611,9 @@ function FinishModal({ appointment, close, done }: { appointment: Appointment; c
 
 function Toast({ text }: { text: string }) { return <div className="fixed bottom-5 right-5 z-[80] flex max-w-sm items-center gap-3 rounded-md bg-navy-dark px-4 py-3 text-sm text-white shadow-xl"><div className="rounded-full bg-primary p-1"><Check size={12} /></div>{text}</div> }
 
-export function NailStudioApp({ initialClients = demoClients, initialProfessionals = demoProfessionals, initialSpecialties = [], initialAppointments = demoAppointments }: { initialClients?: ClientItem[]; initialProfessionals?: ProfessionalItem[]; initialSpecialties?: {id: string, name: string}[]; initialAppointments?: Appointment[] }) {
+export function NailStudioApp({ initialClients = demoClients, initialProfessionals = demoProfessionals, initialSpecialties = [], initialAppointments = demoAppointments, initialServices = demoServices as any[] }: { initialClients?: ClientItem[]; initialProfessionals?: ProfessionalItem[]; initialSpecialties?: {id: string, name: string}[]; initialAppointments?: Appointment[]; initialServices?: any[] }) {
   const [view, setView] = useState<View>("dashboard"); const [menu, setMenu] = useState(false); const [booking, setBooking] = useState(false); const [finish, setFinish] = useState(false); const [activeAppointment, setActiveAppointment] = useState<Appointment | null>(null); const [toast, setToast] = useState(""); const [rows, setRows] = useState(initialAppointments);
-  const [clientRows, setClientRows] = useState(() => [...initialClients]); const [serviceRows, setServiceRows] = useState(() => [...services]);
+  const [clientRows, setClientRows] = useState(() => [...initialClients]); const [serviceRows, setServiceRows] = useState(() => [...initialServices]);
   const [professionalRows, setProfessionalRows] = useState(() => [...initialProfessionals]); const [productRows, setProductRows] = useState(() => [...inventory]);
   const [automationRows, setAutomationRows] = useState(() => [...initialTemplates]); const [specialtyList, setSpecialtyList] = useState(() => [...initialSpecialties]); const [financialRows, setFinancialRows] = useState(() => [...initialFinancialRows]); const [entityModal, setEntityModal] = useState<EntityModalState | null>(null);
   const notify = (message: string) => { setToast(message); window.setTimeout(() => setToast(""), 3200); };
@@ -620,7 +621,7 @@ export function NailStudioApp({ initialClients = demoClients, initialProfessiona
     if (mode === "create") { setEntityModal({ kind, mode, name: "", detail: kind === "service" ? "R$ 0,00" : "" }); return; }
     if (index === undefined) return;
     if (kind === "client") { const item = clientRows[index]; setEntityModal({ kind, mode, index, name: item.name, detail: item.phone }); }
-    if (kind === "service") { const item = serviceRows[index]; setEntityModal({ kind, mode, index, name: item.name, detail: money.format(item.price) }); }
+    if (kind === "service") { const item = serviceRows[index]; setEntityModal({ kind, mode, index, name: item.name, detail: item.duration.toString() }); }
     if (kind === "professional") { const item = professionalRows[index]; setEntityModal({ kind, mode, index, name: item.name, detail: item.specialty }); }
     if (kind === "product") { const item = productRows[index]; setEntityModal({ kind, mode, index, name: item.product, detail: `${item.stock} ${item.unit}` }); }
     if (kind === "automation") { const item = automationRows[index]; setEntityModal({ kind, mode, index, name: item.name, detail: "WhatsApp" }); }
@@ -639,7 +640,12 @@ export function NailStudioApp({ initialClients = demoClients, initialProfessiona
         setClientRows(current => current.map((c, i) => i === index ? { ...c, name, phone: detail } : c));
       }
     }
-    if (kind === "service") { const price = Number(detail.replace(/[^0-9,]/g, "").replace(",", ".")) || 0; setServiceRows(current => creating ? [...current, { name, category: "Novo", duration: 60, price, maintenance: 21, active: true }] : current.map((item, i) => i === index ? { ...item, name, price } : item)); }
+    if (kind === "service") { 
+    if (creating) {
+      const res = await createServiceRecord({ name, category: "Geral", duration: parseInt(detail) || 60, price: 100, maintenance: 0 });
+      if (res.success) setServiceRows(current => [...current, { id: res.data?.id || "tmp", name, category: "Geral", duration: parseInt(detail) || 60, price: 100, maintenance: 0, active: true }]);
+    }
+  }
     if (kind === "professional") setProfessionalRows(current => creating ? [...current, { name, initials: name.split(" ").map(part => part[0]).join("").slice(0, 2).toUpperCase(), specialty: detail, today: 0, production: 0, occupation: 0, commission: 0 }] : current.map((item, i) => i === index ? { ...item, name, specialty: detail } : item));
     if (kind === "product") { const stock = Number(detail.replace(/[^0-9,]/g, "").replace(",", ".")) || 0; setProductRows(current => creating ? [...current, { product: name, unit: "un", stock, minimum: 10, ideal: 30, forecast: 0, cost: 0 }] : current.map((item, i) => i === index ? { ...item, product: name, stock } : item)); }
     if (kind === "automation") setAutomationRows(current => creating ? [...current, { name, count: "0 agendadas", tone: "primary" }] : current.map((item, i) => i === index ? { ...item, name } : item));
