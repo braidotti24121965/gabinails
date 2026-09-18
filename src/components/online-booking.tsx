@@ -24,6 +24,7 @@ export function OnlineBooking() {
   const [selectedDate, setSelectedDate] = useState(getTodayStr());
   const [slots, setSlots] = useState<string[]>(["09:00", "10:30", "13:30", "15:00", "16:30", "18:00"]);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [slotError, setSlotError] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
@@ -37,10 +38,14 @@ export function OnlineBooking() {
 
   const loadSlots = (date: string, duration: number) => {
     setLoadingSlots(true);
+    setSlotError("");
     fetch(`/api/booking/availability?date=${date}&duration=${duration}`)
       .then(res => res.json())
       .then(data => {
-        if (data.availableSlots) {
+        if (data.error) {
+          setSlotError(data.error);
+          setSlots([]);
+        } else if (data.availableSlots) {
           setSlots(data.availableSlots);
         } else {
           setSlots([]);
