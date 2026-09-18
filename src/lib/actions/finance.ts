@@ -96,3 +96,25 @@ export async function reversePayment(paymentId: string) {
   revalidatePath("/");
   return { success: true };
 }
+
+export async function createExpense(description: string, amount: number) {
+  const supabase = await createClient();
+  if (!supabase) return { success: false };
+
+  const { data: profile } = await supabase.from('profiles').select('organization_id').single();
+  if (!profile?.organization_id) return { success: false };
+
+  const { error } = await supabase.from('expenses').insert([{
+    organization_id: profile.organization_id,
+    description,
+    category: 'Geral',
+    competence_date: new Date().toISOString().split('T')[0],
+    due_date: new Date().toISOString().split('T')[0],
+    amount: Math.abs(amount),
+    status: 'paid'
+  }]);
+
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/");
+  return { success: true };
+}

@@ -17,6 +17,7 @@ import { createSpecialtyRecord } from "@/lib/actions/specialties";
 import { createServiceRecord, type ServiceItem } from "@/lib/actions/services";
 import { createAppointmentRecord, cancelAppointmentRecord, updateAppointmentStatus, getAppointments } from "@/lib/actions/appointments";
 import { finishAppointment } from "@/lib/actions/attendance";
+import { createExpense } from "@/lib/actions/finance";
 import { createProduct, updateProduct, addStockMovement, getInventory } from "@/lib/actions/inventory";
 import { updateServiceConsumables, getServices } from "@/lib/actions/services";
 
@@ -943,7 +944,13 @@ export function NailStudioApp({ initialClients = demoClients, initialProfessiona
     if (kind === "product") { const stock = Number(detail.replace(/[^0-9,]/g, "").replace(",", ".")) || 0; setProductRows(current => creating ? [...current, { product: name, unit: "un", stock, minimum: 10, ideal: 30, forecast: 0, cost: 0 }] : current.map((item, i) => i === index ? { ...item, product: name, stock } : item)); }
     if (kind === "automation") setAutomationRows(current => creating ? [...current, { name, count: "0 agendadas", tone: "primary" }] : current.map((item, i) => i === index ? { ...item, name } : item));
     if (kind === "appointment" && index !== undefined) setRows(current => current.map((item, i) => i === index ? { ...item, client: name, time: detail } : item));
-    if (kind === "financial") { const value = Number(detail.replace(/[^0-9,]/g, "").replace(",", ".")) || 0; setFinancialRows(current => creating ? [...current, { date: "Hoje", name, type: "Despesa", method: "PIX", status: "Pendente", value: -value }] : current.map((item, i) => i === index ? { ...item, name, value: item.value < 0 ? -value : value } : item)); }
+    if (kind === "financial") {
+      const value = Number(detail.replace(/[^0-9,]/g, "").replace(",", ".")) || 0;
+      if (creating) {
+        const res = await createExpense(name, value);
+        if (res.success) window.location.reload();
+      }
+    }
     setEntityModal(null); notify(creating ? "Cadastro criado com sucesso." : "Alterações salvas com sucesso.");
   };
   const saveService = async (data: any) => {
