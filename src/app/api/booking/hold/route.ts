@@ -8,6 +8,7 @@ export async function POST(request: Request) {
       clientName,
       clientPhone,
       professionalId,
+      professionalName,
       date,
       time,
       durationMinutes = 60,
@@ -51,9 +52,18 @@ export async function POST(request: Request) {
 
     let finalProfessionalId = professionalId;
     if (!finalProfessionalId) {
-      const { data: prof } = await supabase.from("professionals").select("id").limit(1).single();
-      if (!prof) throw new Error("Nenhum profissional cadastrado no sistema.");
-      finalProfessionalId = prof.id;
+      if (professionalName) {
+        // Try to find the professional by name
+        const { data: profs } = await supabase.from("professionals").select("id").ilike("name", professionalName).limit(1);
+        if (profs && profs.length > 0) finalProfessionalId = profs[0].id;
+      }
+      
+      if (!finalProfessionalId) {
+        // Fallback to any professional if name not found or not provided
+        const { data: prof } = await supabase.from("professionals").select("id").limit(1).single();
+        if (!prof) throw new Error("Nenhum profissional cadastrado no sistema.");
+        finalProfessionalId = prof.id;
+      }
     }
     
     const startsAt = new Date(`${date}T${time}:00-03:00`);
