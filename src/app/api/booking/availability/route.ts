@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { createAdminClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
   try {
@@ -17,7 +17,7 @@ export async function GET(request: Request) {
       });
     }
 
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
     if (!supabase) throw new Error("Erro ao inicializar cliente de banco");
 
     const startOfDay = `${date}T00:00:00.000Z`;
