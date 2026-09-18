@@ -17,8 +17,8 @@ import { createSpecialtyRecord } from "@/lib/actions/specialties";
 import { createServiceRecord, type ServiceItem } from "@/lib/actions/services";
 import { createAppointmentRecord, cancelAppointmentRecord, updateAppointmentStatus } from "@/lib/actions/appointments";
 import { finishAppointment } from "@/lib/actions/attendance";
-import { createProduct, updateProduct, addStockMovement } from "@/lib/actions/inventory";
-import { updateServiceConsumables } from "@/lib/actions/services";
+import { createProduct, updateProduct, addStockMovement, getInventory } from "@/lib/actions/inventory";
+import { updateServiceConsumables, getServices } from "@/lib/actions/services";
 
 type View = "dashboard" | "agenda" | "clients" | "services" | "professionals" | "attendance" | "finance" | "inventory" | "automations" | "online";
 
@@ -127,7 +127,7 @@ function AppointmentModal({ mode, appointment, clients, professionals, services,
 
 function ServiceConsumablesModal({ service, inventory, close, save }: { service: any; inventory: any[]; close: () => void; save: (consumables: any[]) => Promise<void> }) {
   const [items, setItems] = useState<any[]>(service.consumables || []);
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState(false); const [isSaving, setIsSaving] = useState(false);
   
   return <div className="fixed inset-0 z-[60] flex items-center justify-center p-4"><button onClick={close} className="absolute inset-0 bg-navy-dark/40" /><div className="relative w-full max-w-lg rounded-xl bg-white p-5 shadow-2xl sm:p-7"><div className="mb-6 flex items-start justify-between"><div><Badge tone="primary">Consumo Automático</Badge><h2 className="mt-2 text-xl font-bold">{service.name}</h2></div><button onClick={close} className="rounded-md p-1.5 text-muted hover:bg-bg hover:text-ink"><X size={20} /></button></div>
   <p className="text-sm text-muted mb-4">Escolha os produtos que devem ser baixados automaticamente do estoque quando este serviço for concluído.</p>
@@ -164,7 +164,7 @@ function ServiceConsumablesModal({ service, inventory, close, save }: { service:
     <button onClick={() => setAdding(true)} className="btn-ghost mb-4"><Plus size={15}/> Adicionar produto</button>
   )}
 
-  <div className="mt-6 flex justify-end gap-3"><button onClick={close} className="btn-outline">Cancelar</button><button onClick={() => save(items)} className="btn-primary"><Check size={16} />Salvar configuração</button></div></div></div>;
+  <div className="mt-6 flex justify-end gap-3"><button onClick={close} className="btn-outline">Cancelar</button><button disabled={isSaving} onClick={async () => { setIsSaving(true); await save(items); setIsSaving(false); }} className="btn-primary disabled:opacity-50"><Check size={16} />{isSaving ? "Salvando..." : "Salvar configuração"}</button></div></div></div>;
 }
 
 function ProductModal({ product, close, save }: { product?: any; close: () => void; save: (data: any) => Promise<void> }) {
@@ -173,7 +173,7 @@ function ProductModal({ product, close, save }: { product?: any; close: () => vo
   const [min, setMin] = useState(product?.minimum ?? "");
   const [ideal, setIdeal] = useState(product?.ideal ?? "");
   const [cost, setCost] = useState(product?.cost ?? "");
-  const [stock, setStock] = useState(product?.stock ?? ""); // Initial stock
+  const [stock, setStock] = useState(product?.stock ?? ""); const [isSaving, setIsSaving] = useState(false);
 
   return <div className="fixed inset-0 z-[60] flex items-center justify-center p-4"><button onClick={close} className="absolute inset-0 bg-navy-dark/40" /><div className="relative w-full max-w-lg rounded-xl bg-white p-5 shadow-2xl sm:p-7"><div className="mb-6 flex items-start justify-between"><div><Badge tone="primary">Novo Produto</Badge><h2 className="mt-2 text-xl font-bold">Cadastrar Produto</h2></div><button onClick={close} className="rounded-md p-1.5 text-muted hover:bg-bg hover:text-ink"><X size={20} /></button></div><div className="space-y-4">
     <div><label className="field-label">Nome do produto</label><input className="field-input" value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Esmalte Risqué Vermelho" /></div>
@@ -188,7 +188,7 @@ function ProductModal({ product, close, save }: { product?: any; close: () => vo
       <div><label className="field-label">Estoque ideal</label><input className="field-input" type="number" value={ideal} onChange={e => setIdeal(e.target.value)} /></div>
     </div>
     <div><label className="field-label">Saldo inicial (quantidade atual)</label><input className="field-input" type="number" value={stock} onChange={e => setStock(e.target.value)} /></div>
-  </div><div className="mt-6 flex justify-end gap-3"><button onClick={close} className="btn-outline">Cancelar</button><button onClick={() => save({name, unit, minimum: Number(min), ideal: Number(ideal), cost: Number(cost), stock: Number(stock)})} className="btn-primary"><Check size={16} />Salvar produto</button></div></div></div>;
+  </div><div className="mt-6 flex justify-end gap-3"><button onClick={close} className="btn-outline">Cancelar</button><button disabled={isSaving} onClick={async () => { setIsSaving(true); await save({name, unit, minimum: Number(min), ideal: Number(ideal), cost: Number(cost), stock: Number(stock)}); setIsSaving(false); }} className="btn-primary disabled:opacity-50"><Check size={16} />{isSaving ? "Salvando..." : "Salvar produto"}</button></div></div></div>;
 }
 
 function EntityModal({ state, close, save }: { state: EntityModalState; close: () => void; save: (name: string, detail: string) => void }) {
@@ -1158,7 +1158,9 @@ export function NailStudioApp({ initialClients = demoClients, initialProfessiona
               res = await updateProduct(p.id, { ...data, currentStock: p.stock });
             }
             if (res.success) {
-              window.location.reload();
+              const fresh = await getInventory();
+              setProductRows(fresh);
+              setEntityModal(null);
             } else {
               alert("Erro ao salvar produto: " + res.error);
             }
@@ -1174,7 +1176,9 @@ export function NailStudioApp({ initialClients = demoClients, initialProfessiona
             const svc = serviceRows[entityModal.index!];
             const res = await updateServiceConsumables(svc.id, items.map(i => ({ product_id: i.product_id, quantity: i.estimated_quantity })));
             if (res.success) {
-              window.location.reload();
+              const freshServices = await getServices();
+              setServiceRows(freshServices as any[]);
+              setEntityModal(null);
             } else {
               alert("Erro ao salvar: " + (res as any).error);
             }
