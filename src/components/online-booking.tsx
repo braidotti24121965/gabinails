@@ -76,12 +76,16 @@ export function OnlineBooking() {
         })
       });
       const data = await res.json();
+      if (!res.ok || data.error) { throw new Error(data.error || "Erro ao salvar agendamento"); }
       setHoldData({
         holdExpiresAt: data.holdExpiresAt || new Date(Date.now() + 30 * 60 * 1000).toISOString(),
         holdMinutes: data.holdMinutes || 30
       });
       setStep(5);
-    } catch {
+    } catch (err: any) {
+      alert("Erro ao confirmar agendamento: " + err.message);
+      setSubmittingHold(false);
+      return;
       setHoldData({
         holdExpiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
         holdMinutes: 30
