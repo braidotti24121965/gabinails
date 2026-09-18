@@ -73,6 +73,9 @@ export function OnlineBooking() {
           date: selectedDate,
           time: selectedTime,
           durationMinutes: selectedService.duration,
+          serviceId: selectedService.id,
+          serviceName: selectedService.name,
+          servicePrice: selectedService.price,
         })
       });
       const data = await res.json();

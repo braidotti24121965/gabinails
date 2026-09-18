@@ -11,6 +11,9 @@ export async function POST(request: Request) {
       date,
       time,
       durationMinutes = 60,
+      serviceId,
+      serviceName,
+      servicePrice,
     } = body;
 
     if (!clientName || !clientPhone || !date || !time) {
@@ -25,7 +28,8 @@ export async function POST(request: Request) {
 
     // Fallback gracioso caso Supabase ainda não esteja com credenciais ativas
     if (!isSupabaseConfigured()) {
-      return NextResponse.json({
+      
+    return NextResponse.json({
         success: true,
         holdId: `hold_${Date.now()}`,
         status: "held",
@@ -111,6 +115,21 @@ export async function POST(request: Request) {
         );
       }
       return NextResponse.json({ error: appError.message }, { status: 500 });
+    }
+
+    if (appointment && serviceId && serviceName && servicePrice) {
+      const { error: itemError } = await supabase.from("appointment_items").insert({
+        organization_id: org.id,
+        appointment_id: appointment.id,
+        service_id: serviceId,
+        professional_id: finalProfessionalId,
+        description: serviceName,
+        duration_minutes: durationMinutes,
+        unit_price: servicePrice,
+        quantity: 1,
+        discount: 0
+      });
+      if (itemError) console.error("Error inserting item:", itemError.message);
     }
 
     return NextResponse.json({
