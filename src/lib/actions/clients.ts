@@ -192,3 +192,86 @@ export async function archiveClientRecord(id: string) {
 
   return { success: true };
 }
+
+export async function getClientDetails(clientId: string) {
+  const supabase = await createClient();
+  if (!supabase) return null;
+
+  // 1. Get Client Info & Stats
+  const { data: client } = await supabase
+    .from("clients")
+    .select("id, name, phone, notes, created_at")
+    .eq("id", clientId)
+    .single();
+
+  if (!client) return null;
+
+  // 2. Get Appointments History
+  const { data: appts } = await supabase
+    .from("appointments")
+    .select(`
+      id,
+      starts_at,
+      status,
+      professional:professionals(name),
+      items:appointment_items(service:services(name)),
+      payments(amount)
+    `)
+    .eq("client_id", clientId)
+    .order("starts_at", { ascending: false });
+
+  let totalSpent = 0;
+  const history = (appts || []).map((a: any) => {
+    const paid = a.payments?.reduce((sum: number, p: any) => sum + Number(p.amount), 0) || 0;
+    totalSpent += paid;
+    return {
+      id: a.id,
+      date: new Date(a.starts_at).toLocaleDateString("pt-BR"),
+      time: new Date(a.starts_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+      status: a.status === 'completed' ? 'Concluído' : a.status === 'cancelled' ? 'Cancelado' : 'Agendado',
+      professional: a.professional?.name || "Gabi",
+      services: a.items?.map((i: any) => i.service?.name).join(" + ") || "Serviço",
+      paid
+    };
+  });
+
+  // 3. Get Photos
+  const { data: photos } = await supabase
+    .from("client_photos")
+    .select("id, kind, storage_path, created_at")
+    .eq("client_id", clientId)
+    .order("created_at", { ascending: false });
+
+  return {
+    client,
+    stats: {
+      visits: appts?.filter((a: any) => a.status === 'completed').length || 0,
+      spent: totalSpent,
+      memberSince: new Date(client.created_at).toLocaleDateString("pt-BR")
+    },
+    history,
+    photos: photos || []
+  };
+}
+
+export async function uploadClientPhoto(clientId: string, base64Image: string, kind: 'before' | 'after' | 'other') {
+  const supabase = await createClient();
+  if (!supabase) return { success: false };
+
+  const { data: profile } = await supabase.from('profiles').select('organization_id').single();
+  if (!profile?.organization_id) return { success: false };
+
+  // For MVP, since we don't have a storage bucket set up via migrations, 
+  // we'll just store the base64 string directly in the storage_path column!
+  const { error } = await supabase
+    .from('client_photos')
+    .insert([{
+      organization_id: profile.organization_id,
+      client_id: clientId,
+      kind,
+      storage_path: base64Image
+    }]);
+
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
