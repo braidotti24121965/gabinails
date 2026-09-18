@@ -801,7 +801,8 @@ function BookingModal({ clients, professionals, services, close, save }: { clien
       service: serviceNames,
       status: "Aguardando sinal",
       price: totalPrice,
-      source: "Interno"
+      source: "Interno",
+      items: selectedSvcs.map((s: any) => ({ id: "temp-" + Date.now() + Math.random(), name: s.name, price: s.price }))
     }, {
       clientId,
       professionalId: profId,
