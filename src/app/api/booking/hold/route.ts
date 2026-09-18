@@ -127,7 +127,9 @@ export async function POST(request: Request) {
         duration_minutes: durationMinutes,
         unit_price: servicePrice,
         quantity: 1,
-        discount: 0
+        discount: 0,
+        commission_type: "percentage",
+        commission_value: 50
       });
       if (itemError) console.error("Error inserting item:", itemError.message);
     }
