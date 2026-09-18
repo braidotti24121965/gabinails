@@ -40,10 +40,10 @@ export function OnlineBooking() {
     fetch(`/api/booking/availability?date=${date}&duration=${duration}`)
       .then(res => res.json())
       .then(data => {
-        if (data.availableSlots && data.availableSlots.length > 0) {
+        if (data.availableSlots) {
           setSlots(data.availableSlots);
         } else {
-          setSlots(["09:00", "10:30", "13:30", "15:00", "16:30", "18:00"]);
+          setSlots([]);
         }
       })
       .catch(() => {
