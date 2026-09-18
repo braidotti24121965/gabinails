@@ -41,6 +41,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Erro ao conectar com banco" }, { status: 500 });
     }
 
+    // Get default organization since it's a single-tenant app
+    const { data: org } = await supabase.from("organizations").select("id").limit(1).single();
+    if (!org) throw new Error("Organização não encontrada");
+
     const startsAt = new Date(`${date}T${time}:00`);
     const endsAt = new Date(startsAt.getTime() + durationMinutes * 60 * 1000);
 
@@ -64,6 +68,7 @@ export async function POST(request: Request) {
           phone: clientPhone,
           phone_normalized: phoneNormalized,
           source: "online",
+          organization_id: org.id,
         })
         .select("id")
         .single();
@@ -86,6 +91,7 @@ export async function POST(request: Request) {
         status: "awaiting_deposit",
         hold_expires_at: expiresAt.toISOString(),
         source: "online",
+        organization_id: org.id,
       })
       .select()
       .single();
