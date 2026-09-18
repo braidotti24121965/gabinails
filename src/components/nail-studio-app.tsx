@@ -682,7 +682,11 @@ function Automations({ go }: { go: (v: View) => void }) {
 
   const openWhatsApp = (phone: string, message: string, index: number) => {
     const cleanPhone = phone.replace(/\D/g, "");
-    const url = `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(message)}`;
+    let finalPhone = cleanPhone;
+    if (finalPhone.startsWith("55") && finalPhone.length > 11) {
+      finalPhone = finalPhone.substring(2);
+    }
+    const url = `https://wa.me/55${finalPhone}?text=${encodeURIComponent(message)}`;
     window.open(url, "_blank");
     
     // Mark as sent visually
