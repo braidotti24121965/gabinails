@@ -51,8 +51,9 @@ export function OnlineBooking() {
           setSlots([]);
         }
       })
-      .catch(() => {
-        setSlots(["09:00", "10:30", "13:30", "15:00", "16:30", "18:00"]);
+      .catch(err => {
+        setSlotError(String(err));
+        setSlots([]);
       })
       .finally(() => setLoadingSlots(false));
   };
