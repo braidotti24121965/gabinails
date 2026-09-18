@@ -75,3 +75,29 @@ export async function addStockMovement(productId: string, type: string, quantity
   revalidatePath("/");
   return { success: true };
 }
+
+export async function createProduct(data: { name: string; unit: string; minimum: number; ideal: number; cost: number }) {
+  const supabase = await createClient();
+  if (!supabase) return { success: false };
+
+  const { data: profile } = await supabase.from('profiles').select('organization_id').single();
+  if (!profile?.organization_id) return { success: false };
+
+  const { error } = await supabase.from("products").insert([{
+    organization_id: profile.organization_id,
+    name: data.name,
+    base_unit: data.unit, // Using the correct column name from schema
+    minimum_stock: data.minimum,
+    ideal_stock: data.ideal,
+    unit_cost: data.cost,
+    category: "Geral"
+  }]);
+
+  if (error) {
+    console.error("Create product error", error);
+    return { success: false, error: error.message };
+  }
+  
+  revalidatePath("/");
+  return { success: true };
+}
