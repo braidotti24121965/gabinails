@@ -19,7 +19,7 @@ import { createAppointmentRecord, cancelAppointmentRecord, updateAppointmentStat
 import { finishAppointment } from "@/lib/actions/attendance";
 import { createExpense } from "@/lib/actions/finance";
 import { getProfessionalCommissions, payCommissions } from "@/lib/actions/commissions";
-import { getClientDetails, uploadClientPhoto } from "@/lib/actions/clients";
+import { getClientDetails, uploadClientPhoto, deleteClientPhoto } from "@/lib/actions/clients";
 import { getRemindersForTomorrow } from "@/lib/actions/automations";
 import { createProduct, updateProduct, addStockMovement, getInventory } from "@/lib/actions/inventory";
 import { updateServiceConsumables, getServices } from "@/lib/actions/services";
@@ -217,6 +217,21 @@ function ClientDetailsModal({ client, close }: { client: any; close: () => void 
     }
   }, [client]);
 
+  
+  const handleDeletePhoto = async (photoId: string) => {
+    if (!confirm("Tem certeza que deseja apagar esta foto?")) return;
+    if (photoId.startsWith("mock-")) {
+      setData((curr: any) => ({ ...curr, photos: curr.photos.filter((p: any) => p.id !== photoId) }));
+      return;
+    }
+    const res = await deleteClientPhoto(photoId);
+    if (res.success) {
+      setData((curr: any) => ({ ...curr, photos: curr.photos.filter((p: any) => p.id !== photoId) }));
+    } else {
+      alert("Erro ao excluir foto: " + res.error);
+    }
+  };
+
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !client?.id) return;
@@ -313,9 +328,14 @@ function ClientDetailsModal({ client, close }: { client: any; close: () => void 
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {(data.photos || []).map((p: any) => (
+                      
                       <div key={p.id} className="relative aspect-square rounded-md overflow-hidden border border-[#E7EDF3] group">
                         <img src={p.storage_path} alt="Unhas" className="w-full h-full object-cover" />
+                        <button onClick={() => handleDeletePhoto(p.id)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-md">
+                          <Trash2 size={12} />
+                        </button>
                         <div className="absolute bottom-0 inset-x-0 bg-black/50 p-1 text-[10px] text-white text-center opacity-0 group-hover:opacity-100 transition-opacity">
+
                           {new Date(p.created_at).toLocaleDateString('pt-BR')}
                         </div>
                       </div>

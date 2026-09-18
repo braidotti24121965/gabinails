@@ -333,3 +333,12 @@ export async function uploadClientPhoto(clientId: string, base64Image: string, k
   if (error) return { success: false, error: error.message };
   return { success: true };
 }
+
+export async function deleteClientPhoto(photoId: string) {
+  if (photoId.startsWith("mock-")) return { success: true };
+  const supabase = await createClient();
+  if (!supabase) return { success: false, error: "Supabase não conectado" };
+  const { error } = await supabase.from('client_photos').delete().eq('id', photoId);
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
