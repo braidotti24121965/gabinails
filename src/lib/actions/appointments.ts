@@ -21,6 +21,7 @@ export async function getAppointments(): Promise<Appointment[]> {
       items:appointment_items(
         id,
         service:services(name),
+        description,
         unit_price
       ),
       payments(amount)
@@ -45,7 +46,7 @@ export async function getAppointments(): Promise<Appointment[]> {
     const paid = row.payments?.reduce((acc: number, p: any) => acc + Number(p.amount || 0), 0) || 0;
     
     // Service name (first service or generic)
-    const serviceName = row.items?.map((i: any) => i.service?.name).filter(Boolean).join(" + ") || "Serviço";
+    const serviceName = row.items?.map((i: any) => i.service?.name || i.description).filter(Boolean).join(" + ") || "Serviço";
 
     // Map status from db to UI readable
     const statusMap: Record<string, string> = {

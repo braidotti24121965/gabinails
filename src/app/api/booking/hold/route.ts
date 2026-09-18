@@ -56,7 +56,7 @@ export async function POST(request: Request) {
       finalProfessionalId = prof.id;
     }
     
-    const startsAt = new Date(`${date}T${time}:00`);
+    const startsAt = new Date(`${date}T${time}:00-03:00`);
     const endsAt = new Date(startsAt.getTime() + durationMinutes * 60 * 1000);
 
     // 1. Encontra ou cria cliente
