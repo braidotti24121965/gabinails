@@ -234,8 +234,19 @@ export async function archiveClientRecord(id: string) {
   return { success: true };
 }
 
+
 export async function getClientDetails(clientId: string) {
+  if (clientId.startsWith("demo-")) {
+    return {
+      client: { id: clientId, name: "Cliente Demo", phone: "", notes: "", created_at: new Date().toISOString() },
+      stats: { visits: 0, spent: 0, memberSince: "14/09/2026" },
+      history: [],
+      photos: []
+    };
+  }
+
   const supabase = await createClient();
+
   if (!supabase) return null;
 
   // 1. Get Client Info & Stats
