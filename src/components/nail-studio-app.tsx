@@ -698,6 +698,7 @@ function Agenda({ rows, onNew, onAttendance, onAction, onCancel, onStatusChange 
     if (!inRange) return false;
     if (profFilter !== "Todas as profissionais" && r.professional !== profFilter) return false;
     if (statusFilter !== "Todos os status" && r.status !== statusFilter) return false;
+    if (statusFilter === "Todos os status" && (r.status === "Cancelado" || r.status === "Cancelada")) return false;
     if (serviceFilter !== "Todos os serviços" && !r.service.toLowerCase().includes(serviceFilter.toLowerCase())) return false;
     return true;
   }).sort((a: any, b: any) => {
