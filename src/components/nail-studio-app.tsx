@@ -1345,6 +1345,8 @@ export function NailStudioApp({ initialClients = demoClients, initialProfessiona
         <Header view={view} onMenu={() => setMenu(true)} />
         {content}
       </div>
+      {viewingClient && <ClientDetailsModal client={viewingClient} close={() => setViewingClient(null)} />}
+      {closingCommissionFor && <ProfessionalCommissionsModal professional={closingCommissionFor} close={() => setClosingCommissionFor(null)} />}
       {entityModal && (
         entityModal.kind === "appointment" ? (
           <AppointmentModal
