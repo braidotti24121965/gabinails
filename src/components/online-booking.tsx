@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { Clock, Plus, Users, ArrowRight, ShieldCheck, Clock3, Check, Copy, Sparkles } from "lucide-react";
 import { checkClientWhitelist } from "@/lib/actions/clients";
-import { clients as demoClients, professionals as demoProfessionals } from "@/lib/demo-data";
+import { clients as demoClients } from "@/lib/demo-data";
 // Mock data since it's just a UI layer for now
 const demoServices = [
   { id: "s1", name: "Alongamento em gel", category: "Alongamento", duration: 90, price: 185 },
@@ -16,9 +16,9 @@ const demoServices = [
 ];
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
-export function OnlineBooking() {
+export function OnlineBooking({ professionals = [], services = [] }: { professionals?: any[], services?: any[] }) {
   const [step, setStep] = useState(1);
-  const [selectedService, setSelectedService] = useState(demoServices[0]);
+  const [selectedService, setSelectedService] = useState(services[0] || demoServices[0]);
   const [selectedProfessional, setSelectedProfessional] = useState<string | null>(null);
   const getTodayStr = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
   const [selectedDate, setSelectedDate] = useState(getTodayStr());
@@ -142,7 +142,7 @@ export function OnlineBooking() {
               <h2 className="text-lg font-semibold">Qual serviço você deseja?</h2>
               <p className="mt-1 text-xs text-muted">Escolha um procedimento para ver a disponibilidade.</p>
               <div className="mt-5 space-y-2">
-                {demoServices.map(s => (
+                {(services.length > 0 ? services : demoServices).map(s => (
                   <button
                     onClick={() => { setSelectedService(s); setStep(2); }}
                     key={s.name}
@@ -173,7 +173,7 @@ export function OnlineBooking() {
                   <p className="font-medium text-primary">Primeira profissional disponível</p>
                   <p className="text-xs text-muted">Maior flexibilidade de horários</p>
                 </button>
-                {demoProfessionals.map(p => (
+                {professionals.map(p => (
                   <button
                     onClick={() => { setSelectedProfessional(p.name); setStep(3); loadSlots(selectedDate, selectedService.duration); }}
                     key={p.name}
