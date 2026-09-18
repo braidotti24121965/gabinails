@@ -80,7 +80,7 @@ function AppointmentModal({ mode, appointment, clients, professionals, services,
   // Date parsing
   // the 'time' is just HH:MM, date is not stored in demo Appointment struct cleanly, we'll just use today if unknown.
   // Actually, we need to extract date from the real db starts_at if we had it. For now, use today.
-  const [dateStr, setDateStr] = useState(new Date().toISOString().split("T")[0]);
+  const [dateStr, setDateStr] = useState(appointment?.dateStr || new Date().toISOString().split("T")[0]);
   const [timeStr, setTimeStr] = useState(appointment?.time || "09:00");
   const [submitting, setSubmitting] = useState(false);
   const readOnly = mode === "view";
