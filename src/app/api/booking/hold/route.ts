@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { createAdminClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
   try {
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
       });
     }
 
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
     if (!supabase) {
       return NextResponse.json({ error: "Erro ao conectar com banco" }, { status: 500 });
     }
