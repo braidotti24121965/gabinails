@@ -694,7 +694,7 @@ function Automations({ go }: { go: (v: View) => void }) {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-navy-dark">Disparos de WhatsApp</h1>
-          <p className="text-muted">Lembretes de confirmação para os agendamentos de amanhã.</p>
+          <p className="text-muted">Lembretes de confirmação para os próximos agendamentos.</p>
         </div>
         <button onClick={() => { setLoading(true); getRemindersForTomorrow().then(res => { setReminders(res); setLoading(false); }) }} className="btn-outline">
           <Calendar size={16} /> Atualizar fila
@@ -702,7 +702,7 @@ function Automations({ go }: { go: (v: View) => void }) {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3 mb-6">
-        <Metric label="Lembretes pendentes" value={reminders.filter(r => !r.sent).length.toString()} detail="Para os agendamentos de amanhã" icon={MessageCircle} />
+        <Metric label="Lembretes pendentes" value={reminders.filter(r => !r.sent).length.toString()} detail="Próximos horários marcados" icon={MessageCircle} />
         <Metric label="Já enviados" value={reminders.filter(r => r.sent).length.toString()} detail="Confirmados no WhatsApp Web" icon={Check} />
         <Metric onClick={() => go("agenda")} label="Agendamentos vazios" value="0" detail="Clientes sem celular" icon={Users} />
       </div>
@@ -715,7 +715,7 @@ function Automations({ go }: { go: (v: View) => void }) {
         ) : reminders.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-[#E7EDF3] rounded-lg mt-4">
             <p className="text-muted mb-2">A fila está vazia.</p>
-            <p className="text-sm text-muted">Não há agendamentos válidos para amanhã ou eles já foram confirmados.</p>
+            <p className="text-sm text-muted">Não há agendamentos válidos no futuro ou eles já foram confirmados.</p>
           </div>
         ) : (
           <div className="space-y-4 mt-6">
@@ -724,7 +724,7 @@ function Automations({ go }: { go: (v: View) => void }) {
                 <div className="flex justify-between items-start mb-3">
                   <div>
                     <h3 className="font-semibold">{r.clientName}</h3>
-                    <p className="text-xs text-muted">Amanhã às {r.time} · {r.services}</p>
+                    <p className="text-xs text-muted">{r.message.includes("amanhã") ? "Amanhã" : "Dia " + r.message.match(/dia (\d{2}\/\d{2})/)?.[1]} às {r.time} · {r.services}</p>
                   </div>
                   <Badge tone={r.sent ? "success" : "warning"}>{r.sent ? "Enviado" : "Pendente"}</Badge>
                 </div>
