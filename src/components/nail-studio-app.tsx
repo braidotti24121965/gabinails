@@ -1044,7 +1044,7 @@ function OnlineBooking() {
                   <div className="rounded-md bg-bg p-3">
                     <p className="text-[11px] font-medium text-muted uppercase">Chave PIX para confirmação</p>
                     <div className="mt-1.5 flex items-center justify-between gap-2 rounded border border-[#DBE3EC] bg-white px-3 py-2 text-xs">
-                      <span className="truncate font-mono">pix@gabiludwig.com.br</span>
+                      <span className="truncate font-mono">44.928.484/0001-09</span>
                       <button onClick={copyPix} type="button" className="text-primary hover:text-primary-dark">
                         {copiedPix ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
                       </button>
