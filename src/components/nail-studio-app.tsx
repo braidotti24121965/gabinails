@@ -1350,12 +1350,12 @@ export function NailStudioApp({ initialClients = demoClients, initialProfessiona
     if (creating) {
       const res = await createClientRecord(data);
       if (res.success) {
-        setClientRows(current => [...current, { id: res.data?.id, name: data.name, phone: data.phone, last: "—", next: "—", visits: 0, spent: 0, status: "Ativa", whitelist: false, tag: "Nova" }]);
+        setClientRows(current => [...current, { id: res.data?.id, last: "—", next: "—", visits: 0, spent: 0, status: "Ativa", whitelist: false, tag: "Nova", ...data }]);
       }
     } else if (entityModal.index !== undefined) {
       const item = clientRows[entityModal.index];
       if (item.id) await updateClientRecord(item.id, data);
-      setClientRows(current => current.map((c, i) => i === entityModal.index ? { ...c, name: data.name, phone: data.phone } : c));
+      setClientRows(current => current.map((c, i) => i === entityModal.index ? { ...c, ...data } : c));
     }
     setEntityModal(null); notify(creating ? "Cliente cadastrada." : "Cliente atualizada.");
   };
