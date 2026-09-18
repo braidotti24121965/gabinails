@@ -19,7 +19,7 @@ import { createAppointmentRecord, cancelAppointmentRecord, updateAppointmentStat
 import { finishAppointment } from "@/lib/actions/attendance";
 import { createExpense } from "@/lib/actions/finance";
 import { getProfessionalCommissions, payCommissions } from "@/lib/actions/commissions";
-import { getClientDetails, uploadClientPhoto, deleteClientPhoto } from "@/lib/actions/clients";
+import { getClientDetails, uploadClientPhoto, deleteClientPhoto, getClients } from "@/lib/actions/clients";
 import { OnlineBooking } from "./online-booking";
 import { getRemindersForTomorrow } from "@/lib/actions/automations";
 import { createProduct, updateProduct, addStockMovement, getInventory } from "@/lib/actions/inventory";
