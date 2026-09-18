@@ -20,8 +20,9 @@ export async function getRemindersForTomorrow() {
       items:appointment_items(service:services(name))
     `)
     .eq("status", "scheduled")
-    .gte("starts_at", tomorrowStr + "T00:00:00.000Z")
-    .lte("starts_at", tomorrowStr + "T23:59:59.999Z");
+    .gte("starts_at", new Date().toISOString())
+    .order("starts_at", { ascending: true })
+    .limit(50);
 
   if (!appts) return [];
 
@@ -31,7 +32,7 @@ export async function getRemindersForTomorrow() {
     const services = a.items?.map((i: any) => i.service?.name).join(" e ") || "seu procedimento";
     const firstName = a.client?.name?.split(" ")[0] || "Cliente";
     
-    const message = `Oi ${firstName}, tudo bem? Aqui é do Gabi Ludwig Nails! Passando para lembrar do nosso horário agendado amanhã (${date}) às ${time} para fazer ${services}. Por favor, confirme respondendo a esta mensagem. Te esperamos! 🥰`;
+    const message = `Oi ${firstName}, tudo bem? Aqui é do Gabi Ludwig Nails! Passando para lembrar do nosso horário agendado para o dia ${date} às ${time} para fazer ${services}. Por favor, confirme respondendo a esta mensagem. Te esperamos! 🥰`;
     
     return {
       id: a.id,
