@@ -450,7 +450,17 @@ function ClientModal({ mode, client, close, save }: { mode: "create" | "edit" | 
 
   const readOnly = mode === "view";
 
+  
+  const handlePhone = (v: string) => {
+    let num = v.replace(/\D/g, "");
+    if (num.length > 11) num = num.slice(0, 11);
+    if (num.length > 2) num = `(${num.slice(0, 2)}) ${num.slice(2)}`;
+    if (num.length > 10) num = `${num.slice(0, 10)}-${num.slice(10)}`;
+    setPhone(num);
+  };
+  
   const handleCep = async (v: string) => {
+
     setCep(v);
     const cleanCep = v.replace(/\D/g, "");
     if (cleanCep.length === 8) {
@@ -479,8 +489,8 @@ function ClientModal({ mode, client, close, save }: { mode: "create" | "edit" | 
   }} className="space-y-4">
     <div className="grid gap-4 sm:grid-cols-2">
       <div><label className="field-label">Nome Completo</label><input className="field-input" value={name} onChange={e => setName(e.target.value)} required disabled={readOnly} /></div>
-      <div><label className="field-label">WhatsApp</label><input className="field-input" value={phone} onChange={e => setPhone(e.target.value)} required disabled={readOnly} /></div>
-      <div><label className="field-label">Data de Nascimento</label><input type="date" className="field-input" value={birthDate} onChange={e => setBirthDate(e.target.value)} disabled={readOnly} /></div>
+      <div><label className="field-label">WhatsApp</label><input className="field-input" value={phone} onChange={e => handlePhone(e.target.value)} placeholder="(11) 99999-9999" maxLength={15} required disabled={readOnly} /></div>
+      <div><label className="field-label">Data de Nascimento</label><input type="date" className="field-input" value={birthDate} onChange={e => setBirthDate(e.target.value)} required disabled={readOnly} /></div>
       <div className="sm:col-span-2 border-t border-[#E7EDF3] pt-4 mt-2">
         <h3 className="text-sm font-semibold mb-3">Endereço</h3>
         <div className="grid gap-4 sm:grid-cols-6">
