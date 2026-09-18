@@ -121,7 +121,7 @@ export async function POST(request: Request) {
       const { error: itemError } = await supabase.from("appointment_items").insert({
         organization_id: org.id,
         appointment_id: appointment.id,
-        service_id: serviceId,
+        service_id: serviceId.includes("-") ? serviceId : null, // handle mock IDs
         professional_id: finalProfessionalId,
         description: serviceName,
         duration_minutes: durationMinutes,
