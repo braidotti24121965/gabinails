@@ -17,6 +17,8 @@ import { createSpecialtyRecord } from "@/lib/actions/specialties";
 import { createServiceRecord, type ServiceItem } from "@/lib/actions/services";
 import { createAppointmentRecord, cancelAppointmentRecord, updateAppointmentStatus } from "@/lib/actions/appointments";
 import { finishAppointment } from "@/lib/actions/attendance";
+import { createProduct } from "@/lib/actions/inventory";
+import { updateServiceConsumables } from "@/lib/actions/services";
 
 type View = "dashboard" | "agenda" | "clients" | "services" | "professionals" | "attendance" | "finance" | "inventory" | "automations" | "online";
 
@@ -54,10 +56,10 @@ function Metric({ label, value, detail, icon: Icon, tone = "primary", onClick }:
   return onClick ? <button onClick={onClick} className="card min-w-0 text-left transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/25">{content}</button> : <div className="card min-w-0">{content}</div>;
 }
 
-type EntityKind = "client" | "service" | "professional" | "product" | "automation" | "appointment" | "financial";
+type EntityKind = "client" | "service" | "professional" | "product" | "automation" | "appointment" | "financial" | "service_consumables";
 type EntityModalState = { kind: EntityKind; mode: "view" | "edit" | "create"; index?: number; name: string; detail: string; fullItem?: any; };
 
-const entityLabels: Record<EntityKind, string> = { client: "cliente", service: "serviço", professional: "profissional", product: "produto", automation: "automação", appointment: "agendamento", financial: "lançamento" };
+const entityLabels: Record<EntityKind, string> = { client: "cliente", service: "serviço", professional: "profissional", product: "produto", automation: "automação", appointment: "agendamento", financial: "lançamento", service_consumables: "consumo" };
 
 
 function AppointmentModal({ mode, appointment, clients, professionals, services, close, save }: { mode: "view" | "edit"; appointment: any; clients: any[]; professionals: any[]; services: any[]; close: () => void; save: (id: string, rawData: any) => void }) {
@@ -1133,9 +1135,40 @@ export function NailStudioApp({ initialClients = demoClients, initialProfessiona
             save={saveProfessional}
           />
         ) : (
-          <EntityModal key={`${entityModal.kind}-${entityModal.mode}-${entityModal.index ?? "new"}`} state={entityModal} close={() => setEntityModal(null)} save={saveEntity} />
+          (entityModal.kind !== "product" && entityModal.kind !== "service_consumables" ? <EntityModal key={`${entityModal.kind}-${entityModal.mode}-${entityModal.index ?? "new"}`} state={entityModal} close={() => setEntityModal(null)} save={saveEntity} /> : null)
         )
       )}
+      
+      {entityModal && entityModal.kind === "product" && entityModal.mode === "create" && (
+        <ProductModal 
+          close={() => setEntityModal(null)} 
+          save={async (data) => {
+            const res = await createProduct(data);
+            if (res.success) {
+              window.location.reload();
+            } else {
+              alert("Erro ao criar produto: " + res.error);
+            }
+          }} 
+        />
+      )}
+      {entityModal && entityModal.kind === "service_consumables" && (
+        <ServiceConsumablesModal 
+          service={serviceRows[entityModal.index!]}
+          inventory={productRows}
+          close={() => setEntityModal(null)} 
+          save={async (items) => {
+            const svc = serviceRows[entityModal.index!];
+            const res = await updateServiceConsumables(svc.id, items.map(i => ({ product_id: i.product_id, quantity: i.estimated_quantity })));
+            if (res.success) {
+              window.location.reload();
+            } else {
+              alert("Erro ao salvar: " + (res as any).error);
+            }
+          }} 
+        />
+      )}
+
       {booking && <BookingModal clients={clientRows} professionals={professionalRows} services={serviceRows} close={() => setBooking(false)} save={async (a, rawData) => { if(rawData) { const res = await createAppointmentRecord(rawData); if (res.success) { setRows(v => [...v, { ...a, id: res.data.id }]); setBooking(false); notify("Agendamento criado com sucesso."); } else { alert(res.error); } } else { setRows(v => [...v, a]); setBooking(false); notify("Agendamento criado (demo)."); } }} />}
       {finish && activeAppointment && <FinishModal appointment={activeAppointment} close={() => setFinish(false)} done={async (method, val) => { const res = await finishAppointment({ appointmentId: activeAppointment.id, amount: val, paymentMethod: method }); if (res.success) { setRows(v => v.map(a => a.id === activeAppointment.id ? { ...a, status: "Concluído", paid: (a.paid || 0) + val } : a)); setFinish(false); setActiveAppointment(null); setView("agenda"); notify("Atendimento concluído e pagamento registrado com sucesso."); } else { alert(res.error); } }} />}
       {toast && <Toast text={toast} />}
