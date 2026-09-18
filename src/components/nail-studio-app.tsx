@@ -766,7 +766,8 @@ function OnlineBooking() {
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState(demoServices[0]);
   const [selectedProfessional, setSelectedProfessional] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState("2026-09-15");
+  const getTodayStr = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+  const [selectedDate, setSelectedDate] = useState(getTodayStr());
   const [slots, setSlots] = useState<string[]>(["09:00", "10:30", "13:30", "15:00", "16:30", "18:00"]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [selectedTime, setSelectedTime] = useState("");
@@ -929,7 +930,7 @@ function OnlineBooking() {
                     loadSlots(newDate, selectedService.duration);
                   }}
                   className="field-input"
-                  min="2026-09-14"
+                  min={getTodayStr()}
                 />
               </label>
 

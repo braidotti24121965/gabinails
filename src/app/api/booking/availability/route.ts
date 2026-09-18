@@ -48,6 +48,15 @@ export async function GET(request: Request) {
   const openingHour = 8;
   const closingHour = 19;
   const availableSlots: string[] = [];
+  
+  // Obter hora atual no fuso de São Paulo
+  const now = new Date();
+  const spTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+  const todayStr = spTime.getFullYear() + '-' + String(spTime.getMonth() + 1).padStart(2, '0') + '-' + String(spTime.getDate()).padStart(2, '0');
+  const currentHour = spTime.getHours();
+  const currentMinute = spTime.getMinutes();
+  const currentTotalMinutes = currentHour * 60 + currentMinute;
+  const isToday = date === todayStr;
 
   for (let hour = openingHour; hour < closingHour; hour++) {
     for (let min = 0; min < 60; min += 15) {
@@ -56,6 +65,9 @@ export async function GET(request: Request) {
 
       // Não excede o horário de fechamento
       if (slotEndMinutes > closingHour * 60) continue;
+      
+      // Se a data solicitada for hoje, ignora slots que já passaram (dá uma margem de 15 minutos para a cliente conseguir agendar e pagar)
+      if (isToday && slotStartMinutes <= currentTotalMinutes + 15) continue;
 
       const timeString = `${String(hour).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
       const slotStartIso = new Date(`${date}T${timeString}:00`).getTime();
