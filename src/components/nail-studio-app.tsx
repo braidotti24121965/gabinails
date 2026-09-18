@@ -225,6 +225,14 @@ function ClientDetailsModal({ client, close }: { client: any; close: () => void 
     const reader = new FileReader();
     reader.onloadend = async () => {
       const base64 = reader.result as string;
+      if (client.id.startsWith("demo-")) {
+        setData((curr: any) => ({
+          ...curr,
+          photos: [{ id: "mock-" + Date.now(), kind: "other", storage_path: base64, created_at: new Date().toISOString() }, ...(curr?.photos || [])]
+        }));
+        setUploading(false);
+        return;
+      }
       const res = await uploadClientPhoto(client.id, base64, 'other');
       if (res.success) {
         // Refresh data
