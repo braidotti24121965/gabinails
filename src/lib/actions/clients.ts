@@ -238,8 +238,8 @@ export async function archiveClientRecord(id: string) {
 export async function getClientDetails(clientId: string) {
   if (clientId.startsWith("demo-")) {
     return {
-      client: { id: clientId, name: "Cliente Demo", phone: "", notes: "", created_at: new Date().toISOString() },
-      stats: { visits: 0, spent: 0, memberSince: "14/09/2026" },
+      client: { id: clientId, name: demoClients.find(c => c.id === clientId)?.name || "Cliente Demo", phone: demoClients.find(c => c.id === clientId)?.phone || "", notes: "", created_at: new Date().toISOString() },
+      stats: { visits: demoClients.find(c => c.id === clientId)?.visits || 0, spent: demoClients.find(c => c.id === clientId)?.spent || 0, memberSince: "14/09/2026" },
       history: [],
       photos: []
     };

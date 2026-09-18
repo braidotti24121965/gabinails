@@ -12,12 +12,12 @@ export const appointments: Appointment[] = [
 ];
 
 export const clients = [
-  { name: "Mariana Costa", phone: "(51) 99912-3044", last: "Hoje", next: "08 out", visits: 18, spent: 2380, status: "Ativa", whitelist: true, tag: "VIP" },
-  { name: "Ana Paula Souza", phone: "(51) 99103-8872", last: "Hoje", next: "14 out", visits: 12, spent: 1440, status: "Ativa", whitelist: true, tag: "Manutenção" },
-  { name: "Clara Martins", phone: "(51) 99841-2210", last: "22 ago", next: "Hoje", visits: 4, spent: 510, status: "Ativa", whitelist: false, tag: "Nova" },
-  { name: "Beatriz Alves", phone: "(51) 99742-1733", last: "02 set", next: "Hoje", visits: 9, spent: 890, status: "Ativa", whitelist: false, tag: "Recorrente" },
-  { name: "Paula Nunes", phone: "(51) 99311-2030", last: "12 jun", next: "—", visits: 7, spent: 780, status: "Inativa", whitelist: false, tag: "90+ dias" },
-  { name: "Renata Freire", phone: "(51) 99218-7102", last: "10 jul", next: "—", visits: 11, spent: 1290, status: "Ativa", whitelist: true, tag: "60 dias" }
+  { id: "demo-1", name: "Mariana Costa", phone: "(51) 99912-3044", last: "Hoje", next: "08 out", visits: 18, spent: 2380, status: "Ativa", whitelist: true, tag: "VIP" },
+  { id: "demo-2", name: "Ana Paula Souza", phone: "(51) 99103-8872", last: "Hoje", next: "14 out", visits: 12, spent: 1440, status: "Ativa", whitelist: true, tag: "Manutenção" },
+  { id: "demo-3", name: "Clara Martins", phone: "(51) 99841-2210", last: "22 ago", next: "Hoje", visits: 4, spent: 510, status: "Ativa", whitelist: false, tag: "Nova" },
+  { id: "demo-4", name: "Beatriz Alves", phone: "(51) 99742-1733", last: "02 set", next: "Hoje", visits: 9, spent: 890, status: "Ativa", whitelist: false, tag: "Recorrente" },
+  { id: "demo-5", name: "Paula Nunes", phone: "(51) 99311-2030", last: "12 jun", next: "—", visits: 7, spent: 780, status: "Inativa", whitelist: false, tag: "90+ dias" },
+  { id: "demo-6", name: "Renata Freire", phone: "(51) 99218-7102", last: "10 jul", next: "—", visits: 11, spent: 1290, status: "Ativa", whitelist: true, tag: "60 dias" }
 ];
 
 export const services = [
