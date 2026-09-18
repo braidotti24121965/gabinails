@@ -306,8 +306,14 @@ export async function getClientDetails(clientId: string) {
   };
 }
 
+
 export async function uploadClientPhoto(clientId: string, base64Image: string, kind: 'before' | 'after' | 'other') {
+  if (clientId.startsWith("demo-")) {
+    return { success: false, error: "Não é possível salvar fotos em clientes de demonstração. Por favor, cadastre uma cliente real e conecte o banco de dados." };
+  }
+
   const supabase = await createClient();
+
   if (!supabase) return { success: false };
 
   const { data: profile } = await supabase.from('profiles').select('organization_id').single();
