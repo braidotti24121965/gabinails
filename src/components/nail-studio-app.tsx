@@ -1,9 +1,9 @@
 "use client";
 import { updateAppointmentRecord, addServiceToAppointment, removeServiceFromAppointment } from "@/lib/actions/appointments";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
-  Archive, ArrowRight, BarChart3, Bell, CalendarDays, Check, ChevronDown, CircleDollarSign,
+  Archive, ArrowRight, Calendar, BarChart3, Bell, CalendarDays, Check, ChevronDown, CircleDollarSign,
   ClipboardCheck, Clock3, CreditCard, Download, Gift, HeartHandshake, Home, Menu, MessageCircle,
   MoreHorizontal, Package, Plus, Search, Settings, ShieldCheck, ShoppingBag, Sparkles, TrendingUp,
   Eye, Pencil, Trash2, UserRound, Users, Wallet, WandSparkles, X, Database, Copy
@@ -19,6 +19,7 @@ import { createAppointmentRecord, cancelAppointmentRecord, updateAppointmentStat
 import { finishAppointment } from "@/lib/actions/attendance";
 import { createExpense } from "@/lib/actions/finance";
 import { getProfessionalCommissions, payCommissions } from "@/lib/actions/commissions";
+import { getClientDetails, uploadClientPhoto } from "@/lib/actions/clients";
 import { createProduct, updateProduct, addStockMovement, getInventory } from "@/lib/actions/inventory";
 import { updateServiceConsumables, getServices } from "@/lib/actions/services";
 
@@ -193,6 +194,132 @@ function ProductModal({ product, close, save }: { product?: any; close: () => vo
   </div><div className="mt-6 flex justify-end gap-3"><button onClick={close} className="btn-outline">Cancelar</button><button disabled={isSaving} onClick={async () => { setIsSaving(true); await save({name, unit, minimum: Number(min), ideal: Number(ideal), cost: Number(cost), stock: Number(stock)}); setIsSaving(false); }} className="btn-primary disabled:opacity-50"><Check size={16} />{isSaving ? "Salvando..." : "Salvar produto"}</button></div></div></div>;
 }
 
+
+
+function ClientDetailsModal({ client, close }: { client: any; close: () => void }) {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (client?.id) {
+      getClientDetails(client.id).then(res => {
+        setData(res);
+        setLoading(false);
+      });
+    } else {
+      setLoading(false);
+    }
+  }, [client]);
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !client?.id) return;
+    
+    setUploading(true);
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64 = reader.result as string;
+      const res = await uploadClientPhoto(client.id, base64, 'other');
+      if (res.success) {
+        // Refresh data
+        const fresh = await getClientDetails(client.id);
+        setData(fresh);
+      } else {
+        alert("Erro ao salvar foto: " + res.error);
+      }
+      setUploading(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+      <button onClick={close} className="absolute inset-0 bg-navy-dark/40" />
+      <div className="relative w-full max-w-4xl rounded-xl bg-white p-5 shadow-2xl sm:p-7 max-h-[90vh] flex flex-col">
+        <div className="mb-6 flex items-start justify-between">
+          <div>
+            <Badge tone="primary">Ficha da Cliente</Badge>
+            <h2 className="mt-2 text-2xl font-bold">{client.name}</h2>
+            <p className="text-muted">{client.phone}</p>
+          </div>
+          <button onClick={close} className="rounded-md p-1.5 text-muted hover:bg-bg hover:text-ink"><X size={20} /></button>
+        </div>
+        
+        {loading ? (
+          <div className="py-12 flex justify-center"><div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full"></div></div>
+        ) : !data ? (
+          <div className="py-12 text-center text-muted">Cliente não encontrada no banco de dados.</div>
+        ) : (
+          <div className="flex-1 overflow-y-auto space-y-6 pr-2">
+            
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Metric label="Visitas totais" value={data.stats.visits.toString()} detail="Soma de atendimentos concluídos" icon={Calendar} />
+              <Metric label="Total investido" value={money.format(data.stats.spent)} detail="Soma de recebimentos da cliente" icon={CircleDollarSign} />
+              <Metric label="Cliente desde" value={data.stats.memberSince} detail="Data do cadastro" icon={Check} />
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Histórico */}
+              <section className="card p-5">
+                <SectionTitle title="Histórico de Agendamentos" />
+                <div className="space-y-4 mt-4">
+                  {data.history.length === 0 ? (
+                    <p className="text-sm text-muted">Nenhum agendamento registrado.</p>
+                  ) : (
+                    data.history.map((h: any) => (
+                      <div key={h.id} className="flex justify-between items-center border-b border-[#E7EDF3] pb-3 last:border-0">
+                        <div>
+                          <p className="font-medium text-sm">{h.date} às {h.time}</p>
+                          <p className="text-xs text-muted mt-0.5">{h.services} com {h.professional}</p>
+                        </div>
+                        <div className="text-right">
+                          <Badge tone={h.status === 'Concluído' ? 'success' : h.status === 'Cancelado' ? 'danger' : 'warning'}>{h.status}</Badge>
+                          <p className="text-xs font-semibold mt-1 text-navy-dark">{money.format(h.paid)}</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </section>
+
+              {/* Fotos e Galeria */}
+              <section className="card p-5 flex flex-col">
+                <div className="flex justify-between items-center mb-4">
+                  <SectionTitle title="Galeria Antes & Depois" />
+                  <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handlePhotoUpload} />
+                  <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="btn-primary text-xs py-1.5 px-3">
+                    <Plus size={14} /> {uploading ? "Enviando..." : "Adicionar foto"}
+                  </button>
+                </div>
+                
+                {data.photos.length === 0 ? (
+                  <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-[#E7EDF3] rounded-lg p-6 bg-bg/50">
+                    <p className="text-sm text-muted text-center">Nenhuma foto registrada para esta cliente.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {data.photos.map((p: any) => (
+                      <div key={p.id} className="relative aspect-square rounded-md overflow-hidden border border-[#E7EDF3] group">
+                        <img src={p.storage_path} alt="Unhas" className="w-full h-full object-cover" />
+                        <div className="absolute bottom-0 inset-x-0 bg-black/50 p-1 text-[10px] text-white text-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          {new Date(p.created_at).toLocaleDateString('pt-BR')}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            </div>
+
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function ProfessionalCommissionsModal({ professional, close }: { professional: any; close: () => void }) {
   const [data, setData] = useState<{ commissions: any[], stats: { pending: number, paid: number } }>({ commissions: [], stats: { pending: 0, paid: 0 } });
@@ -1014,6 +1141,7 @@ export function NailStudioApp({ initialClients = demoClients, initialProfessiona
   const [professionalRows, setProfessionalRows] = useState(() => [...initialProfessionals]); const [productRows, setProductRows] = useState<any[]>(initialInventory);
   const [automationRows, setAutomationRows] = useState(() => [...initialTemplates]); const [specialtyList, setSpecialtyList] = useState(() => [...initialSpecialties]); const [financialRows, setFinancialRows] = useState(() => [...initialFinancials]); const [entityModal, setEntityModal] = useState<EntityModalState | null>(null);
   const [closingCommissionFor, setClosingCommissionFor] = useState<any>(null);
+  const [viewingClient, setViewingClient] = useState<any>(null);
   const notify = (message: string) => { setToast(message); window.setTimeout(() => setToast(""), 3200); };
   const openEntity = (kind: EntityKind, mode: "view" | "edit" | "create", index?: number) => {
     if (mode === "create") { setEntityModal({ kind, mode, name: "", detail: kind === "service" ? "R$ 0,00" : "" }); return; }
@@ -1145,7 +1273,7 @@ export function NailStudioApp({ initialClients = demoClients, initialProfessiona
     }
   }}
   onCancel={(index, id) => confirmAction("Cancelar este agendamento? O histórico será preservado.", () => { cancelAppointmentRecord(id).then(res => { if(res.success) { setRows(current => current.map((item, i) => i === index ? { ...item, status: "Cancelado" } : item)); notify("Agendamento cancelado e horário liberado."); } else alert(res.error); }) })} />;
-    if (view === "clients") return <Clients data={clientRows} onNew={() => openEntity("client", "create")} onAction={(mode, index) => openEntity("client", mode, index)} onArchive={index => confirmAction("Arquivar esta cliente? O histórico será preservado.", async () => { const item = clientRows[index]; if (item.id) await archiveClientRecord(item.id); setClientRows(current => current.map((c, i) => i === index ? { ...c, status: "Inativa" } : c)); notify("Cliente arquivada; histórico preservado."); })} />;
+    if (view === "clients") return <Clients data={clientRows} onNew={() => openEntity("client", "create")} onAction={(mode, index) => { if (mode === "view") { setViewingClient(clientRows[index]); } else { openEntity("client", mode, index); } }} onArchive={index => confirmAction("Arquivar esta cliente? O histórico será preservado.", async () => { const item = clientRows[index]; if (item.id) await archiveClientRecord(item.id); setClientRows(current => current.map((c, i) => i === index ? { ...c, status: "Inativa" } : c)); notify("Cliente arquivada; histórico preservado."); })} />;
     if (view === "services") return <Services data={serviceRows} onNew={() => openEntity("service", "create")} onAction={(mode, index) => openEntity("service", mode, index)} onDelete={index => confirmAction("Excluir este serviço da demonstração?", () => { setServiceRows(current => current.filter((_, i) => i !== index)); notify("Serviço removido."); })} onConsumables={(index) => openEntity("service_consumables" as any, "edit", index)} />;
     if (view === "professionals") return <Professionals data={professionalRows} onNew={() => openEntity("professional", "create")} onAction={(mode, index) => openEntity("professional", mode, index)} onDelete={index => confirmAction("Arquivar esta profissional? Agendamentos anteriores serão preservados.", async () => { const item = professionalRows[index]; if (item.id) await archiveProfessionalRecord(item.id); setProfessionalRows(current => current.filter((_, i) => i !== index)); notify("Profissional arquivada."); })} />;
     if (view === "attendance") return (
