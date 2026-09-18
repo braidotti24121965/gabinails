@@ -32,6 +32,12 @@ export async function getClients(): Promise<ClientItem[]> {
       phone,
       status,
       created_at,
+      appointments (
+        status,
+        payments (
+          amount
+        )
+      ),
       client_deposit_whitelist (
         client_id,
         removed_at
@@ -58,8 +64,8 @@ export async function getClients(): Promise<ClientItem[]> {
       phone: item.phone,
       last: "Recente",
       next: "—",
-      visits: 1,
-      spent: 0,
+      visits: item.appointments?.filter(a => a.status === 'completed').length || 0,
+      spent: item.appointments?.reduce((acc, a) => acc + (a.payments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0), 0) || 0,
       status: item.status === "archived" ? "Inativa" : "Ativa",
       whitelist: isWhitelisted,
       tag: isWhitelisted ? "VIP" : "Cadastrada",
