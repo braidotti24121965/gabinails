@@ -831,7 +831,7 @@ function OnlineBooking() {
   };
 
   const copyPix = () => {
-    navigator.clipboard?.writeText("00020126360014BR.GOV.BCB.PIX0114gabi.ludwig.pix520400005303986540530.005802BR5917Gabi Ludwig Nails6009Porto Alegre62070503***6304E8A2");
+    navigator.clipboard?.writeText("44928484000109");
     setCopiedPix(true);
     setTimeout(() => setCopiedPix(false), 2500);
   };
