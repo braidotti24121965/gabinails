@@ -1110,6 +1110,9 @@ export function NailStudioApp({ initialClients = demoClients, initialProfessiona
       const res = await createClientRecord(data);
       if (res.success) {
         setClientRows(current => [...current, { id: res.data?.id, last: "—", next: "—", visits: 0, spent: 0, status: "Ativa", whitelist: false, tag: "Nova", ...data }]);
+      } else {
+        alert("Erro ao salvar cliente: " + res.error);
+        return;
       }
     } else if (entityModal.index !== undefined) {
       const item = clientRows[entityModal.index];
