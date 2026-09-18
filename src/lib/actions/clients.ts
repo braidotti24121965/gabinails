@@ -31,6 +31,15 @@ export async function getClients(): Promise<ClientItem[]> {
       name,
       phone,
       status,
+      notes,
+      birth_date,
+      cep,
+      street,
+      number,
+      complement,
+      neighborhood,
+      city,
+      state,
       created_at,
       appointments (
         status,
@@ -62,6 +71,15 @@ export async function getClients(): Promise<ClientItem[]> {
       id: item.id,
       name: item.name,
       phone: item.phone,
+      notes: item.notes,
+      birthDate: item.birth_date,
+      cep: item.cep,
+      street: item.street,
+      number: item.number,
+      complement: item.complement,
+      neighborhood: item.neighborhood,
+      city: item.city,
+      state: item.state,
       last: "Recente",
       next: "—",
       visits: item.appointments?.filter(a => a.status === 'completed').length || 0,
@@ -102,7 +120,7 @@ export async function checkClientWhitelist(phoneNormalized: string): Promise<boo
   return Boolean(whitelist);
 }
 
-export async function createClientRecord(client: { name: string; phone: string; notes?: string }) {
+export async function createClientRecord(client: { name: string; phone: string; notes?: string; birthDate?: string; cep?: string; street?: string; number?: string; complement?: string; neighborhood?: string; city?: string; state?: string }) {
   if (!isSupabaseConfigured()) {
     return {
       success: true,
@@ -141,6 +159,14 @@ export async function createClientRecord(client: { name: string; phone: string; 
       phone: client.phone,
       phone_normalized: phoneNormalized,
       notes: client.notes || null,
+      birth_date: client.birthDate || null,
+      cep: client.cep || null,
+      street: client.street || null,
+      number: client.number || null,
+      complement: client.complement || null,
+      neighborhood: client.neighborhood || null,
+      city: client.city || null,
+      state: client.state || null,
       status: "active",
     })
     .select()
@@ -153,7 +179,7 @@ export async function createClientRecord(client: { name: string; phone: string; 
   return { success: true, mode: "supabase", data };
 }
 
-export async function updateClientRecord(id: string, client: { name: string; phone: string }) {
+export async function updateClientRecord(id: string, client: { name: string; phone: string; notes?: string; birthDate?: string; cep?: string; street?: string; number?: string; complement?: string; neighborhood?: string; city?: string; state?: string }) {
   if (!isSupabaseConfigured() || id.startsWith("demo-")) {
     return { success: true };
   }
@@ -169,6 +195,15 @@ export async function updateClientRecord(id: string, client: { name: string; pho
       name: client.name,
       phone: client.phone,
       phone_normalized: phoneNormalized,
+      notes: client.notes || null,
+      birth_date: client.birthDate || null,
+      cep: client.cep || null,
+      street: client.street || null,
+      number: client.number || null,
+      complement: client.complement || null,
+      neighborhood: client.neighborhood || null,
+      city: client.city || null,
+      state: client.state || null,
     })
     .eq("id", id);
 

@@ -424,6 +424,75 @@ function ProfessionalCommissionsModal({ professional, close }: { professional: a
   );
 }
 
+
+function ClientModal({ mode, client, close, save }: { mode: "create" | "edit" | "view"; client?: any; close: () => void; save: (data: any) => Promise<void> }) {
+  const [name, setName] = useState(client?.name || "");
+  const [phone, setPhone] = useState(client?.phone || "");
+  const [birthDate, setBirthDate] = useState(client?.birthDate || "");
+  const [cep, setCep] = useState(client?.cep || "");
+  const [street, setStreet] = useState(client?.street || "");
+  const [number, setNumber] = useState(client?.number || "");
+  const [complement, setComplement] = useState(client?.complement || "");
+  const [neighborhood, setNeighborhood] = useState(client?.neighborhood || "");
+  const [city, setCity] = useState(client?.city || "");
+  const [state, setState] = useState(client?.state || "");
+  const [notes, setNotes] = useState(client?.notes || "");
+  const [loadingCep, setLoadingCep] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const readOnly = mode === "view";
+
+  const handleCep = async (v: string) => {
+    setCep(v);
+    const cleanCep = v.replace(/\D/g, "");
+    if (cleanCep.length === 8) {
+      setLoadingCep(true);
+      try {
+        const res = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+        const data = await res.json();
+        if (!data.erro) {
+          setStreet(data.logradouro || "");
+          setNeighborhood(data.bairro || "");
+          setCity(data.localidade || "");
+          setState(data.uf || "");
+          document.getElementById("address-number")?.focus();
+        }
+      } catch (e) { console.error(e); }
+      setLoadingCep(false);
+    }
+  };
+
+  return <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 overflow-y-auto"><button onClick={close} className="fixed inset-0 bg-navy-dark/40" /><div className="relative w-full max-w-2xl rounded-xl bg-white p-5 shadow-2xl sm:p-7 my-8"><div className="mb-6 flex items-start justify-between"><div><Badge tone="primary">{mode === "create" ? "Nova Cliente" : mode === "view" ? "Detalhes" : "Edição"}</Badge><h2 className="mt-2 text-xl font-bold">{name || "Novo registro"}</h2></div><button onClick={close} className="rounded-md p-1.5 text-muted hover:bg-bg hover:text-ink"><X size={20} /></button></div>
+  <form onSubmit={async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    await save({ name, phone, birthDate, cep, street, number, complement, neighborhood, city, state, notes });
+    setSubmitting(false);
+  }} className="space-y-4">
+    <div className="grid gap-4 sm:grid-cols-2">
+      <div><label className="field-label">Nome Completo</label><input className="field-input" value={name} onChange={e => setName(e.target.value)} required disabled={readOnly} /></div>
+      <div><label className="field-label">WhatsApp</label><input className="field-input" value={phone} onChange={e => setPhone(e.target.value)} required disabled={readOnly} /></div>
+      <div><label className="field-label">Data de Nascimento</label><input type="date" className="field-input" value={birthDate} onChange={e => setBirthDate(e.target.value)} disabled={readOnly} /></div>
+      <div className="sm:col-span-2 border-t border-[#E7EDF3] pt-4 mt-2">
+        <h3 className="text-sm font-semibold mb-3">Endereço</h3>
+        <div className="grid gap-4 sm:grid-cols-6">
+          <div className="sm:col-span-2"><label className="field-label">CEP {loadingCep && <span className="text-xs text-primary animate-pulse">(Buscando...)</span>}</label><input className="field-input" value={cep} onChange={e => handleCep(e.target.value)} disabled={readOnly} maxLength={9} placeholder="00000-000" /></div>
+          <div className="sm:col-span-4"><label className="field-label">Rua</label><input className="field-input" value={street} onChange={e => setStreet(e.target.value)} disabled={readOnly} /></div>
+          <div className="sm:col-span-2"><label className="field-label">Número</label><input id="address-number" className="field-input" value={number} onChange={e => setNumber(e.target.value)} disabled={readOnly} /></div>
+          <div className="sm:col-span-4"><label className="field-label">Complemento</label><input className="field-input" value={complement} onChange={e => setComplement(e.target.value)} disabled={readOnly} /></div>
+          <div className="sm:col-span-2"><label className="field-label">Bairro</label><input className="field-input" value={neighborhood} onChange={e => setNeighborhood(e.target.value)} disabled={readOnly} /></div>
+          <div className="sm:col-span-3"><label className="field-label">Cidade</label><input className="field-input" value={city} onChange={e => setCity(e.target.value)} disabled={readOnly} /></div>
+          <div className="sm:col-span-1"><label className="field-label">UF</label><input className="field-input" value={state} onChange={e => setState(e.target.value)} disabled={readOnly} maxLength={2} /></div>
+        </div>
+      </div>
+      <div className="sm:col-span-2 border-t border-[#E7EDF3] pt-4 mt-2">
+        <label className="field-label">Observações</label><textarea className="field-input h-24" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Alergias, preferências, histórico médico..." disabled={readOnly} />
+      </div>
+    </div>
+    <div className="mt-6 flex justify-end gap-3"><button type="button" onClick={close} className="btn-outline">Cancelar</button>{!readOnly && <button disabled={submitting} type="submit" className="btn-primary">{submitting ? "Salvando..." : <><Check size={16} />Salvar</>}</button>}</div>
+  </form></div></div>;
+}
+
 function EntityModal({ state, close, save }: { state: EntityModalState; close: () => void; save: (name: string, detail: string) => void }) {
   const [name, setName] = useState(state.name); const [detail, setDetail] = useState(state.detail); const readOnly = state.mode === "view";
   const detailLabel = state.kind === "client" ? "WhatsApp" : state.kind === "service" || state.kind === "financial" ? "Valor" : state.kind === "professional" ? "Especialidade" : state.kind === "product" ? "Estoque atual" : state.kind === "automation" ? "Canal" : "Horário";
@@ -1274,18 +1343,27 @@ export function NailStudioApp({ initialClients = demoClients, initialProfessiona
     if (kind === "appointment") { const item = rows[index]; setEntityModal({ kind, mode, index, name: item.client, detail: item.time, fullItem: item }); }
     if (kind === "financial") { const item = financialRows[index]; setEntityModal({ kind, mode, index, name: item.name, detail: money.format(Math.abs(item.value)) }); }
   };
-  const saveEntity = async (name: string, detail: string) => {
-    if (!entityModal) return; const { kind, mode, index } = entityModal; const creating = mode === "create";
-    if (kind === "client") {
-      if (creating) {
-        const res = await createClientRecord({ name, phone: detail });
-        if (res.success) setClientRows(current => [...current, { id: res.data?.id, name, phone: detail, last: "—", next: "—", visits: 0, spent: 0, status: "Ativa", whitelist: false, tag: "Nova" }]);
-      } else if (index !== undefined) {
-        const item = clientRows[index];
-        if (item.id) await updateClientRecord(item.id, { name, phone: detail });
-        setClientRows(current => current.map((c, i) => i === index ? { ...c, name, phone: detail } : c));
+  
+  const saveClient = async (data: any) => {
+    if (!entityModal) return;
+    const creating = entityModal.mode === "create";
+    if (creating) {
+      const res = await createClientRecord(data);
+      if (res.success) {
+        setClientRows(current => [...current, { id: res.data?.id, name: data.name, phone: data.phone, last: "—", next: "—", visits: 0, spent: 0, status: "Ativa", whitelist: false, tag: "Nova" }]);
       }
+    } else if (entityModal.index !== undefined) {
+      const item = clientRows[entityModal.index];
+      if (item.id) await updateClientRecord(item.id, data);
+      setClientRows(current => current.map((c, i) => i === entityModal.index ? { ...c, name: data.name, phone: data.phone } : c));
     }
+    setEntityModal(null); notify(creating ? "Cliente cadastrada." : "Cliente atualizada.");
+  };
+
+  const saveEntity = async (name: string, detail: string) => {
+
+    if (!entityModal) return; const { kind, mode, index } = entityModal; const creating = mode === "create";
+    
     if (kind === "service") { 
     if (creating) {
       const res = await createServiceRecord({ name, category: "Geral", duration: parseInt(detail) || 60, price: 100, maintenance: 0 });
@@ -1503,7 +1581,7 @@ export function NailStudioApp({ initialClients = demoClients, initialProfessiona
             save={saveProfessional}
           />
         ) : (
-          (entityModal.kind !== "product" && entityModal.kind !== "service_consumables" ? <EntityModal key={`${entityModal.kind}-${entityModal.mode}-${entityModal.index ?? "new"}`} state={entityModal} close={() => setEntityModal(null)} save={saveEntity} /> : null)
+          entityModal.kind === "client" ? <ClientModal mode={entityModal.mode} client={entityModal.index !== undefined ? clientRows[entityModal.index] : undefined} close={() => setEntityModal(null)} save={saveClient} /> : (entityModal.kind !== "product" && entityModal.kind !== "service_consumables" ? <EntityModal key={`${entityModal.kind}-${entityModal.mode}-${entityModal.index ?? "new"}`} state={entityModal} close={() => setEntityModal(null)} save={saveEntity} /> : null)
         )
       )}
       
