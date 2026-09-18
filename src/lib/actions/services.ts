@@ -12,6 +12,7 @@ export interface ServiceItem {
   price: number;
   maintenance: number;
   active: boolean;
+  consumables?: { product_id: string; estimated_quantity: number }[];
 }
 
 export async function getServices(): Promise<ServiceItem[]> {
@@ -28,6 +29,8 @@ export async function getServices(): Promise<ServiceItem[]> {
     .order("category", { ascending: true })
     .order("name", { ascending: true });
 
+  const { data: consumables } = await supabase.from("service_consumables").select("*");
+
   if (error || !data || data.length === 0) {
     // Return demo if empty
     return demoServices.map((s, i) => ({ ...s, id: "demo-s-" + i }));
@@ -40,7 +43,8 @@ export async function getServices(): Promise<ServiceItem[]> {
     duration: item.duration_minutes,
     price: item.price,
     maintenance: item.maintenance_days || 0,
-    active: item.active
+    active: item.active,
+    consumables: consumables?.filter(c => c.service_id === item.id).map(c => ({ product_id: c.product_id, estimated_quantity: c.estimated_quantity })) || []
   }));
 }
 
@@ -71,4 +75,29 @@ export async function createServiceRecord(service: Omit<ServiceItem, 'id' | 'act
 
   revalidatePath("/");
   return { success: true, data };
+}
+
+export async function updateServiceConsumables(serviceId: string, consumables: { product_id: string; quantity: number }[]) {
+  const supabase = await createClient();
+  if (!supabase) return { success: false };
+
+  const { data: profile } = await supabase.from('profiles').select('organization_id').single();
+  if (!profile?.organization_id) return { success: false };
+
+  // First delete existing consumables for this service
+  await supabase.from("service_consumables").delete().eq("service_id", serviceId);
+
+  // Then insert the new ones
+  if (consumables.length > 0) {
+    const toInsert = consumables.map(c => ({
+      organization_id: profile.organization_id,
+      service_id: serviceId,
+      product_id: c.product_id,
+      estimated_quantity: c.quantity
+    }));
+    await supabase.from("service_consumables").insert(toInsert);
+  }
+
+  revalidatePath("/");
+  return { success: true };
 }
