@@ -60,7 +60,10 @@ export async function GET(request: Request) {
       }
     }
 
-    return NextResponse.json({ availableSlots });
+    return NextResponse.json({ 
+      availableSlots, 
+      debug: { date, isToday, todayStr, currentTotalMinutes, bookedCount: bookedAppointments?.length, startOfDay, endOfDay } 
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || "Unknown error" }, { status: 500 });
   }

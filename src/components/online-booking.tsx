@@ -25,6 +25,7 @@ export function OnlineBooking() {
   const [slots, setSlots] = useState<string[]>(["09:00", "10:30", "13:30", "15:00", "16:30", "18:00"]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [slotError, setSlotError] = useState("");
+  const [debugInfo, setDebugInfo] = useState<any>(null);
   const [selectedTime, setSelectedTime] = useState("");
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
@@ -42,6 +43,7 @@ export function OnlineBooking() {
     fetch(`/api/booking/availability?date=${date}&duration=${duration}`)
       .then(res => res.json())
       .then(data => {
+        setDebugInfo(data.debug);
         if (data.error) {
           setSlotError(data.error);
           setSlots([]);
@@ -200,6 +202,9 @@ export function OnlineBooking() {
                 <div className="mt-4 py-8 text-center text-xs text-muted">Calculando disponibilidade em tempo real...</div>
               ) : slots.length === 0 ? (
                   <div className="py-6 text-center text-sm font-medium text-amber-600 bg-amber-50 rounded-md">
+                    <pre className="text-[10px] text-left overflow-auto max-h-32 mb-4 bg-white p-2 border rounded">
+                      {JSON.stringify(debugInfo, null, 2)}
+                    </pre>
                     Poxa, não temos mais horários livres para este dia! 😢<br/>
                     <span className="text-xs text-amber-700/80 font-normal">Tente selecionar outra data no calendário.</span>
                   </div>
