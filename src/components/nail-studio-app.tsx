@@ -17,7 +17,7 @@ import { createSpecialtyRecord } from "@/lib/actions/specialties";
 import { createServiceRecord, type ServiceItem } from "@/lib/actions/services";
 import { createAppointmentRecord, cancelAppointmentRecord, updateAppointmentStatus } from "@/lib/actions/appointments";
 import { finishAppointment } from "@/lib/actions/attendance";
-import { createProduct } from "@/lib/actions/inventory";
+import { createProduct, updateProduct, addStockMovement } from "@/lib/actions/inventory";
 import { updateServiceConsumables } from "@/lib/actions/services";
 
 type View = "dashboard" | "agenda" | "clients" | "services" | "professionals" | "attendance" | "finance" | "inventory" | "automations" | "online";
@@ -167,13 +167,13 @@ function ServiceConsumablesModal({ service, inventory, close, save }: { service:
   <div className="mt-6 flex justify-end gap-3"><button onClick={close} className="btn-outline">Cancelar</button><button onClick={() => save(items)} className="btn-primary"><Check size={16} />Salvar configuração</button></div></div></div>;
 }
 
-function ProductModal({ close, save }: { close: () => void; save: (data: any) => Promise<void> }) {
-  const [name, setName] = useState("");
-  const [unit, setUnit] = useState("unit");
-  const [min, setMin] = useState("");
-  const [ideal, setIdeal] = useState("");
-  const [cost, setCost] = useState("");
-  const [stock, setStock] = useState(""); // Initial stock
+function ProductModal({ product, close, save }: { product?: any; close: () => void; save: (data: any) => Promise<void> }) {
+  const [name, setName] = useState(product?.product || "");
+  const [unit, setUnit] = useState(product?.unit || "unit");
+  const [min, setMin] = useState(product?.minimum ?? "");
+  const [ideal, setIdeal] = useState(product?.ideal ?? "");
+  const [cost, setCost] = useState(product?.cost ?? "");
+  const [stock, setStock] = useState(product?.stock ?? ""); // Initial stock
 
   return <div className="fixed inset-0 z-[60] flex items-center justify-center p-4"><button onClick={close} className="absolute inset-0 bg-navy-dark/40" /><div className="relative w-full max-w-lg rounded-xl bg-white p-5 shadow-2xl sm:p-7"><div className="mb-6 flex items-start justify-between"><div><Badge tone="primary">Novo Produto</Badge><h2 className="mt-2 text-xl font-bold">Cadastrar Produto</h2></div><button onClick={close} className="rounded-md p-1.5 text-muted hover:bg-bg hover:text-ink"><X size={20} /></button></div><div className="space-y-4">
     <div><label className="field-label">Nome do produto</label><input className="field-input" value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Esmalte Risqué Vermelho" /></div>
@@ -1093,7 +1093,7 @@ export function NailStudioApp({ initialClients = demoClients, initialProfessiona
         onFinish={() => setFinish(true)} 
       />
     ); if (view === "finance") return <Finance stats={initialStats} data={financialRows} onNew={() => openEntity("financial", "create")} onAction={(mode, index) => openEntity("financial", mode, index)} onReverse={index => confirmAction("Estornar este movimento? Um lançamento de compensação será registrado.", () => { setFinancialRows(current => current.map((item, i) => i === index ? { ...item, status: "Estornado" } : item)); notify("Movimento estornado por compensação; registro original preservado."); })} />;
-    if (view === "inventory") return <Inventory data={productRows} onNew={() => openEntity("product", "create")} onAction={(mode, index) => openEntity("product", mode, index)} onDelete={() => notify("Ajuste manual indisponível na demonstração.")} />;
+    if (view === "inventory") return <Inventory data={productRows} onNew={() => openEntity("product", "create")} onAction={(mode, index) => openEntity("product", mode, index)} onDelete={(index) => { openEntity("product", "edit", index); notify("Atualize o campo \"Saldo atual\" para corrigir o estoque."); }} />;
     if (view === "automations") return <Automations data={automationRows} onNew={() => openEntity("automation", "create")} onAction={(mode, index) => openEntity("automation", mode, index)} onDelete={() => notify("Status da automação atualizado.")} go={setView} />;
     if (view === "online") return <OnlineBooking />;
   })();
@@ -1145,15 +1145,22 @@ export function NailStudioApp({ initialClients = demoClients, initialProfessiona
         )
       )}
       
-      {entityModal && entityModal.kind === "product" && entityModal.mode === "create" && (
+      {entityModal && entityModal.kind === "product" && (
         <ProductModal 
+          product={entityModal.mode !== "create" && entityModal.index !== undefined ? productRows[entityModal.index] : undefined}
           close={() => setEntityModal(null)} 
           save={async (data) => {
-            const res = await createProduct(data);
+            let res;
+            if (entityModal.mode === "create") {
+              res = await createProduct(data);
+            } else {
+              const p = productRows[entityModal.index!];
+              res = await updateProduct(p.id, { ...data, currentStock: p.stock });
+            }
             if (res.success) {
               window.location.reload();
             } else {
-              alert("Erro ao criar produto: " + res.error);
+              alert("Erro ao salvar produto: " + res.error);
             }
           }} 
         />

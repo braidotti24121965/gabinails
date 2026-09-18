@@ -111,3 +111,32 @@ export async function createProduct(data: { name: string; unit: string; minimum:
   revalidatePath("/");
   return { success: true };
 }
+
+export async function updateProduct(id: string, data: { name: string; unit: string; minimum: number; ideal: number; cost: number; stock?: number; currentStock?: number }) {
+  const supabase = await createClient();
+  if (!supabase) return { success: false };
+
+  const { error } = await supabase.from("products").update({
+    name: data.name,
+    base_unit: data.unit,
+    minimum_stock: data.minimum,
+    ideal_stock: data.ideal,
+    unit_cost: data.cost
+  }).eq("id", id);
+
+  if (error) return { success: false, error: error.message };
+  
+  if (data.stock !== undefined && data.currentStock !== undefined && data.stock !== data.currentStock) {
+    const diff = data.stock - data.currentStock;
+    await supabase.from("stock_movements").insert([{
+      organization_id: (await supabase.from('profiles').select('organization_id').single()).data?.organization_id,
+      product_id: id,
+      movement_type: diff > 0 ? "positive_adjustment" : "negative_adjustment",
+      quantity: Math.abs(diff),
+      source: "manual_adjustment"
+    }]);
+  }
+  
+  revalidatePath("/");
+  return { success: true };
+}
