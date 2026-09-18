@@ -37,6 +37,15 @@ export function OnlineBooking() {
   const cleanPhone = clientPhone.replace(/\D/g, "");
   const isWhitelisted = cleanPhone.length >= 8 && Boolean(demoClients.find(c => c.phone.replace(/\D/g, "").includes(cleanPhone) && c.whitelist));
 
+  
+  const formatPhone = (val: string) => {
+    let v = val.replace(/\D/g, "");
+    if (v.length > 11) v = v.slice(0, 11);
+    if (v.length > 2) v = `(${v.slice(0, 2)}) ${v.slice(2)}`;
+    if (v.length > 10) v = `${v.slice(0, 10)}-${v.slice(10)}`;
+    return v;
+  };
+
   const loadSlots = (date: string, duration: number) => {
     setLoadingSlots(true);
     setSlotError("");
@@ -264,7 +273,8 @@ export function OnlineBooking() {
                   <input
                     required
                     value={clientPhone}
-                    onChange={e => setClientPhone(e.target.value)}
+                    onChange={e => setClientPhone(formatPhone(e.target.value))}
+                    type="tel"
                     className="field-input"
                     placeholder="(51) 99999-9999"
                   />
