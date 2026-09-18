@@ -18,6 +18,7 @@ import { createServiceRecord, type ServiceItem } from "@/lib/actions/services";
 import { createAppointmentRecord, cancelAppointmentRecord, updateAppointmentStatus, getAppointments } from "@/lib/actions/appointments";
 import { finishAppointment } from "@/lib/actions/attendance";
 import { createExpense } from "@/lib/actions/finance";
+import { getProfessionalCommissions, payCommissions } from "@/lib/actions/commissions";
 import { createProduct, updateProduct, addStockMovement, getInventory } from "@/lib/actions/inventory";
 import { updateServiceConsumables, getServices } from "@/lib/actions/services";
 
@@ -192,6 +193,107 @@ function ProductModal({ product, close, save }: { product?: any; close: () => vo
   </div><div className="mt-6 flex justify-end gap-3"><button onClick={close} className="btn-outline">Cancelar</button><button disabled={isSaving} onClick={async () => { setIsSaving(true); await save({name, unit, minimum: Number(min), ideal: Number(ideal), cost: Number(cost), stock: Number(stock)}); setIsSaving(false); }} className="btn-primary disabled:opacity-50"><Check size={16} />{isSaving ? "Salvando..." : "Salvar produto"}</button></div></div></div>;
 }
 
+
+function ProfessionalCommissionsModal({ professional, close }: { professional: any; close: () => void }) {
+  const [data, setData] = useState<{ commissions: any[], stats: { pending: number, paid: number } }>({ commissions: [], stats: { pending: 0, paid: 0 } });
+  const [loading, setLoading] = useState(true);
+  const [paying, setPaying] = useState(false);
+
+  useEffect(() => {
+    if (professional?.id) {
+      getProfessionalCommissions(professional.id).then(res => {
+        setData(res);
+        setLoading(false);
+      });
+    } else {
+      setLoading(false);
+    }
+  }, [professional]);
+
+  const handlePay = async () => {
+    if (!professional?.id) return;
+    const pendingIds = data.commissions.filter(c => c.status === 'generated').map(c => c.id);
+    if (pendingIds.length === 0) return;
+    
+    setPaying(true);
+    const res = await payCommissions(professional.id, pendingIds, data.stats.pending);
+    setPaying(false);
+    if (res.success) {
+      window.location.reload();
+    } else {
+      alert("Erro ao pagar comissões: " + res.error);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+      <button onClick={close} className="absolute inset-0 bg-navy-dark/40" />
+      <div className="relative w-full max-w-2xl rounded-xl bg-white p-5 shadow-2xl sm:p-7 max-h-[90vh] flex flex-col">
+        <div className="mb-6 flex items-start justify-between">
+          <div>
+            <Badge tone="primary">Acerto de Comissões</Badge>
+            <h2 className="mt-2 text-xl font-bold">{professional.name}</h2>
+          </div>
+          <button onClick={close} className="rounded-md p-1.5 text-muted hover:bg-bg hover:text-ink"><X size={20} /></button>
+        </div>
+        
+        {loading ? (
+          <div className="py-12 flex justify-center"><div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full"></div></div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="p-4 rounded-lg bg-amber-50 border border-amber-100">
+                <p className="text-sm text-amber-800">Saldo Pendente</p>
+                <p className="text-2xl font-bold text-amber-900">{money.format(data.stats.pending)}</p>
+              </div>
+              <div className="p-4 rounded-lg bg-green-50 border border-green-100">
+                <p className="text-sm text-green-800">Total já pago</p>
+                <p className="text-2xl font-bold text-green-900">{money.format(data.stats.paid)}</p>
+              </div>
+            </div>
+            
+            <div className="overflow-y-auto flex-1 border rounded-lg border-[#E7EDF3]">
+              <table className="data-table">
+                <thead className="sticky top-0 bg-white">
+                  <tr>
+                    <th>Data</th>
+                    <th>Serviço</th>
+                    <th>Status</th>
+                    <th>Valor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.commissions.length === 0 ? (
+                    <tr><td colSpan={4} className="text-center py-8 text-muted">Nenhuma comissão registrada.</td></tr>
+                  ) : data.commissions.map((c: any) => (
+                    <tr key={c.id}>
+                      <td>{c.date}</td>
+                      <td>{c.service}</td>
+                      <td><Badge tone={c.status === 'paid' ? 'success' : 'warning'}>{c.status === 'paid' ? 'Pago' : 'Pendente'}</Badge></td>
+                      <td className="font-medium text-right">{money.format(c.amount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+        
+        <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-[#E7EDF3]">
+          <button onClick={close} className="btn-outline">Fechar</button>
+          <button 
+            onClick={handlePay} 
+            disabled={paying || data.stats.pending <= 0 || loading} 
+            className="btn-primary disabled:opacity-50"
+          >
+            <Check size={16} />{paying ? "Processando..." : "Fechar e Pagar Pendentes"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function EntityModal({ state, close, save }: { state: EntityModalState; close: () => void; save: (name: string, detail: string) => void }) {
   const [name, setName] = useState(state.name); const [detail, setDetail] = useState(state.detail); const readOnly = state.mode === "view";
   const detailLabel = state.kind === "client" ? "WhatsApp" : state.kind === "service" || state.kind === "financial" ? "Valor" : state.kind === "professional" ? "Especialidade" : state.kind === "product" ? "Estoque atual" : state.kind === "automation" ? "Canal" : "Horário";
@@ -336,7 +438,8 @@ function Agenda({ rows, onNew, onAttendance, onAction, onCancel, onStatusChange 
        <option value="Em atendimento">Em atendimento</option>
        <option value="Concluído">Concluído</option>
      </select>
-   </div></button><RowActions onView={() => onAction("view", index)} onEdit={() => onAction("edit", index)} onDelete={() => onCancel(index, a.id)} deleteLabel="Cancelar" /></div>)}</div></section></main>;
+   </div></button><button onClick={() => onAction("view", index)} className="text-sm font-medium text-primary hover:underline">Comissões</button>
+<RowActions onView={() => onAction("edit", index)} onEdit={() => onAction("edit", index)} onDelete={() => onCancel(index, a.id)} deleteLabel="Cancelar" /></div>)}</div></section></main>;
 }
 
 function Clients({ data, onNew, onAction, onArchive }: { data: ClientItem[]; onNew: () => void; onAction: (mode: "view" | "edit", index: number) => void; onArchive: (index: number) => void }) { return <main className="page-content"><div className="mb-5 flex flex-wrap justify-between gap-3"><div className="relative w-full max-w-md"><Search className="absolute left-3 top-3 text-muted" size={16} /><input className="field-input pl-9" placeholder="Buscar por nome ou telefone" /></div><button onClick={onNew} className="btn-primary"><Plus size={16} />Nova cliente</button></div><section className="card !p-0 overflow-hidden"><div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Cliente</th><th>Última visita</th><th>Próxima manutenção</th><th>Atendimentos</th><th>Total gasto</th><th>Confiança</th><th>Status</th><th className="text-right">Ações</th></tr></thead><tbody>{data.map((c, index) => <tr key={c.name}><td><button onClick={() => onAction("view", index)} className="text-left hover:text-primary"><p className="font-medium">{c.name}</p><p className="text-[11px] text-muted">{c.phone}</p></button></td><td>{c.last}</td><td>{c.next}</td><td>{c.visits}</td><td>{money.format(c.spent)}</td><td>{c.whitelist ? <Badge tone="success"><ShieldCheck size={11} className="mr-1" />Sem sinal</Badge> : <span className="text-xs text-muted">Sinal obrigatório</span>}</td><td><Badge tone={c.status === "Ativa" ? "primary" : "neutral"}>{c.status}</Badge></td><td><RowActions onView={() => onAction("view", index)} onEdit={() => onAction("edit", index)} onDelete={() => onArchive(index)} deleteLabel="Arquivar" /></td></tr>)}</tbody></table></div></section></main> }
@@ -910,6 +1013,7 @@ export function NailStudioApp({ initialClients = demoClients, initialProfessiona
   const [clientRows, setClientRows] = useState(() => [...initialClients]); const [serviceRows, setServiceRows] = useState(() => [...initialServices]);
   const [professionalRows, setProfessionalRows] = useState(() => [...initialProfessionals]); const [productRows, setProductRows] = useState<any[]>(initialInventory);
   const [automationRows, setAutomationRows] = useState(() => [...initialTemplates]); const [specialtyList, setSpecialtyList] = useState(() => [...initialSpecialties]); const [financialRows, setFinancialRows] = useState(() => [...initialFinancials]); const [entityModal, setEntityModal] = useState<EntityModalState | null>(null);
+  const [closingCommissionFor, setClosingCommissionFor] = useState<any>(null);
   const notify = (message: string) => { setToast(message); window.setTimeout(() => setToast(""), 3200); };
   const openEntity = (kind: EntityKind, mode: "view" | "edit" | "create", index?: number) => {
     if (mode === "create") { setEntityModal({ kind, mode, name: "", detail: kind === "service" ? "R$ 0,00" : "" }); return; }
