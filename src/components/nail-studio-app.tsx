@@ -1109,7 +1109,9 @@ export function NailStudioApp({ initialClients = demoClients, initialProfessiona
     if (creating) {
       const res = await createClientRecord(data);
       if (res.success) {
-        setClientRows(current => [...current, { id: res.data?.id, last: "—", next: "—", visits: 0, spent: 0, status: "Ativa", whitelist: false, tag: "Nova", ...data }]);
+        // Fetch fresh list from DB to ensure correct alphabetical order and data
+        const fresh = await getClients();
+        setClientRows(fresh);
       } else {
         alert("Erro ao salvar cliente: " + res.error);
         return;
