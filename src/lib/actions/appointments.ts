@@ -138,6 +138,7 @@ export async function createAppointmentRecord(data: {
 
   if (itemError) {
     console.error("Error creating appointment item:", itemError);
+    return { success: false, error: "Falha ao registrar os serviços do agendamento: " + itemError.message };
   }
 
   revalidatePath("/");
