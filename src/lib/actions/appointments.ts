@@ -62,6 +62,8 @@ export async function getAppointments(): Promise<Appointment[]> {
 
     return {
       id: row.id,
+      dateStr: dStart.toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }),
+      startsAtIso: row.starts_at,
       time,
       end,
       client: row.client?.name || "Desconhecida",
