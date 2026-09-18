@@ -15,7 +15,7 @@ import { createClientRecord, updateClientRecord, archiveClientRecord, type Clien
 import { createProfessionalRecord, updateProfessionalRecord, archiveProfessionalRecord, type ProfessionalItem } from "@/lib/actions/professionals";
 import { createSpecialtyRecord } from "@/lib/actions/specialties";
 import { createServiceRecord, type ServiceItem } from "@/lib/actions/services";
-import { createAppointmentRecord, cancelAppointmentRecord, updateAppointmentStatus } from "@/lib/actions/appointments";
+import { createAppointmentRecord, cancelAppointmentRecord, updateAppointmentStatus, getAppointments } from "@/lib/actions/appointments";
 import { finishAppointment } from "@/lib/actions/attendance";
 import { createProduct, updateProduct, addStockMovement, getInventory } from "@/lib/actions/inventory";
 import { updateServiceConsumables, getServices } from "@/lib/actions/services";
@@ -1187,7 +1187,7 @@ export function NailStudioApp({ initialClients = demoClients, initialProfessiona
         />
       )}
 
-      {booking && <BookingModal clients={clientRows} professionals={professionalRows} services={serviceRows} close={() => setBooking(false)} save={async (a, rawData) => { if(rawData) { const res = await createAppointmentRecord(rawData); if (res.success) { setRows(v => [...v, { ...a, id: res.data.id }]); setBooking(false); notify("Agendamento criado com sucesso."); } else { alert(res.error); } } else { setRows(v => [...v, a]); setBooking(false); notify("Agendamento criado (demo)."); } }} />}
+      {booking && <BookingModal clients={clientRows} professionals={professionalRows} services={serviceRows} close={() => setBooking(false)} save={async (a, rawData) => { if(rawData) { const res = await createAppointmentRecord(rawData); if (res.success) { const fresh = await getAppointments(); setRows(fresh); setBooking(false); notify("Agendamento criado com sucesso."); } else { alert(res.error); } } else { setRows(v => [...v, a]); setBooking(false); notify("Agendamento criado (demo)."); } }} />}
       {finish && activeAppointment && <FinishModal appointment={activeAppointment} close={() => setFinish(false)} done={async (method, val) => { const res = await finishAppointment({ appointmentId: activeAppointment.id, amount: val, paymentMethod: method }); if (res.success) { setRows(v => v.map(a => a.id === activeAppointment.id ? { ...a, status: "Concluído", paid: (a.paid || 0) + val } : a)); setFinish(false); setActiveAppointment(null); setView("agenda"); notify("Atendimento concluído e pagamento registrado com sucesso."); } else { alert(res.error); } }} />}
       {toast && <Toast text={toast} />}
     </div>
