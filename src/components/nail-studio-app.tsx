@@ -206,6 +206,7 @@ function ClientDetailsModal({ client, close }: { client: any; close: () => void 
   useEffect(() => {
     if (client?.id) {
       getClientDetails(client.id).then(res => {
+        if (!res) { setData(null); setLoading(false); return; }
         setData(res);
         setLoading(false);
       });
@@ -256,9 +257,9 @@ function ClientDetailsModal({ client, close }: { client: any; close: () => void 
           <div className="flex-1 overflow-y-auto space-y-6 pr-2">
             
             <div className="grid gap-4 sm:grid-cols-3">
-              <Metric label="Visitas totais" value={data.stats.visits.toString()} detail="Soma de atendimentos concluídos" icon={Calendar} />
-              <Metric label="Total investido" value={money.format(data.stats.spent)} detail="Soma de recebimentos da cliente" icon={CircleDollarSign} />
-              <Metric label="Cliente desde" value={data.stats.memberSince} detail="Data do cadastro" icon={Check} />
+              <Metric label="Visitas totais" value={(data?.stats?.visits || 0).toString()} detail="Soma de atendimentos concluídos" icon={Calendar} />
+              <Metric label="Total investido" value={money.format(data?.stats?.spent || 0)} detail="Soma de recebimentos da cliente" icon={CircleDollarSign} />
+              <Metric label="Cliente desde" value={data?.stats?.memberSince || "-"} detail="Data do cadastro" icon={Check} />
             </div>
 
             <div className="grid md:grid-cols-2 gap-6">
@@ -269,7 +270,7 @@ function ClientDetailsModal({ client, close }: { client: any; close: () => void 
                   {data.history.length === 0 ? (
                     <p className="text-sm text-muted">Nenhum agendamento registrado.</p>
                   ) : (
-                    data.history.map((h: any) => (
+                    (data.history || []).map((h: any) => (
                       <div key={h.id} className="flex justify-between items-center border-b border-[#E7EDF3] pb-3 last:border-0">
                         <div>
                           <p className="font-medium text-sm">{h.date} às {h.time}</p>
@@ -295,13 +296,13 @@ function ClientDetailsModal({ client, close }: { client: any; close: () => void 
                   </button>
                 </div>
                 
-                {data.photos.length === 0 ? (
+                {!data.photos || data.photos.length === 0 ? (
                   <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-[#E7EDF3] rounded-lg p-6 bg-bg/50">
                     <p className="text-sm text-muted text-center">Nenhuma foto registrada para esta cliente.</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {data.photos.map((p: any) => (
+                    {(data.photos || []).map((p: any) => (
                       <div key={p.id} className="relative aspect-square rounded-md overflow-hidden border border-[#E7EDF3] group">
                         <img src={p.storage_path} alt="Unhas" className="w-full h-full object-cover" />
                         <div className="absolute bottom-0 inset-x-0 bg-black/50 p-1 text-[10px] text-white text-center opacity-0 group-hover:opacity-100 transition-opacity">
