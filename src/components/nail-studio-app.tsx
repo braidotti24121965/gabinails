@@ -687,7 +687,7 @@ function Agenda({ rows, onNew, onAttendance, onAction, onCancel, onStatusChange 
   const [statusFilter, setStatusFilter] = useState("Todos os status");
   
   const uniqueProfs = Array.from(new Set(rows.map(r => r.professional))).filter(Boolean);
-  const uniqueStatus = ["Pendente", "Aguardando sinal", "Agendado", "Confirmado", "Cliente chegou", "Em atendimento", "Concluído", "Cancelado", "Não compareceu"];
+  const uniqueStatus = ["Aguardando sinal", "Agendado", "Confirmado", "Cliente chegou", "Em atendimento", "Concluído"];
   
   const visibleRows = rows.filter((r: any) => {
     let inRange = false;
