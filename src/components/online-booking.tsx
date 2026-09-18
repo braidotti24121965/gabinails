@@ -193,17 +193,24 @@ export function OnlineBooking() {
               {loadingSlots ? (
                 <div className="mt-4 py-8 text-center text-xs text-muted">Calculando disponibilidade em tempo real...</div>
               ) : (
-                <div className="mt-3 grid grid-cols-3 gap-2">
-                  {slots.map(h => (
-                    <button
-                      onClick={() => { setSelectedTime(h); setStep(4); }}
-                      key={h}
-                      className="btn-outline !min-h-10 hover:border-primary hover:bg-primary hover:text-white"
-                    >
-                      {h}
-                    </button>
-                  ))}
-                </div>
+                {slots.length === 0 ? (
+                  <div className="py-6 text-center text-sm font-medium text-amber-600 bg-amber-50 rounded-md">
+                    Poxa, não temos mais horários livres para este dia! 😢<br/>
+                    <span className="text-xs text-amber-700/80 font-normal">Tente selecionar outra data no calendário.</span>
+                  </div>
+                ) : (
+                  <div className="mt-3 grid grid-cols-3 gap-2">
+                    {slots.map(h => (
+                      <button
+                        onClick={() => { setSelectedTime(h); setStep(4); }}
+                        key={h}
+                        className="btn-outline !min-h-10 hover:border-primary hover:bg-primary hover:text-white"
+                      >
+                        {h}
+                      </button>
+                    ))}
+                  </div>
+                )}
               )}
               <div className="mt-4 rounded-md bg-bg p-3 text-[11px] text-muted">
                 Slots calculados em intervalos de 15 minutos com prevenção de conflitos via Postgres.
