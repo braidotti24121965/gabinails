@@ -45,6 +45,13 @@ export async function POST(request: Request) {
     const { data: org } = await supabase.from("organizations").select("id").limit(1).single();
     if (!org) throw new Error("Organização não encontrada");
 
+    let finalProfessionalId = professionalId;
+    if (!finalProfessionalId) {
+      const { data: prof } = await supabase.from("professionals").select("id").limit(1).single();
+      if (!prof) throw new Error("Nenhum profissional cadastrado no sistema.");
+      finalProfessionalId = prof.id;
+    }
+    
     const startsAt = new Date(`${date}T${time}:00`);
     const endsAt = new Date(startsAt.getTime() + durationMinutes * 60 * 1000);
 
@@ -85,7 +92,7 @@ export async function POST(request: Request) {
       .from("appointments")
       .insert({
         client_id: clientId,
-        professional_id: professionalId,
+        professional_id: finalProfessionalId,
         starts_at: startsAt.toISOString(),
         ends_at: endsAt.toISOString(),
         status: "awaiting_deposit",
