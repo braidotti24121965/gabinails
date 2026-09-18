@@ -96,7 +96,7 @@ export function OnlineBooking({ professionals = [], services = [] }: { professio
       });
       setStep(5);
     } catch (err: any) {
-      alert("Erro ao confirmar agendamento: " + err.message);
+      setSlotError("Erro ao confirmar agendamento: " + err.message);
       setSubmittingHold(false);
       return;
       setHoldData({
