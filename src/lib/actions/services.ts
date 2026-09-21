@@ -70,6 +70,7 @@ export async function createServiceRecord(service: Omit<ServiceItem, 'id' | 'act
   }
 
   revalidatePath("/");
+  revalidatePath("/agendar");
   return { success: true, data };
 }
 
@@ -95,6 +96,7 @@ export async function updateServiceConsumables(serviceId: string, consumables: {
   }
 
   revalidatePath("/");
+  revalidatePath("/agendar");
   return { success: true };
 }
 
@@ -104,6 +106,7 @@ export async function archiveServiceRecord(serviceId: string) {
   const { error } = await supabase.from('services').update({ active: false }).eq('id', serviceId);
   if (error) return { success: false, error: error.message };
   revalidatePath("/");
+  revalidatePath("/agendar");
   return { success: true };
 }
 
@@ -116,6 +119,7 @@ export async function deleteServiceRecord(serviceId: string) {
     await supabase.from('services').update({ active: false }).eq('id', serviceId);
   }
   revalidatePath("/");
+  revalidatePath("/agendar");
   return { success: true };
 }
 
@@ -131,5 +135,6 @@ export async function updateServiceRecord(serviceId: string, service: Omit<Servi
   }).eq('id', serviceId);
   if (error) return { success: false, error: error.message };
   revalidatePath("/");
+  revalidatePath("/agendar");
   return { success: true };
 }
