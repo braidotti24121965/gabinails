@@ -69,6 +69,9 @@ export async function POST(request: Request) {
     const startsAt = new Date(`${date}T${time}:00-03:00`);
     const endsAt = new Date(startsAt.getTime() + durationMinutes * 60 * 1000);
 
+    // 0. Expira holds vencidos para liberar a agenda (idempotente)
+    await supabase.from("appointments").update({ status: 'cancelled', notes: 'Expirado automaticamente após 30 minutos sem confirmação de sinal.' }).eq("status", "awaiting_deposit").lt("hold_expires_at", new Date().toISOString());
+
     // 1. Encontra ou cria cliente
     const phoneNormalized = clientPhone.replace(/\D/g, "");
     let clientId: string | null = null;

@@ -20,10 +20,13 @@ export async function GET(request: Request) {
     const supabase = await createAdminClient();
     if (!supabase) throw new Error("Erro ao inicializar cliente de banco");
 
+    // Expira holds vencidos antes de checar disponibilidade
+    await supabase.from("appointments").update({ status: 'cancelled', notes: 'Expirado automaticamente após 30 minutos sem confirmação de sinal.' }).eq("status", "awaiting_deposit").lt("hold_expires_at", new Date().toISOString());
+
     const startOfDay = `${date}T00:00:00.000Z`;
     const endOfDay = `${date}T23:59:59.999Z`;
 
-    let query = supabase.from("appointments").select("starts_at, ends_at").gte("starts_at", startOfDay).lte("starts_at", endOfDay).in("status", ["pending", "scheduled", "confirmed"]);
+    let query = supabase.from("appointments").select("starts_at, ends_at").gte("starts_at", startOfDay).lte("starts_at", endOfDay).in("status", ["pending", "scheduled", "confirmed", "awaiting_deposit"]);
     if (professionalId) query = query.eq("professional_id", professionalId);
 
     const { data: bookedAppointments, error } = await query;
