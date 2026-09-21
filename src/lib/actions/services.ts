@@ -26,7 +26,7 @@ export async function getServices(): Promise<ServiceItem[]> {
   const { data, error } = await supabase
     .from("services")
     .select("*")
-    .order("category", { ascending: true })
+    // removed category order
     .order("name", { ascending: true });
 
   const { data: consumables } = await supabase.from("service_consumables").select("*");
