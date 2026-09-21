@@ -1,6 +1,6 @@
 import React from "react";
 import { Plus } from "lucide-react";
-import { Badge, RowActions } from "../nail-studio-app";
+import { Badge, RowActions } from "../shared";
 import { money } from "@/lib/demo-data";
 
 export function Inventory({ data, onNew, onAction, onDelete }: { data: any[]; onNew: () => void; onAction: (mode: "view" | "edit", index: number) => void; onDelete: (index: number) => void }) { 

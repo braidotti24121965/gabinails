@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Plus, ArrowRight, Search, CalendarDays } from "lucide-react";
 import { type Appointment } from "@/lib/demo-data";
-import { Badge, SectionTitle, statusTone, RowActions } from "../nail-studio-app";
+import { Badge, SectionTitle, statusTone, RowActions } from "../shared";
 
 // Money formatter is missing in agenda? Wait, is money used in Agenda? Yes.
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });

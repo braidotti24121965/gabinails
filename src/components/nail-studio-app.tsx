@@ -1,5 +1,7 @@
-/* eslint-disable react-hooks/exhaustive-deps, react/no-unescaped-entities, react-hooks/set-state-in-effect */
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
+import NextImage from "next/image";
+import { View, EntityKind, EntityModalState, Badge, statusTone, Metric, RowActions, SectionTitle, SmallMetricLink } from "./shared";
 import { Professionals } from "./dashboard/professionals";
 import { Attendance } from "./dashboard/attendance";
 import { Finance } from "./dashboard/finance";
@@ -34,7 +36,6 @@ import { getRemindersForTomorrow } from "@/lib/actions/automations";
 import { createProduct, updateProduct, addStockMovement, getInventory } from "@/lib/actions/inventory";
 import { updateServiceConsumables, getServices, deleteServiceRecord, updateServiceRecord } from "@/lib/actions/services";
 
-export type View = "dashboard" | "agenda" | "clients" | "services" | "professionals" | "attendance" | "finance" | "inventory" | "automations" | "online";
 
 const nav: { id: View; label: string; icon: typeof Home }[] = [
   { id: "dashboard", label: "Painel", icon: Home }, { id: "agenda", label: "Agenda", icon: CalendarDays },
@@ -52,26 +53,9 @@ const titles: Record<View, [string, string]> = {
   automations: ["Automações", "Comunicações programadas e receita recuperada."], online: ["Agendamento online", "Prévia do fluxo público para suas clientes."]
 };
 
-export function Badge({ children, tone = "neutral" }: { children: React.ReactNode; tone?: string }) {
-  const colors: Record<string, string> = { success: "bg-emerald-50 text-emerald-800", warning: "bg-amber-50 text-amber-800", danger: "bg-rose-50 text-rose-800", primary: "bg-primary-light text-primary", neutral: "bg-slate-100 text-slate-700", blue: "bg-blue-50 text-blue-800" };
-  return <span className={`badge ${colors[tone] ?? colors.neutral}`}>{children}</span>;
-}
 
-export function statusTone(status: AppointmentStatus) {
-  if (["Concluído", "Confirmado"].includes(status)) return "success";
-  if (["Cancelado", "Não compareceu"].includes(status)) return "danger";
-  if (["Aguardando sinal", "Pendente"].includes(status)) return "warning";
-  if (["Cliente chegou", "Em atendimento"].includes(status)) return "primary";
-  return "blue";
-}
 
-export function Metric({ label, value, detail, icon: Icon, tone = "primary", onClick }: { label: string; value: string; detail: string; icon: typeof Home; tone?: string; onClick?: () => void }) {
-  const content = <><div className="flex items-start justify-between gap-3"><div><p className="text-xs text-muted">{label}</p><p className="mt-1.5 text-2xl font-semibold tracking-tight text-ink">{value}</p></div><div className={`rounded-md p-2 ${tone === "danger" ? "bg-rose-50 text-danger" : tone === "warning" ? "bg-amber-50 text-warning" : "bg-primary-light text-primary"}`}><Icon size={18} strokeWidth={1.7} /></div></div><p className="mt-2 text-[11px] text-muted">{detail}</p></>;
-  return onClick ? <button onClick={onClick} className="card min-w-0 text-left transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/25">{content}</button> : <div className="card min-w-0">{content}</div>;
-}
 
-type EntityKind = "client" | "service" | "professional" | "product" | "automation" | "appointment" | "financial" | "service_consumables";
-type EntityModalState = { kind: EntityKind; mode: "view" | "edit" | "create"; index?: number; name: string; detail: string; fullItem?: any; };
 
 const entityLabels: Record<EntityKind, string> = { client: "cliente", service: "serviço", professional: "profissional", product: "produto", automation: "automação", appointment: "agendamento", financial: "lançamento", service_consumables: "consumo" };
 
@@ -343,7 +327,7 @@ function ClientDetailsModal({ client, close }: { client: any; close: () => void 
                     {(data.photos || []).map((p: any) => (
                       
                       <div key={p.id} className="relative aspect-square rounded-md overflow-hidden border border-[#E7EDF3] group">
-                        <img src={p.storage_path} alt="Unhas" className="w-full h-full object-cover" />
+                        <NextImage src={p.storage_path} alt="Unhas" fill className="object-cover" />
                         <button onClick={() => handleDeletePhoto(p.id)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-md">
                           <Trash2 size={12} />
                         </button>
@@ -650,17 +634,8 @@ function ProfessionalModal({ mode, professional, specialtiesList = [], close, sa
   );
 }
 
-export function RowActions({ onView, onEdit, onDelete, deleteLabel = "Excluir" }: { onView: () => void; onEdit: () => void; onDelete: () => void; deleteLabel?: string }) {
-  return <div className="flex justify-end gap-1"><button onClick={onView} className="rounded-md p-2 text-muted hover:bg-primary-light hover:text-primary" title="Visualizar" aria-label="Visualizar"><Eye size={15} /></button><button onClick={onEdit} className="rounded-md p-2 text-muted hover:bg-primary-light hover:text-primary" title="Editar" aria-label="Editar"><Pencil size={15} /></button><button onClick={onDelete} className="rounded-md p-2 text-muted hover:bg-rose-50 hover:text-danger" title={deleteLabel} aria-label={deleteLabel}>{deleteLabel === "Arquivar" ? <Archive size={15} /> : <Trash2 size={15} />}</button></div>;
-}
 
-export function SectionTitle({ title, subtitle, action }: { title: string; subtitle?: string; action?: React.ReactNode }) {
-  return <div className="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-end"><div><h2 className="text-base font-semibold text-ink">{title}</h2>{subtitle && <p className="mt-0.5 text-xs text-muted">{subtitle}</p>}</div>{action}</div>;
-}
 
-export function SmallMetricLink({ label, value, target, go }: { label: string; value: string; target: View; go: (view: View) => void }) {
-  return <button onClick={() => go(target)} className="rounded-md border border-[#E7EDF3] p-3 text-left transition hover:border-primary/40 hover:bg-primary-light/40"><p className="text-[11px] text-muted">{label}</p><p className="mt-1 text-lg font-semibold">{value}</p></button>;
-}
 
 function Header({ view, onMenu }: { view: View; onMenu: () => void }) {
   const configured = isSupabaseConfigured();

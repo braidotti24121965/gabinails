@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Plus, Search, Mail, MessageCircle, Settings, ChevronRight, Activity, CalendarDays, ArrowRight } from "lucide-react";
-import { Badge, SectionTitle, type View, Metric } from "../nail-studio-app";
+import { Badge, SectionTitle, type View, Metric } from "../shared";
 import { getRemindersForTomorrow } from "@/lib/actions/automations";
 import { Check, Calendar, Users, Copy } from "lucide-react";
 

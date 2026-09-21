@@ -1,15 +1,12 @@
 export const dynamic = 'force-dynamic';
 import { OnlineBooking } from "@/components/online-booking";
-import { getProfessionals } from "@/lib/actions/professionals";
-import { getServices } from "@/lib/actions/services";
+import { getPublicBookingData } from "@/lib/actions/public";
 import { CalendarX2 } from "lucide-react";
 
 export default async function AgendarPage() {
-  const professionals = await getProfessionals();
-  const allServices = await getServices();
-  const services = allServices.filter(s => s.active !== false);
+  const { success, professionals, services } = await getPublicBookingData();
   
-  if (services.length === 0 || professionals.length === 0) {
+  if (!success || services.length === 0 || professionals.length === 0) {
     return (
       <div className="min-h-screen bg-[#F0F4F8] flex items-center justify-center p-4">
         <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-lg">

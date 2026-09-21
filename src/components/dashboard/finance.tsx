@@ -1,6 +1,6 @@
 import React from "react";
 import { Plus, TrendingUp, CircleDollarSign, CreditCard, BarChart3, Download } from "lucide-react";
-import { Badge, SectionTitle, RowActions, Metric } from "../nail-studio-app";
+import { Badge, SectionTitle, RowActions, Metric } from "../shared";
 import { money } from "@/lib/demo-data";
 
 export const initialFinancialRows = [{ date: "14/09 09:12", name: "Mariana Costa", type: "Recebimento", method: "PIX", status: "Pago", value: 185 }, { date: "14/09 08:40", name: "Compra de materiais", type: "Despesa", method: "Crédito", status: "Pendente", value: -428 }, { date: "13/09 18:05", name: "Luiza Torres", type: "Sinal", method: "PIX", status: "Pago", value: 30 }];

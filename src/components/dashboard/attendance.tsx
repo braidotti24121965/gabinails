@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Check, Trash2, Plus, X, Sparkles } from "lucide-react";
 import { type Appointment } from "@/lib/demo-data";
-import { SectionTitle, Badge } from "../nail-studio-app";
+import { SectionTitle, Badge } from "../shared";
 import { money } from "@/lib/demo-data";
 
 export function Attendance({ appointment, services, onFinish, onSelect, onStatusChange, onAddExtra, onRemoveItem, allAppointments = [] }: { appointment: Appointment | null; services: any[]; onFinish: () => void; onSelect: (a: Appointment | null) => void; onStatusChange: (status: string) => void; onAddExtra: (service: any) => void; onRemoveItem: (itemId: string) => void; allAppointments: Appointment[] }) { 
@@ -17,7 +17,7 @@ export function Attendance({ appointment, services, onFinish, onSelect, onStatus
           {activeList.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-12 text-center border border-dashed border-[#DBE3EC] rounded-lg bg-[#F7F9FC]">
               <p className="text-muted mb-2">Nenhum atendimento em andamento no momento.</p>
-              <p className="text-sm text-muted">Mude o status de um agendamento na Agenda para "Em atendimento" ou "Cliente chegou".</p>
+              <p className="text-sm text-muted">Mude o status de um agendamento na Agenda para &quot;Em atendimento&quot; ou &quot;Cliente chegou&quot;.</p>
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Plus, Search, ShieldCheck } from "lucide-react";
 import { type ClientItem } from "@/lib/actions/clients";
-import { Badge, RowActions } from "../nail-studio-app";
+import { Badge, RowActions } from "../shared";
 import { money } from "@/lib/demo-data"; // Note: money formatter is used
 
 export function Clients({ data, onNew, onAction, onArchive, onRestore }: { data: ClientItem[]; onNew: () => void; onAction: (mode: "view" | "edit", index: number) => void; onArchive: (index: number) => void; onRestore: (index: number) => void; }) { 
