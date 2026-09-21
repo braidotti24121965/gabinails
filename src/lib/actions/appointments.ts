@@ -193,7 +193,7 @@ export async function updateAppointmentRecord(appointmentId: string, data: {
   const { data: profile } = await supabase.from('profiles').select('organization_id').single();
   if (!profile?.organization_id) return { success: false, error: "Organização não encontrada" };
 
-  const startsAt = new Date(`${data.dateStr}T${data.timeStr}:00`).toISOString();
+  const startsAt = new Date(`${data.dateStr}T${data.timeStr}:00-03:00`).toISOString();
   const endsAt = new Date(new Date(startsAt).getTime() + data.durationMinutes * 60000).toISOString();
 
   // Update appointment
