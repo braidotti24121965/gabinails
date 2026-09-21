@@ -366,7 +366,7 @@ export function OnlineBooking({ professionals = [], services = [] }: { professio
 
               {!isWhitelisted && (
                 <a 
-                  href={`https://wa.me/5511999999999?text=Olá! Fiz o agendamento de ${selectedService.name} para o dia ${selectedDate} às ${selectedTime}. Segue o comprovante do sinal de R$ 30,00:`}
+                  href={`https://wa.me/5511971730783?text=Olá! Fiz o agendamento de ${selectedService.name} para o dia ${selectedDate} às ${selectedTime}. Segue o comprovante do sinal de R$ 30,00:`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="btn-primary mt-5 w-full bg-emerald-600 hover:bg-emerald-700"
