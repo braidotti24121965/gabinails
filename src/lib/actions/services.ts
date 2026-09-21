@@ -1,7 +1,6 @@
 "use server";
 
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import { services as demoServices } from "@/lib/demo-data";
 import { revalidatePath } from "next/cache";
 
 export interface ServiceItem {
@@ -16,12 +15,10 @@ export interface ServiceItem {
 }
 
 export async function getServices(): Promise<ServiceItem[]> {
-  if (!isSupabaseConfigured()) {
-    return demoServices.map((s, i) => ({ ...s, id: "demo-s-" + i }));
-  }
+  if (!isSupabaseConfigured()) return [];
 
   const supabase = await createClient();
-  if (!supabase) return demoServices.map((s, i) => ({ ...s, id: "demo-s-" + i }));
+  if (!supabase) return [];
 
   const { data, error } = await supabase
     .from("services")
@@ -32,8 +29,7 @@ export async function getServices(): Promise<ServiceItem[]> {
   const { data: consumables } = await supabase.from("service_consumables").select("*");
 
   if (error || !data || data.length === 0) {
-    // Return demo if empty
-    return demoServices.map((s, i) => ({ ...s, id: "demo-s-" + i }));
+    return [];
   }
 
   return data.map((item: any) => ({

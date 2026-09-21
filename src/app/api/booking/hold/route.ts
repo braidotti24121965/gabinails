@@ -77,10 +77,7 @@ export async function POST(request: Request) {
     // Executa todo o processo no banco usando a RPC. Ignora os dados de preço/duração enviados pelo navegador.
     const phoneNormalized = clientPhone.replace(/\D/g, "");
     
-    // In demo environments where serviceId is like "demo-1", we bypass RPC because demo services aren't in DB
-    if (serviceId && serviceId.includes("demo-")) {
-       return NextResponse.json({ error: "O ambiente de demonstração não suporta reservas seguras. Por favor cadastre serviços reais no painel." }, { status: 400 });
-    }
+
 
     const { data: result, error: rpcError } = await supabase.rpc('create_booking_transaction', {
       p_org_id: org.id,

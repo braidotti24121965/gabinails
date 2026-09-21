@@ -1,7 +1,6 @@
 "use server";
 
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import { professionals as demoProfessionals } from "@/lib/demo-data";
 
 export interface ProfessionalItem {
   id?: string;
@@ -21,12 +20,10 @@ export interface ProfessionalItem {
 }
 
 export async function getProfessionals(): Promise<ProfessionalItem[]> {
-  if (!isSupabaseConfigured()) {
-    return demoProfessionals;
-  }
+  if (!isSupabaseConfigured()) return [];
 
   const supabase = await createClient();
-  if (!supabase) return demoProfessionals;
+  if (!supabase) return [];
 
   const { data, error } = await supabase
     .from("professionals")
@@ -47,7 +44,7 @@ export async function getProfessionals(): Promise<ProfessionalItem[]> {
   const { data: comms } = await supabase.from('commissions').select('professional_id, amount').eq('status', 'generated');
 
   if (error || !data) {
-    return demoProfessionals;
+    return [];
   }
 
   return data.map((item) => {
@@ -71,9 +68,7 @@ export async function getProfessionals(): Promise<ProfessionalItem[]> {
 }
 
 export async function createProfessionalRecord(data: { name: string; email?: string; phone?: string; specialties: string[]; default_commission: number; notes?: string }) {
-  if (!isSupabaseConfigured()) {
-    return { success: true, mode: "demo", data: { id: "demo-" + Date.now() } };
-  }
+  if (!isSupabaseConfigured()) return { success: false, error: "No connection" };
 
   const supabase = await createClient();
   if (!supabase) return { success: false, error: "Supabase não conectado" };
@@ -103,7 +98,7 @@ export async function createProfessionalRecord(data: { name: string; email?: str
 }
 
 export async function updateProfessionalRecord(id: string, data: { name: string; email?: string; phone?: string; specialties: string[]; default_commission: number; notes?: string }) {
-  if (!isSupabaseConfigured() || id.startsWith("demo-")) return { success: true };
+  if (!isSupabaseConfigured()) return { success: true };
 
   const supabase = await createClient();
   if (!supabase) return { success: false, error: "Supabase não conectado" };
@@ -128,7 +123,7 @@ export async function updateProfessionalRecord(id: string, data: { name: string;
 }
 
 export async function archiveProfessionalRecord(id: string) {
-  if (!isSupabaseConfigured() || id.startsWith("demo-")) return { success: true };
+  if (!isSupabaseConfigured()) return { success: true };
 
   const supabase = await createClient();
   if (!supabase) return { success: false, error: "Supabase não conectado" };
