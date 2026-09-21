@@ -364,6 +364,16 @@ export function OnlineBooking({ professionals = [], services = [] }: { professio
                 <p><b>Confirmação:</b> Notificação enviada para o WhatsApp {clientPhone}</p>
               </div>
 
+              {!isWhitelisted && (
+                <a 
+                  href={`https://wa.me/5511999999999?text=Olá! Fiz o agendamento de ${selectedService.name} para o dia ${selectedDate} às ${selectedTime}. Segue o comprovante do sinal de R$ 30,00:`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-primary mt-5 w-full bg-emerald-600 hover:bg-emerald-700"
+                >
+                  Enviar Comprovante pelo WhatsApp
+                </a>
+              )}
               <button
                 onClick={() => {
                   setStep(1);
@@ -371,9 +381,9 @@ export function OnlineBooking({ professionals = [], services = [] }: { professio
                   setClientPhone("");
                   setSelectedTime("");
                 }}
-                className="btn-primary mt-5"
+                className="btn-secondary mt-3 w-full"
               >
-                Novo agendamento
+                Voltar ao início
               </button>
             </div>
           )}
