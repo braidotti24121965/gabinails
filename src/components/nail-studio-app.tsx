@@ -1,6 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 import NextImage from "next/image";
+import { getSupabasePublicUrl } from "@/lib/utils/image";
 import { View, EntityKind, EntityModalState, Badge, statusTone, Metric, RowActions, SectionTitle, SmallMetricLink } from "./shared";
 import { Professionals } from "./dashboard/professionals";
 import { Attendance } from "./dashboard/attendance";
@@ -327,7 +328,7 @@ function ClientDetailsModal({ client, close }: { client: any; close: () => void 
                     {(data.photos || []).map((p: any) => (
                       
                       <div key={p.id} className="relative aspect-square rounded-md overflow-hidden border border-[#E7EDF3] group">
-                        <NextImage src={p.storage_path} alt="Unhas" fill className="object-cover" />
+                        <NextImage src={getSupabasePublicUrl(p.storage_path)} alt="Unhas" fill className="object-cover" />
                         <button onClick={() => handleDeletePhoto(p.id)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-md">
                           <Trash2 size={12} />
                         </button>
