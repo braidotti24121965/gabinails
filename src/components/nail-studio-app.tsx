@@ -1,5 +1,10 @@
 /* eslint-disable react-hooks/exhaustive-deps, react/no-unescaped-entities, react-hooks/set-state-in-effect */
 "use client";
+import { Professionals } from "./dashboard/professionals";
+import { Attendance } from "./dashboard/attendance";
+import { Finance } from "./dashboard/finance";
+import { Inventory } from "./dashboard/inventory";
+import { Automations } from "./dashboard/automations";
 import { Clients } from "./dashboard/clients";
 import { Services } from "./dashboard/services";
 import { Agenda } from "./dashboard/agenda";
@@ -29,7 +34,7 @@ import { getRemindersForTomorrow } from "@/lib/actions/automations";
 import { createProduct, updateProduct, addStockMovement, getInventory } from "@/lib/actions/inventory";
 import { updateServiceConsumables, getServices, deleteServiceRecord, updateServiceRecord } from "@/lib/actions/services";
 
-type View = "dashboard" | "agenda" | "clients" | "services" | "professionals" | "attendance" | "finance" | "inventory" | "automations" | "online";
+export type View = "dashboard" | "agenda" | "clients" | "services" | "professionals" | "attendance" | "finance" | "inventory" | "automations" | "online";
 
 const nav: { id: View; label: string; icon: typeof Home }[] = [
   { id: "dashboard", label: "Painel", icon: Home }, { id: "agenda", label: "Agenda", icon: CalendarDays },
@@ -60,7 +65,7 @@ export function statusTone(status: AppointmentStatus) {
   return "blue";
 }
 
-function Metric({ label, value, detail, icon: Icon, tone = "primary", onClick }: { label: string; value: string; detail: string; icon: typeof Home; tone?: string; onClick?: () => void }) {
+export function Metric({ label, value, detail, icon: Icon, tone = "primary", onClick }: { label: string; value: string; detail: string; icon: typeof Home; tone?: string; onClick?: () => void }) {
   const content = <><div className="flex items-start justify-between gap-3"><div><p className="text-xs text-muted">{label}</p><p className="mt-1.5 text-2xl font-semibold tracking-tight text-ink">{value}</p></div><div className={`rounded-md p-2 ${tone === "danger" ? "bg-rose-50 text-danger" : tone === "warning" ? "bg-amber-50 text-warning" : "bg-primary-light text-primary"}`}><Icon size={18} strokeWidth={1.7} /></div></div><p className="mt-2 text-[11px] text-muted">{detail}</p></>;
   return onClick ? <button onClick={onClick} className="card min-w-0 text-left transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/25">{content}</button> : <div className="card min-w-0">{content}</div>;
 }
@@ -653,7 +658,7 @@ export function SectionTitle({ title, subtitle, action }: { title: string; subti
   return <div className="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-end"><div><h2 className="text-base font-semibold text-ink">{title}</h2>{subtitle && <p className="mt-0.5 text-xs text-muted">{subtitle}</p>}</div>{action}</div>;
 }
 
-function SmallMetricLink({ label, value, target, go }: { label: string; value: string; target: View; go: (view: View) => void }) {
+export function SmallMetricLink({ label, value, target, go }: { label: string; value: string; target: View; go: (view: View) => void }) {
   return <button onClick={() => go(target)} className="rounded-md border border-[#E7EDF3] p-3 text-left transition hover:border-primary/40 hover:bg-primary-light/40"><p className="text-[11px] text-muted">{label}</p><p className="mt-1 text-lg font-semibold">{value}</p></button>;
 }
 
@@ -691,195 +696,6 @@ function Dashboard({ go, stats, onAttendance, appointments = [], clients = [] }:
 
 
 
-
-
-
-
-function Professionals({ data, onNew, onAction, onDelete }: { data: ProfessionalItem[]; onNew: () => void; onAction: (mode: "view" | "edit", index: number) => void; onDelete: (index: number) => void }) { return <main className="page-content"><div className="mb-5 flex justify-end"><button onClick={onNew} className="btn-primary"><Plus size={16} />Nova profissional</button></div><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{data.map((p, index) => <div className="card" key={p.name}><div className="flex items-center gap-4"><div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-lg font-bold text-primary">{p.initials}</div><div><h3 className="font-semibold">{p.name}</h3><p className="text-xs text-muted">{p.specialty}</p></div></div><div className="mt-5 space-y-3 border-t border-[#E7EDF3] pt-4"><div className="flex justify-between text-xs"><span className="text-muted">Atendimentos hoje</span><span className="font-semibold">{p.today}</span></div><div className="flex justify-between text-xs"><span className="text-muted">Produção mensal</span><span className="font-semibold">{money.format(p.production)}</span></div><div className="space-y-1.5"><div className="flex justify-between text-xs"><span className="text-muted">Ocupação</span><span className="font-semibold">{p.occupation}%</span></div><div className="h-1.5 w-full rounded-full bg-[#E7EDF3]"><div className="h-full rounded-full bg-primary" style={{ width: `${p.occupation}%` }} /></div></div><div className="flex justify-between pt-1 text-xs"><span className="text-muted">Comissão gerada</span><span className="font-semibold">{money.format(p.commission)}</span></div></div><div className="mt-4 border-t border-[#E7EDF3] pt-2"><RowActions onView={() => onAction("view", index)} onEdit={() => onAction("edit", index)} onDelete={() => onDelete(index)} deleteLabel="Arquivar" /></div></div>)}</div></main> }
-
-function Attendance({ appointment, services, onFinish, onSelect, onStatusChange, onAddExtra, onRemoveItem, allAppointments = [] }: { appointment: Appointment | null; services: any[]; onFinish: () => void; onSelect: (a: Appointment | null) => void; onStatusChange: (status: string) => void; onAddExtra: (service: any) => void; onRemoveItem: (itemId: string) => void; allAppointments: Appointment[] }) { 
-    const [addingExtra, setAddingExtra] = useState(false); 
-    if (!appointment) {
-      const activeList = allAppointments.filter(a => a.status === "Em atendimento" || a.status === "Cliente chegou");
-      return (
-        <main className="page-content">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-navy-dark">Atendimentos em andamento</h1>
-            <p className="text-muted">Selecione uma cliente para conduzir o serviço.</p>
-          </div>
-          {activeList.length === 0 ? (
-            <div className="flex flex-col items-center justify-center p-12 text-center border border-dashed border-[#DBE3EC] rounded-lg bg-[#F7F9FC]">
-              <p className="text-muted mb-2">Nenhum atendimento em andamento no momento.</p>
-              <p className="text-sm text-muted">Mude o status de um agendamento na Agenda para "Em atendimento" ou "Cliente chegou".</p>
-            </div>
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {activeList.map(a => (
-                <div key={a.id} onClick={() => onSelect(a)} className="card hover:border-primary hover:shadow-md transition-all cursor-pointer">
-                  <div className="flex justify-between items-start mb-3">
-                    <Badge tone={a.status === "Em atendimento" ? "green" : "blue"}>{a.status}</Badge>
-                    <span className="text-xs font-medium text-muted">{a.time}</span>
-                  </div>
-                  <h3 className="font-semibold text-lg text-navy-dark">{a.client}</h3>
-                  <p className="text-sm text-muted mb-4">{a.service}</p>
-                  <div className="flex justify-between items-center text-sm border-t border-bg pt-3">
-                    <span className="text-muted">{a.professional}</span>
-                    <span className="font-medium text-navy-dark">R$ {a.price.toFixed(2).replace(".", ",")}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </main>
-      );
-    }
-    return <main className="page-content"><button onClick={() => onSelect(null)} className="mb-4 text-sm font-medium text-muted hover:text-primary flex items-center gap-1">← Voltar para a lista</button><div className="mb-5 flex flex-wrap items-center justify-between gap-3"><div>
-            <select 
-              value={appointment.status} 
-              onChange={(e) => onStatusChange(e.target.value)}
-              className="text-sm font-medium bg-primary/10 text-primary border-none rounded-full px-3 py-1 outline-none cursor-pointer hover:bg-primary/20 transition-colors"
-            >
-              <option value="Cliente chegou">Cliente chegou</option>
-              <option value="Em atendimento">Em atendimento</option>
-            </select><p className="mt-2 text-xs text-muted">Horário agendado: {appointment.time}</p></div><button onClick={onFinish} disabled={appointment.status !== "Em atendimento"} className={`btn-primary ${appointment.status !== "Em atendimento" ? "opacity-50 cursor-not-allowed" : ""}`} title={appointment.status !== "Em atendimento" ? "Mude o status para Em atendimento para concluir" : ""}><Check size={16} />Concluir atendimento</button></div><div className="grid gap-5 xl:grid-cols-[1fr_360px]"><section className="card"><SectionTitle title={appointment.client} subtitle={appointment.phone} />
-{appointment.items && appointment.items.map((item: any) => (
-  <div key={item.id} className="mt-2 rounded-md border border-[#E7EDF3] p-4 group">
-    <div className="flex justify-between items-center">
-      <div>
-        <p className="font-medium">{item.name}</p>
-        <p className="text-xs text-muted">{appointment.professional}</p>
-      </div>
-      <div className="flex items-center gap-3">
-        <p className="font-semibold">{money.format(item.price)}</p>
-        <button onClick={() => { if(confirm("Remover este serviço?")) onRemoveItem(item.id); }} className="text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={16} /></button>
-      </div>
-    </div>
-  </div>
-))}
-
-{addingExtra ? (
-  <div className="mt-3 flex gap-2">
-    <select className="field-input flex-1" onChange={(e) => {
-      const svc = services.find((s: any) => s.id === e.target.value);
-      if (svc) {
-        
-        onAddExtra(svc);
-        setAddingExtra(false);
-      }
-    }}>
-      <option value="">Selecione um adicional...</option>
-      {services.map((s: any) => <option key={s.id} value={s.id}>{s.name} (R$ {s.price})</option>)}
-    </select>
-    <button onClick={() => setAddingExtra(false)} className="btn-outline !px-3"><X size={16}/></button>
-  </div>
-) : (
-  <button onClick={() => setAddingExtra(true)} className="btn-ghost mt-3"><Plus size={15} />Adicionar serviço ou adicional</button>
-)}<div className="mt-6"><label className="field-label">Observações do atendimento</label><textarea className="field-input h-24 py-2.5" placeholder="Preferências, intercorrências ou detalhes..." /></div><div className="mt-5 rounded-md border border-dashed border-[#C8D5E3] p-5 text-center"><Sparkles className="mx-auto text-primary" size={20} /><p className="mt-2 text-xs font-medium">Fotos antes e depois</p><p className="text-[11px] text-muted">Anexe imagens ao histórico desta cliente</p><button className="btn-outline mt-3 !min-h-8">Adicionar fotos</button></div></section><aside className="card h-fit"><SectionTitle title="Resumo financeiro" /><div className="space-y-3 text-sm"><div className="flex justify-between"><span className="text-muted">Serviços</span><span>{money.format(appointment.price)}</span></div><div className="flex justify-between border-t border-[#E7EDF3] pt-3 text-base font-semibold"><span>Saldo a receber</span><span>{money.format(appointment.price)}</span></div></div><div className="mt-5 rounded-md bg-bg p-3 text-xs text-muted"><p className="font-medium text-ink">Ao concluir</p><p className="mt-1">Comissão calculada e estoque baixado.</p></div></aside></div></main> }
-
-const initialFinancialRows = [{ date: "14/09 09:12", name: "Mariana Costa", type: "Recebimento", method: "PIX", status: "Pago", value: 185 }, { date: "14/09 08:40", name: "Compra de materiais", type: "Despesa", method: "Crédito", status: "Pendente", value: -428 }, { date: "13/09 18:05", name: "Luiza Torres", type: "Sinal", method: "PIX", status: "Pago", value: 30 }];
-function Finance({ data, stats, onNew, onAction, onReverse }: { data: any[]; stats?: any; onNew: () => void; onAction: (mode: "view" | "edit", index: number) => void; onReverse: (index: number) => void }) { return <main className="page-content space-y-6"><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Metric label="Faturamento mensal" value={stats ? money.format(stats.revenue) : "R$ 0,00"} detail="Mês atual" icon={TrendingUp} /><Metric label="Recebimentos" value={stats ? money.format(stats.revenue) : "R$ 0,00"} detail="Soma de pagamentos" icon={CircleDollarSign} /><Metric label="Despesas" value={stats ? money.format(stats.expenses) : "R$ 0,00"} detail="Contas do mês" icon={CreditCard} tone="warning" /><Metric label="Resultado estimado" value={stats ? money.format(stats.balance) : "R$ 0,00"} detail="Após despesas e comissões" icon={BarChart3} /></div><section className="card"><SectionTitle title="Saúde do negócio" subtitle="Setembro de 2026" action={<button className="btn-outline"><Download size={15} />Exportar</button>} /><div className="grid gap-4 md:grid-cols-3"><div className="rounded-md bg-bg p-4"><p className="text-xs text-muted">Comissões geradas</p><p className="mt-1 text-xl font-semibold">{stats ? money.format(stats.commissions) : "R$ 0,00"}</p><Badge tone="warning">A fechar</Badge></div><div className="rounded-md bg-bg p-4"><p className="text-xs text-muted">Valores pendentes</p><p className="mt-1 text-xl font-semibold">R$ 0,00</p><Badge tone="danger">0 cobranças</Badge></div><div className="rounded-md bg-bg p-4"><p className="text-xs text-muted">Recorrência</p><p className="mt-1 text-xl font-semibold">--%</p><Badge tone="neutral">Mês atual</Badge></div></div></section><section className="card"><SectionTitle title="Movimentos recentes" action={<button onClick={onNew} className="btn-primary"><Plus size={15} />Novo lançamento</button>} /><div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Data</th><th>Cliente/Descrição</th><th>Tipo</th><th>Forma</th><th>Status</th><th>Valor</th><th className="text-right">Ações</th></tr></thead><tbody>{data.map((item, index) => <tr key={`${item.date}-${item.name}-${index}`}><td>{item.date}</td><td><button onClick={() => onAction("view", index)} className="font-medium hover:text-primary">{item.name}</button></td><td>{item.type}</td><td>{item.method}</td><td><Badge tone={item.status === "Pago" ? "success" : item.status === "Estornado" ? "danger" : "warning"}>{item.status}</Badge></td><td className={`font-medium ${item.value >= 0 ? "text-primary" : "text-danger"}`}>{money.format(item.value)}</td><td><RowActions onView={() => onAction("view", index)} onEdit={() => onAction("edit", index)} onDelete={() => onReverse(index)} deleteLabel="Estornar" /></td></tr>)}</tbody></table></div></section></main> }
-
-function Inventory({ data, onNew, onAction, onDelete }: { data: any[]; onNew: () => void; onAction: (mode: "view" | "edit", index: number) => void; onDelete: (index: number) => void }) { 
-    const belowMin = data.filter(i => i.stock < i.minimum).length;
-    const withDeficit = data.filter(i => (i.stock - (i.forecast || 0)) < 0).length;
-    return <main className="page-content"><div className="mb-5 flex flex-wrap justify-between gap-3"><div className="flex gap-2">
-    {belowMin > 0 && <Badge tone="danger">{belowMin} abaixo do mínimo</Badge>}
-    {withDeficit > 0 && <Badge tone="warning">{withDeficit} com déficit previsto</Badge>}
-    </div><button onClick={onNew} className="btn-primary"><Plus size={16} />Novo produto / movimento</button></div><section className="card !p-0 overflow-hidden"><div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Produto</th><th>Saldo atual</th><th>Mínimo / Ideal</th><th>Demanda futura</th><th>Previsão</th><th>Custo unitário</th><th className="text-right">Ações</th></tr></thead><tbody>{data.map((i, index) => { const deficit = i.stock - i.forecast; return <tr key={i.product}><td><button onClick={() => onAction("view", index)} className="font-medium hover:text-primary">{i.product}</button></td><td>{i.stock} {i.unit}</td><td>{i.minimum} / {i.ideal} {i.unit}</td><td>{i.forecast} {i.unit}</td><td>{deficit < 0 ? <Badge tone="danger">Déficit de {Math.abs(deficit)} {i.unit}</Badge> : <Badge tone="success">Suficiente</Badge>}</td><td>{money.format(i.cost)}</td><td><RowActions onView={() => onAction("view", index)} onEdit={() => onAction("edit", index)} onDelete={() => onDelete(index)} /></td></tr>})}</tbody></table></div></section>{withDeficit > 0 && <div className="mt-5 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"><p className="font-medium">Atenção ao estoque</p><p className="mt-1 text-xs">Existem itens que ficarão abaixo do necessário para os próximos agendamentos previstos. Providencie a reposição.</p></div>}</main> }
-
-const initialTemplates = [{ name: "Lembrete 24h", count: "18 agendadas", tone: "success" }, { name: "Sinal pendente", count: "3 aguardando", tone: "warning" }, { name: "Manutenção vencida", count: "7 oportunidades", tone: "danger" }, { name: "Aniversário", count: "2 nesta semana", tone: "primary" }];
-
-function Automations({ go }: { go: (v: View) => void }) {
-  const [reminders, setReminders] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    getRemindersForTomorrow().then(res => {
-      setReminders(res);
-      setLoading(false);
-    });
-  }, []);
-
-  const openWhatsApp = (phone: string, message: string, index: number) => {
-    const cleanPhone = phone.replace(/\D/g, "");
-    let finalPhone = cleanPhone;
-    if (finalPhone.startsWith("55") && finalPhone.length > 11) {
-      finalPhone = finalPhone.substring(2);
-    }
-    const url = `https://wa.me/55${finalPhone}?text=${encodeURIComponent(message)}`;
-    window.open(url, "_blank");
-    
-    // Mark as sent visually
-    setReminders(curr => curr.map((r, i) => i === index ? { ...r, sent: true } : r));
-  };
-
-  return (
-    <main className="page-content">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-navy-dark">Disparos de WhatsApp</h1>
-          <p className="text-muted">Lembretes de confirmação para os próximos agendamentos.</p>
-        </div>
-        <button onClick={() => { setLoading(true); getRemindersForTomorrow().then(res => { setReminders(res); setLoading(false); }) }} className="btn-outline">
-          <Calendar size={16} /> Atualizar fila
-        </button>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-3 mb-6">
-        <Metric label="Lembretes pendentes" value={reminders.filter(r => !r.sent).length.toString()} detail="Próximos horários marcados" icon={MessageCircle} />
-        <Metric label="Já enviados" value={reminders.filter(r => r.sent).length.toString()} detail="Confirmados no WhatsApp Web" icon={Check} />
-        <Metric onClick={() => go("agenda")} label="Agendamentos vazios" value="0" detail="Clientes sem celular" icon={Users} />
-      </div>
-
-      <section className="card">
-        <SectionTitle title="Fila de Mensagens" subtitle="Clique em Enviar para abrir o WhatsApp Web com o texto pronto." />
-        
-        {loading ? (
-          <div className="py-12 flex justify-center"><div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full"></div></div>
-        ) : reminders.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-[#E7EDF3] rounded-lg mt-4">
-            <p className="text-muted mb-2">A fila está vazia.</p>
-            <p className="text-sm text-muted">Não há agendamentos válidos no futuro ou eles já foram confirmados.</p>
-          </div>
-        ) : (
-          <div className="space-y-4 mt-6">
-            {reminders.map((r, i) => (
-              <div key={r.id} className={`p-4 rounded-lg border ${r.sent ? 'border-emerald-200 bg-emerald-50/50' : 'border-[#E7EDF3] bg-surface'}`}>
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <h3 className="font-semibold">{r.clientName}</h3>
-                    <p className="text-xs text-muted">{r.message.includes("amanhã") ? "Amanhã" : "Dia " + r.message.match(/dia (\d{2}\/\d{2})/)?.[1]} às {r.time} · {r.services}</p>
-                  </div>
-                  <Badge tone={r.sent ? "success" : "warning"}>{r.sent ? "Enviado" : "Pendente"}</Badge>
-                </div>
-                
-                <div className="bg-white p-3 rounded border border-[#E7EDF3] text-sm text-ink font-sans relative">
-                  <div className="absolute top-0 right-0 bottom-0 w-1 bg-green-500 rounded-r"></div>
-                  {r.message}
-                </div>
-                
-                <div className="mt-4 flex justify-end gap-2">
-                  <button onClick={() => {
-                    navigator.clipboard.writeText(r.message);
-                    alert("Mensagem copiada!");
-                  }} className="btn-outline py-1.5 px-3 text-xs">
-                    <Copy size={14} /> Copiar texto
-                  </button>
-                  <button 
-                    onClick={() => openWhatsApp(r.phone, r.message, i)}
-                    className="btn-primary bg-green-600 hover:bg-green-700 border-green-600 py-1.5 px-3 text-xs"
-                  >
-                    <MessageCircle size={14} /> {r.sent ? "Reenviar WhatsApp" : "Enviar WhatsApp"}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-    </main>
-  );
-}
 
 
 
@@ -1032,7 +848,8 @@ export function NailStudioApp({ initialClients = demoClients, initialProfessiona
 
   const [clientRows, setClientRows] = useState(() => [...initialClients]); const [serviceRows, setServiceRows] = useState(() => [...initialServices]);
   const [professionalRows, setProfessionalRows] = useState(() => [...initialProfessionals]); const [productRows, setProductRows] = useState<any[]>(initialInventory);
-  const [automationRows, setAutomationRows] = useState(() => [...initialTemplates]); const [specialtyList, setSpecialtyList] = useState(() => [...initialSpecialties]); const [financialRows, setFinancialRows] = useState(() => [...initialFinancials]); const [entityModal, setEntityModal] = useState<EntityModalState | null>(null);
+  const initialTemplates = [{ name: "Lembrete 24h", count: "18 agendadas", tone: "success" }, { name: "Sinal pendente", count: "3 aguardando", tone: "warning" }, { name: "Manutenção vencida", count: "7 oportunidades", tone: "danger" }, { name: "Aniversário", count: "2 nesta semana", tone: "primary" }];
+const [automationRows, setAutomationRows] = useState(() => [...initialTemplates]); const [specialtyList, setSpecialtyList] = useState(() => [...initialSpecialties]); const [financialRows, setFinancialRows] = useState(() => [...initialFinancials]); const [entityModal, setEntityModal] = useState<EntityModalState | null>(null);
   const [closingCommissionFor, setClosingCommissionFor] = useState<any>(null);
   const [viewingClient, setViewingClient] = useState<any>(null);
   const notify = (message: string) => { setToast(message); window.setTimeout(() => setToast(""), 3200); };
