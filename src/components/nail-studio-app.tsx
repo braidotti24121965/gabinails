@@ -1162,6 +1162,7 @@ export function NailStudioApp({ initialClients = demoClients, initialProfessiona
         alert(res.error);
       }
     } else {
+      if (typeof entityModal.index !== "number") return;
       const itemToUpdate = serviceRows[entityModal.index];
       if (itemToUpdate && itemToUpdate.id && !itemToUpdate.id.startsWith("demo-")) {
         const res = await updateServiceRecord(itemToUpdate.id, data);
