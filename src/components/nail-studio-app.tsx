@@ -23,7 +23,7 @@ import { getClientDetails, uploadClientPhoto, deleteClientPhoto, getClients } fr
 import { OnlineBooking } from "./online-booking";
 import { getRemindersForTomorrow } from "@/lib/actions/automations";
 import { createProduct, updateProduct, addStockMovement, getInventory } from "@/lib/actions/inventory";
-import { updateServiceConsumables, getServices, deleteServiceRecord } from "@/lib/actions/services";
+import { updateServiceConsumables, getServices, deleteServiceRecord, updateServiceRecord } from "@/lib/actions/services";
 
 type View = "dashboard" | "agenda" | "clients" | "services" | "professionals" | "attendance" | "finance" | "inventory" | "automations" | "online";
 
@@ -1162,9 +1162,13 @@ export function NailStudioApp({ initialClients = demoClients, initialProfessiona
         alert(res.error);
       }
     } else {
-      // optimistic edit (no backend update yet, just for UI)
+      const itemToUpdate = serviceRows[entityModal.index];
+      if (itemToUpdate && itemToUpdate.id && !itemToUpdate.id.startsWith("demo-")) {
+        const res = await updateServiceRecord(itemToUpdate.id, data);
+        if (!res.success) { alert(res.error); return; }
+      }
       setServiceRows(current => current.map((item, i) => i === entityModal.index ? { ...item, ...data } : item));
-      notify("Serviço salvo com sucesso (local).");
+      notify("Serviço atualizado com sucesso.");
     }
     setEntityModal(null);
   };

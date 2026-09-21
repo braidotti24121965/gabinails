@@ -122,3 +122,18 @@ export async function deleteServiceRecord(serviceId: string) {
   revalidatePath("/");
   return { success: true };
 }
+
+export async function updateServiceRecord(serviceId: string, service: Omit<ServiceItem, 'id' | 'active'>) {
+  const supabase = await createClient();
+  if (!supabase) return { success: false };
+  const { error } = await supabase.from('services').update({
+    name: service.name,
+    category: service.category,
+    duration_minutes: service.duration,
+    price: service.price,
+    maintenance_days: service.maintenance
+  }).eq('id', serviceId);
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/");
+  return { success: true };
+}
