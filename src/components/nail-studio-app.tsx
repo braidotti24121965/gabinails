@@ -458,6 +458,7 @@ function ClientModal({ mode, client, close, save }: { mode: "create" | "edit" | 
   const [name, setName] = useState(client?.name || "");
   const [phone, setPhone] = useState(client?.phone || "");
   const [birthDate, setBirthDate] = useState(client?.birthDate || "");
+  const [email, setEmail] = useState(client?.email || "");
   const [cep, setCep] = useState(client?.cep || "");
   const [street, setStreet] = useState(client?.street || "");
   const [number, setNumber] = useState(client?.number || "");
@@ -505,13 +506,14 @@ function ClientModal({ mode, client, close, save }: { mode: "create" | "edit" | 
   <form onSubmit={async (e) => {
     e.preventDefault();
     setSubmitting(true);
-    await save({ name, phone, birthDate, cep, street, number, complement, neighborhood, city, state, notes });
+    await save({ name, phone, birthDate, cep, street, number, complement, neighborhood, city, state, notes, email });
     setSubmitting(false);
   }} className="space-y-4">
     <div className="grid gap-4 sm:grid-cols-2">
       <div><label className="field-label">Nome Completo</label><input className="field-input" value={name} onChange={e => setName(e.target.value)} required disabled={readOnly} /></div>
       <div><label className="field-label">WhatsApp</label><input className="field-input" value={phone} onChange={e => handlePhone(e.target.value)} placeholder="(11) 99999-9999" maxLength={15} required disabled={readOnly} /></div>
-      <div><label className="field-label">Data de Nascimento</label><input type="date" className="field-input" value={birthDate} onChange={e => setBirthDate(e.target.value)} required disabled={readOnly} /></div>
+      <div><label className="field-label">Data de Nascimento</label><input type="date" className="field-input" value={birthDate} onChange={e => setBirthDate(e.target.value)} disabled={readOnly} /></div>
+      <div><label className="field-label">E-mail</label><input type="email" className="field-input" value={email} onChange={e => setEmail(e.target.value)} placeholder="cliente@email.com" disabled={readOnly} /></div>
       <div className="sm:col-span-2 border-t border-[#E7EDF3] pt-4 mt-2">
         <h3 className="text-sm font-semibold mb-3">Endereço</h3>
         <div className="grid gap-4 sm:grid-cols-6">
