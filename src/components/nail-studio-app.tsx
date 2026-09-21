@@ -23,7 +23,7 @@ import { getClientDetails, uploadClientPhoto, deleteClientPhoto, getClients } fr
 import { OnlineBooking } from "./online-booking";
 import { getRemindersForTomorrow } from "@/lib/actions/automations";
 import { createProduct, updateProduct, addStockMovement, getInventory } from "@/lib/actions/inventory";
-import { updateServiceConsumables, getServices } from "@/lib/actions/services";
+import { updateServiceConsumables, getServices, deleteServiceRecord } from "@/lib/actions/services";
 
 type View = "dashboard" | "agenda" | "clients" | "services" | "professionals" | "attendance" | "finance" | "inventory" | "automations" | "online";
 
