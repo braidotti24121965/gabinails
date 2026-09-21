@@ -1,4 +1,6 @@
 "use server";
+import { uploadClientPhotoService, deleteClientPhotoService, generateSignedUrlsService } from "../services/photos.service.ts";
+import { revalidatePath } from "next/cache";
 
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { clients as demoClients } from "@/lib/demo-data";
@@ -235,21 +237,46 @@ export async function archiveClientRecord(id: string) {
 }
 
 
-export async function getClientDetails(clientId: string) {
+
+export type ClientHistoryItem = {
+  id: string;
+  date: string;
+  time: string;
+  status: string;
+  professional: string;
+  services: string;
+  paid: number;
+};
+
+export type ClientPhotoItem = {
+  id: string;
+  kind: string;
+  created_at: string;
+  url: string | null;
+};
+
+export type ClientDetailsResponse = {
+  client: { id: string; name: string; phone: string; notes: string | null; created_at: string };
+  stats: { visits: number; spent: number; memberSince: string };
+  history: ClientHistoryItem[];
+  photos: ClientPhotoItem[];
+} | null;
+
+export async function getClientDetails(clientId: string): Promise<ClientDetailsResponse> {
   if (clientId.startsWith("demo-")) {
+    const demoClient = demoClients.find(c => c.id === clientId);
+    if (!demoClient) return null;
     return {
-      client: { id: clientId, name: demoClients.find(c => c.id === clientId)?.name || "Cliente Demo", phone: demoClients.find(c => c.id === clientId)?.phone || "", notes: "", created_at: new Date().toISOString() },
-      stats: { visits: demoClients.find(c => c.id === clientId)?.visits || 0, spent: demoClients.find(c => c.id === clientId)?.spent || 0, memberSince: "14/09/2026" },
+      client: { id: clientId, name: demoClient.name, phone: demoClient.phone, notes: "", created_at: new Date().toISOString() },
+      stats: { visits: demoClient.visits, spent: demoClient.spent, memberSince: "14/09/2026" },
       history: [],
       photos: []
     };
   }
 
   const supabase = await createClient();
-
   if (!supabase) return null;
 
-  // 1. Get Client Info & Stats
   const { data: client } = await supabase
     .from("clients")
     .select("id, name, phone, notes, created_at")
@@ -258,7 +285,6 @@ export async function getClientDetails(clientId: string) {
 
   if (!client) return null;
 
-  // 2. Get Appointments History
   const { data: appts } = await supabase
     .from("appointments")
     .select(`
@@ -273,7 +299,7 @@ export async function getClientDetails(clientId: string) {
     .order("starts_at", { ascending: false });
 
   let totalSpent = 0;
-  const history = (appts || []).map((a: any) => {
+  const history: ClientHistoryItem[] = (appts || []).map((a: any) => {
     const paid = a.payments?.reduce((sum: number, p: any) => sum + Number(p.amount), 0) || 0;
     totalSpent += paid;
     return {
@@ -287,12 +313,16 @@ export async function getClientDetails(clientId: string) {
     };
   });
 
-  // 3. Get Photos
-  const { data: photos } = await supabase
+  const { data: dbPhotos } = await supabase
     .from("client_photos")
     .select("id, kind, storage_path, created_at")
     .eq("client_id", clientId)
     .order("created_at", { ascending: false });
+
+  let photos: ClientPhotoItem[] = [];
+  if (dbPhotos && dbPhotos.length > 0) {
+    photos = await generateSignedUrlsService(supabase, dbPhotos);
+  }
 
   return {
     client,
@@ -302,43 +332,38 @@ export async function getClientDetails(clientId: string) {
       memberSince: new Date(client.created_at).toLocaleDateString("pt-BR")
     },
     history,
-    photos: photos || []
+    photos
   };
 }
 
-
-export async function uploadClientPhoto(clientId: string, base64Image: string, kind: 'before' | 'after' | 'other') {
-  if (clientId.startsWith("demo-")) {
-    return { success: false, error: "Não é possível salvar fotos em clientes de demonstração. Por favor, cadastre uma cliente real e conecte o banco de dados." };
-  }
+export async function uploadClientPhoto(formData: FormData) {
+  const file = formData.get('file') as File;
+  const clientId = formData.get('clientId') as string;
+  const kind = formData.get('kind');
 
   const supabase = await createClient();
+  if (!supabase) return { success: false, error: "Serviço indisponível." };
 
-  if (!supabase) return { success: false };
-
-  const { data: profile } = await supabase.from('profiles').select('organization_id').single();
-  if (!profile?.organization_id) return { success: false };
-
-  // For MVP, since we don't have a storage bucket set up via migrations, 
-  // we'll just store the base64 string directly in the storage_path column!
-  const { error } = await supabase
-    .from('client_photos')
-    .insert([{
-      organization_id: profile.organization_id,
-      client_id: clientId,
-      kind,
-      storage_path: base64Image
-    }]);
-
-  if (error) return { success: false, error: error.message };
-  return { success: true };
+  const res = await uploadClientPhotoService({ supabase, file, clientId, kind });
+  if (res.success) {
+    revalidatePath("/");
+  }
+  return res;
 }
 
 export async function deleteClientPhoto(photoId: string) {
   if (photoId.startsWith("mock-")) return { success: true };
+
   const supabase = await createClient();
-  if (!supabase) return { success: false, error: "Supabase não conectado" };
-  const { error } = await supabase.from('client_photos').delete().eq('id', photoId);
-  if (error) return { success: false, error: error.message };
-  return { success: true };
+  if (!supabase) {
+    return { success: false, error: "Serviço indisponível." };
+  }
+
+  const result = await deleteClientPhotoService(supabase, photoId);
+
+  if (result.success) {
+    revalidatePath("/");
+  }
+
+  return result;
 }

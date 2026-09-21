@@ -1,7 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 import NextImage from "next/image";
-import { getSupabasePublicUrl } from "@/lib/utils/image";
 import { View, EntityKind, EntityModalState, Badge, statusTone, Metric, RowActions, SectionTitle, SmallMetricLink } from "./shared";
 import { Professionals } from "./dashboard/professionals";
 import { Attendance } from "./dashboard/attendance";
@@ -64,13 +63,13 @@ const entityLabels: Record<EntityKind, string> = { client: "cliente", service: "
 function AppointmentModal({ mode, appointment, clients, professionals, services, close, save }: { mode: "view" | "edit"; appointment: any; clients: any[]; professionals: any[]; services: any[]; close: () => void; save: (id: string, rawData: any) => void }) {
   const [clientId, setClientId] = useState(appointment?.client_id || clients.find(c => c.name === appointment?.client)?.id || clients[0]?.id || "");
   const [profId, setProfId] = useState(appointment?.professional_id || professionals.find(p => p.name === appointment?.professional)?.id || professionals[0]?.id || "");
-  
+
   // Try to parse services from the joined string or fallback to empty array (not perfect, but works for MVP since we don't have the full raw item easily available without refetching)
   const initialServiceNames = appointment?.service ? appointment.service.split(" + ") : [];
   const initialServiceIds = initialServiceNames.map((name: string) => services.find((s: any) => s.name === name)?.id).filter(Boolean);
-  
+
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>(initialServiceIds.length > 0 ? initialServiceIds : [services[0]?.id || ""]);
-  
+
   // Date parsing
   // the 'time' is just HH:MM, date is not stored in demo Appointment struct cleanly, we'll just use today if unknown.
   // Actually, we need to extract date from the real db starts_at if we had it. For now, use today.
@@ -128,10 +127,10 @@ function AppointmentModal({ mode, appointment, clients, professionals, services,
 function ServiceConsumablesModal({ service, inventory, close, save }: { service: any; inventory: any[]; close: () => void; save: (consumables: any[]) => Promise<void> }) {
   const [items, setItems] = useState<any[]>(service.consumables || []);
   const [adding, setAdding] = useState(false); const [isSaving, setIsSaving] = useState(false);
-  
+
   return <div className="fixed inset-0 z-[60] flex items-center justify-center p-4"><button onClick={close} className="absolute inset-0 bg-navy-dark/40" /><div className="relative w-full max-w-lg rounded-xl bg-white p-5 shadow-2xl sm:p-7"><div className="mb-6 flex items-start justify-between"><div><Badge tone="primary">Consumo Automático</Badge><h2 className="mt-2 text-xl font-bold">{service.name}</h2></div><button onClick={close} className="rounded-md p-1.5 text-muted hover:bg-bg hover:text-ink"><X size={20} /></button></div>
   <p className="text-sm text-muted mb-4">Escolha os produtos que devem ser baixados automaticamente do estoque quando este serviço for concluído.</p>
-  
+
   <div className="space-y-3 mb-4">
     {items.map((it, idx) => {
       const prod = inventory.find(p => p.id === it.product_id);
@@ -197,14 +196,14 @@ function ClientDetailsModal({ client, close }: { client: any; close: () => void 
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (client?.id) {
       getClientDetails(client.id).then(res => {
-        if (!res) { setData(null); 
-      
+        if (!res) { setData(null);
+
       setLoading(false); return; }
         setData(res);
         setLoading(false);
@@ -212,10 +211,10 @@ function ClientDetailsModal({ client, close }: { client: any; close: () => void 
     } else {
       setLoading(false);
     }
-   
+
   }, [client]);
 
-  
+
   const handleDeletePhoto = async (photoId: string) => {
     if (!confirm("Tem certeza que deseja apagar esta foto?")) return;
     if (photoId.startsWith("mock-")) {
@@ -226,37 +225,52 @@ function ClientDetailsModal({ client, close }: { client: any; close: () => void 
     if (res.success) {
       setData((curr: any) => ({ ...curr, photos: curr.photos.filter((p: any) => p.id !== photoId) }));
     } else {
-      alert("Erro ao excluir foto: " + res.error);
+      alert("Erro ao excluir foto: " + ("error" in res ? res.error : "Erro desconhecido"));
     }
   };
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !client?.id) return;
-    
+
     setUploading(true);
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const base64 = reader.result as string;
+
+    try {
       if (client.id.startsWith("demo-")) {
-        setData((curr: any) => ({
-          ...curr,
-          photos: [{ id: "mock-" + Date.now(), kind: "other", storage_path: base64, created_at: new Date().toISOString() }, ...(curr?.photos || [])]
-        }));
-        setUploading(false);
+        const reader = new FileReader();
+        await new Promise(resolve => {
+          reader.onloadend = () => {
+            const base64 = reader.result as string;
+            setData((curr: any) => ({
+              ...curr,
+              photos: [{ id: "mock-" + Date.now(), kind: "other", url: base64, storage_path: base64, created_at: new Date().toISOString() }, ...(curr?.photos || [])]
+            }));
+            resolve(true);
+          };
+          reader.readAsDataURL(file);
+        });
         return;
       }
-      const res = await uploadClientPhoto(client.id, base64, 'other');
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('clientId', client.id);
+      formData.append('kind', 'other');
+
+      const res = await uploadClientPhoto(formData);
       if (res.success) {
-        // Refresh data
         const fresh = await getClientDetails(client.id);
         setData(fresh);
       } else {
-        alert("Erro ao salvar foto: " + res.error);
+        alert("Erro ao salvar foto: " + ("error" in res ? res.error : "Erro desconhecido"));
       }
+    } catch (err) {
+      console.error(err);
+      alert("Ocorreu um erro inesperado ao enviar a foto.");
+    } finally {
       setUploading(false);
-    };
-    reader.readAsDataURL(file);
+      e.target.value = '';
+    }
   };
 
   return (
@@ -271,14 +285,14 @@ function ClientDetailsModal({ client, close }: { client: any; close: () => void 
           </div>
           <button onClick={close} className="rounded-md p-1.5 text-muted hover:bg-bg hover:text-ink"><X size={20} /></button>
         </div>
-        
+
         {loading ? (
           <div className="py-12 flex justify-center"><div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full"></div></div>
         ) : !data ? (
           <div className="py-12 text-center text-muted">Cliente não encontrada no banco de dados.</div>
         ) : (
           <div className="flex-1 overflow-y-auto space-y-6 pr-2">
-            
+
             <div className="grid gap-4 sm:grid-cols-3">
               <Metric label="Visitas totais" value={(data?.stats?.visits || 0).toString()} detail="Soma de atendimentos concluídos" icon={Calendar} />
               <Metric label="Total investido" value={money.format(data?.stats?.spent || 0)} detail="Soma de recebimentos da cliente" icon={CircleDollarSign} />
@@ -313,12 +327,12 @@ function ClientDetailsModal({ client, close }: { client: any; close: () => void 
               <section className="card p-5 flex flex-col">
                 <div className="flex justify-between items-center mb-4">
                   <SectionTitle title="Galeria Antes & Depois" />
-                  <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handlePhotoUpload} />
+                  <input type="file" accept=".jpg,.jpeg,.png,.webp" className="hidden" ref={fileInputRef} onChange={handlePhotoUpload} />
                   <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="btn-primary text-xs py-1.5 px-3">
                     <Plus size={14} /> {uploading ? "Enviando..." : "Adicionar foto"}
                   </button>
                 </div>
-                
+
                 {!data.photos || data.photos.length === 0 ? (
                   <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-[#E7EDF3] rounded-lg p-6 bg-bg/50">
                     <p className="text-sm text-muted text-center">Nenhuma foto registrada para esta cliente.</p>
@@ -326,9 +340,13 @@ function ClientDetailsModal({ client, close }: { client: any; close: () => void 
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {(data.photos || []).map((p: any) => (
-                      
+
                       <div key={p.id} className="relative aspect-square rounded-md overflow-hidden border border-[#E7EDF3] group">
-                        <NextImage src={getSupabasePublicUrl(p.storage_path)} alt="Unhas" fill className="object-cover" />
+                        {p.url ? (
+    <NextImage src={p.url} alt="Unhas" fill className="object-cover" unoptimized={p.url.startsWith("data:image/")} />
+  ) : (
+    <div className="flex items-center justify-center w-full h-full bg-[#F5F8FA] text-[#869AB8] text-xs">Sem foto</div>
+  )}
                         <button onClick={() => handleDeletePhoto(p.id)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-md">
                           <Trash2 size={12} />
                         </button>
@@ -364,21 +382,21 @@ function ProfessionalCommissionsModal({ professional, close }: { professional: a
     } else {
       setLoading(false);
     }
-   
+
   }, [professional]);
 
   const handlePay = async () => {
     if (!professional?.id) return;
     const pendingIds = data.commissions.filter(c => c.status === 'generated').map(c => c.id);
     if (pendingIds.length === 0) return;
-    
+
     setPaying(true);
     const res = await payCommissions(professional.id, pendingIds, data.stats.pending);
     setPaying(false);
     if (res.success) {
       window.location.reload();
     } else {
-      alert("Erro ao pagar comissões: " + res.error);
+      alert("Erro ao pagar comissões: " + ("error" in res ? res.error : "Erro desconhecido"));
     }
   };
 
@@ -393,7 +411,7 @@ function ProfessionalCommissionsModal({ professional, close }: { professional: a
           </div>
           <button onClick={close} className="rounded-md p-1.5 text-muted hover:bg-bg hover:text-ink"><X size={20} /></button>
         </div>
-        
+
         {loading ? (
           <div className="py-12 flex justify-center"><div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full"></div></div>
         ) : (
@@ -408,7 +426,7 @@ function ProfessionalCommissionsModal({ professional, close }: { professional: a
                 <p className="text-2xl font-bold text-green-900">{money.format(data.stats.paid)}</p>
               </div>
             </div>
-            
+
             <div className="overflow-y-auto flex-1 border rounded-lg border-[#E7EDF3]">
               <table className="data-table">
                 <thead className="sticky top-0 bg-white">
@@ -435,12 +453,12 @@ function ProfessionalCommissionsModal({ professional, close }: { professional: a
             </div>
           </>
         )}
-        
+
         <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-[#E7EDF3]">
           <button onClick={close} className="btn-outline">Fechar</button>
-          <button 
-            onClick={handlePay} 
-            disabled={paying || data.stats.pending <= 0 || loading} 
+          <button
+            onClick={handlePay}
+            disabled={paying || data.stats.pending <= 0 || loading}
             className="btn-primary disabled:opacity-50"
           >
             <Check size={16} />{paying ? "Processando..." : "Fechar e Pagar Pendentes"}
@@ -470,7 +488,7 @@ function ClientModal({ mode, client, close, save }: { mode: "create" | "edit" | 
 
   const readOnly = mode === "view";
 
-  
+
   const handlePhone = (v: string) => {
     let num = v.replace(/\D/g, "");
     if (num.length > 11) num = num.slice(0, 11);
@@ -478,7 +496,7 @@ function ClientModal({ mode, client, close, save }: { mode: "create" | "edit" | 
     if (num.length > 10) num = `${num.slice(0, 10)}-${num.slice(10)}`;
     setPhone(num);
   };
-  
+
   const handleCep = async (v: string) => {
 
     setCep(v);
@@ -535,7 +553,7 @@ function ClientModal({ mode, client, close, save }: { mode: "create" | "edit" | 
 function EntityModal({ state, close, save }: { state: EntityModalState; close: () => void; save: (name: string, detail: string) => void }) {
   const [name, setName] = useState(state.name); const [detail, setDetail] = useState(state.detail); const readOnly = state.mode === "view";
   const detailLabel = state.kind === "client" ? "WhatsApp" : state.kind === "service" || state.kind === "financial" ? "Valor" : state.kind === "professional" ? "Especialidade" : state.kind === "product" ? "Estoque atual" : state.kind === "automation" ? "Canal" : "Horário";
-  
+
 
 
   return <div className="fixed inset-0 z-[60] flex items-center justify-center p-4"><button onClick={close} className="absolute inset-0 bg-navy-dark/40" /><div className="relative w-full max-w-lg rounded-xl bg-white p-5 shadow-2xl sm:p-7"><div className="mb-6 flex items-start justify-between"><div><Badge tone="primary">{state.mode === "create" ? "Novo cadastro" : state.mode === "view" ? "Detalhes" : "Edição"}</Badge><h2 className="mt-2 text-xl font-bold">{state.name || "Novo registro"}</h2></div><button onClick={close} className="rounded-md p-1.5 text-muted hover:bg-bg hover:text-ink"><X size={20} /></button></div><div className="space-y-4"><div><label className="field-label">Nome</label><input className="field-input" value={name} onChange={e => setName(e.target.value)} disabled={readOnly} /></div><div><label className="field-label">{detailLabel}</label><input className="field-input" value={detail} onChange={e => setDetail(e.target.value)} disabled={readOnly} /></div><div><label className="field-label">Observações</label><textarea className="field-input h-24" placeholder="Informações adicionais do cadastro" disabled={readOnly} /></div></div><div className="mt-6 flex justify-end gap-3"><button onClick={close} className="btn-outline">Cancelar</button>{!readOnly && <button onClick={() => save(name, detail)} className="btn-primary"><Check size={16} />Salvar alterações</button>}</div></div></div>;
@@ -653,19 +671,19 @@ function Dashboard({ go, stats, onAttendance, appointments = [], clients = [] }:
   const activeTodayAppointments = todayAppointments.filter(a => a.status !== "Concluído" && a.status !== "Cancelado");
   const todayRevenue = todayAppointments.filter(a => a.status === "Concluído").reduce((acc, a) => acc + (a.price || 0), 0);
   const todayReceived = todayAppointments.reduce((acc, a) => acc + (a.paid || 0), 0);
-  
+
   // Calculate dynamic metrics
   const completedThisMonth = appointments.filter(a => a.status === "Concluído" && a.price && a.price > 0);
   const averageTicket = completedThisMonth.length > 0 ? (completedThisMonth.reduce((acc, a) => acc + (a.price || 0), 0) / completedThisMonth.length) : 0;
-  
+
   // New clients (visits === 1) or no visits yet but registered
   const newClientsCount = clients.filter(c => c.visits <= 1).length;
-  
+
   // Retention (visits > 1)
   const returningClients = clients.filter(c => c.visits > 1).length;
   const totalActiveClients = clients.filter(c => c.status !== "Inativa").length;
   const retentionRate = totalActiveClients > 0 ? Math.round((returningClients / totalActiveClients) * 100) : 0;
-  
+
   // Occupation should not count cancelled appointments as they free up the slot
   const occupiedToday = todayAppointments.filter(a => a.status !== "Cancelado").length;
   const occupation = Math.min(100, Math.round((occupiedToday / 15) * 100));
@@ -766,7 +784,7 @@ function ServiceModal({ mode, service, close, save }: { mode: "create" | "view" 
           </div>
           <button onClick={close} className="rounded-md p-1.5 text-muted hover:bg-bg hover:text-ink"><X size={20} /></button>
         </div>
-        
+
         <form onSubmit={e => {
           e.preventDefault();
           save(formData);
@@ -805,8 +823,8 @@ function ServiceModal({ mode, service, close, save }: { mode: "create" | "view" 
   );
 }
 
-function FinishModal({ appointment, close, done }: { appointment: Appointment; close: () => void; done: (method: string, val: number) => void }) { 
-    const [method, setMethod] = useState("PIX"); 
+function FinishModal({ appointment, close, done }: { appointment: Appointment; close: () => void; done: (method: string, val: number) => void }) {
+    const [method, setMethod] = useState("PIX");
     const [submitting, setSubmitting] = useState(false);
     return <div className="fixed inset-0 z-[70] flex items-end justify-center bg-navy-dark/45 sm:items-center sm:p-4"><div className="w-full max-w-lg rounded-t-lg bg-white p-5 sm:rounded-lg"><div className="flex justify-between"><div><h2 className="text-lg font-semibold">Concluir atendimento</h2><p className="text-xs text-muted">Revise o recebimento de {appointment.client}.</p></div><button onClick={close}><X size={18} /></button></div><div className="mt-5 rounded-md bg-bg p-4"><div className="flex justify-between"><span>Total do atendimento</span><b>{money.format(appointment.price)}</b></div><div className="mt-3 flex justify-between border-t border-[#DBE3EC] pt-3 text-base"><b>A receber</b><b>{money.format(appointment.price)}</b></div></div><label className="mt-4 block"><span className="field-label">Forma de pagamento</span><select value={method} onChange={e => setMethod(e.target.value)} className="field-input"><option>PIX</option><option>Dinheiro</option><option>Débito</option><option>Crédito</option></select></label><div className="mt-4 grid grid-cols-2 gap-2 text-xs"><div className="rounded-md border border-[#DBE3EC] p-3"><p className="text-muted">Comissão gerada</p><b>{money.format(appointment.price * 0.3)}</b></div><div className="rounded-md border border-[#DBE3EC] p-3"><p className="text-muted">Status do sistema</p><b>Caixa aberto</b></div></div><button disabled={submitting} onClick={async () => { setSubmitting(true); await done(method, appointment.price); }} className="btn-primary mt-5 w-full"><Check size={16} />{submitting ? "Processando..." : "Confirmar e concluir"}</button></div></div> }
 
@@ -843,7 +861,7 @@ const [automationRows, setAutomationRows] = useState(() => [...initialTemplates]
     if (kind === "appointment") { const item = rows[index]; setEntityModal({ kind, mode, index, name: item.client, detail: item.time, fullItem: item }); }
     if (kind === "financial") { const item = financialRows[index]; setEntityModal({ kind, mode, index, name: item.name, detail: money.format(Math.abs(item.value)) }); }
   };
-  
+
   const saveClient = async (data: any) => {
     if (!entityModal) return;
     const creating = entityModal.mode === "create";
@@ -854,7 +872,7 @@ const [automationRows, setAutomationRows] = useState(() => [...initialTemplates]
         const fresh = await getClients();
         setClientRows(fresh);
       } else {
-        alert("Erro ao salvar cliente: " + res.error);
+        alert("Erro ao salvar cliente: " + ("error" in res ? res.error : "Erro desconhecido"));
         return;
       }
     } else if (entityModal.index !== undefined) {
@@ -868,8 +886,8 @@ const [automationRows, setAutomationRows] = useState(() => [...initialTemplates]
   const saveEntity = async (name: string, detail: string) => {
 
     if (!entityModal) return; const { kind, mode, index } = entityModal; const creating = mode === "create";
-    
-    if (kind === "service") { 
+
+    if (kind === "service") {
     if (creating) {
       const res = await createServiceRecord({ name, category: "Geral", duration: parseInt(detail) || 60, price: 100, maintenance: 0 });
       if (res.success) setServiceRows(current => [...current, { id: res.data?.id || "tmp", name, category: "Geral", duration: parseInt(detail) || 60, price: 100, maintenance: 0, active: true }]);
@@ -896,14 +914,14 @@ const [automationRows, setAutomationRows] = useState(() => [...initialTemplates]
         setServiceRows(current => [...current, { ...data, id: res.data?.id || "tmp", active: true }]);
         notify("Serviço salvo com sucesso.");
       } else {
-        alert(res.error);
+        alert(("error" in res ? res.error : "Erro desconhecido"));
       }
     } else {
       if (typeof entityModal.index !== "number") return;
       const itemToUpdate = serviceRows[entityModal.index];
       if (itemToUpdate && itemToUpdate.id && !itemToUpdate.id.startsWith("demo-")) {
         const res = await updateServiceRecord(itemToUpdate.id, data);
-        if (!res.success) { alert(res.error); return; }
+        if (!res.success) { alert(("error" in res ? res.error : "Erro desconhecido")); return; }
       }
       setServiceRows(current => current.map((item, i) => i === entityModal.index ? { ...item, ...data } : item));
       notify("Serviço atualizado com sucesso.");
@@ -914,7 +932,7 @@ const [automationRows, setAutomationRows] = useState(() => [...initialTemplates]
     if (!entityModal) return;
     const { mode, index } = entityModal;
     const creating = mode === "create";
-    
+
     const dataToSave = { ...formData, specialty: formData.specialties.join(", "), specialties: formData.specialties };
 
     if (creating) {
@@ -945,7 +963,7 @@ const [automationRows, setAutomationRows] = useState(() => [...initialTemplates]
         notes: formData.notes
       } : p));
     }
-    
+
     setEntityModal(null);
     notify(creating ? "Profissional criada com sucesso." : "Alterações salvas com sucesso.");
   };
@@ -973,20 +991,20 @@ const [automationRows, setAutomationRows] = useState(() => [...initialTemplates]
     if (dbStatus) {
       setRows(current => current.map(item => item.id === a.id ? { ...item, status: statusUI as any } : item));
       updateAppointmentStatus(a.id, dbStatus); // Don't block UI waiting for this
-      
+
       if (statusUI === "Em atendimento" || statusUI === "Cliente chegou") {
         setActiveAppointment(a);
         setView("attendance");
       }
     }
   }}
-  onCancel={(index, id) => confirmAction("Cancelar este agendamento? O histórico será preservado.", () => { cancelAppointmentRecord(id).then(res => { if(res.success) { setRows(current => current.map((item, i) => i === index ? { ...item, status: "Cancelado" } : item)); notify("Agendamento cancelado e horário liberado."); } else alert(res.error); }) })} />;
+  onCancel={(index, id) => confirmAction("Cancelar este agendamento? O histórico será preservado.", () => { cancelAppointmentRecord(id).then(res => { if(res.success) { setRows(current => current.map((item, i) => i === index ? { ...item, status: "Cancelado" } : item)); notify("Agendamento cancelado e horário liberado."); } else alert(("error" in res ? res.error : "Erro desconhecido")); }) })} />;
     if (view === "clients") return <Clients data={clientRows} onNew={() => openEntity("client", "create")} onAction={(mode, index) => { if (mode === "view") { setViewingClient(clientRows[index]); } else { openEntity("client", mode, index); } }} onArchive={index => confirmAction("Arquivar esta cliente? O histórico será preservado.", async () => { const item = clientRows[index]; if (item.id) await archiveClientRecord(item.id); setClientRows(current => current.map((c, i) => i === index ? { ...c, status: "Inativa" } : c)); notify("Cliente arquivada; histórico preservado."); })} onRestore={async (index) => { const item = clientRows[index]; if (item.id) await updateClientRecord(item.id, { ...item, status: "active" } as any); setClientRows(current => current.map((c, i) => i === index ? { ...c, status: "Ativa" } : c)); notify("Cliente reativada."); }} />;
     if (view === "services") return <Services data={serviceRows} onNew={() => openEntity("service", "create")} onAction={(mode, index) => openEntity("service", mode, index)} onDelete={index => confirmAction("Excluir este serviço?", async () => { const item = serviceRows[index]; if (item.id && !item.id.startsWith("demo-")) { await deleteServiceRecord(item.id); } setServiceRows(current => current.filter((_, i) => i !== index)); notify("Serviço removido."); })} onConsumables={(index) => openEntity("service_consumables" as any, "edit", index)} />;
     if (view === "professionals") return <Professionals data={professionalRows} onNew={() => openEntity("professional", "create")} onAction={(mode, index) => openEntity("professional", mode, index)} onDelete={index => confirmAction("Arquivar esta profissional? Agendamentos anteriores serão preservados.", async () => { const item = professionalRows[index]; if (item.id) await archiveProfessionalRecord(item.id); setProfessionalRows(current => current.filter((_, i) => i !== index)); notify("Profissional arquivada."); })} />;
     if (view === "attendance") return (
-      <Attendance 
-        appointment={activeAppointment} 
+      <Attendance
+        appointment={activeAppointment}
         services={serviceRows}
         allAppointments={rows}
         onSelect={(a) => setActiveAppointment(a)}
@@ -998,10 +1016,10 @@ const [automationRows, setAutomationRows] = useState(() => [...initialTemplates]
             const newPrice = activeAppointment.price + svc.price;
             const newService = activeAppointment.service + " + " + svc.name;
             const newItems = [...(activeAppointment.items || []), { id: tempId, name: svc.name, price: svc.price }];
-            
+
             setRows(current => current.map(item => item.id === activeAppointment.id ? { ...item, price: newPrice, service: newService, items: newItems } : item));
             setActiveAppointment({ ...activeAppointment, price: newPrice, service: newService, items: newItems });
-            
+
             const res = await addServiceToAppointment(activeAppointment.id, profId, svc.id, svc.price, svc.duration);
             if (res.success && res.id) {
               // Update with real ID so they can remove it
@@ -1015,14 +1033,14 @@ const [automationRows, setAutomationRows] = useState(() => [...initialTemplates]
           if (!activeAppointment) return;
           const removedItem = activeAppointment.items?.find(i => i.id === itemId);
           if (!removedItem) return;
-          
+
           const newPrice = activeAppointment.price - removedItem.price;
           const newItems = activeAppointment.items?.filter(i => i.id !== itemId) || [];
           const newService = newItems.map(i => i.name).join(" + ");
-          
+
           setRows(current => current.map(item => item.id === activeAppointment.id ? { ...item, price: newPrice, service: newService, items: newItems } : item));
           setActiveAppointment({ ...activeAppointment, price: newPrice, service: newService, items: newItems });
-          
+
           await removeServiceFromAppointment(itemId);
         }}
         onStatusChange={(newStatus) => {
@@ -1038,7 +1056,7 @@ const [automationRows, setAutomationRows] = useState(() => [...initialTemplates]
             updateAppointmentStatus(activeAppointment.id, dbStatus);
           }
         }}
-        onFinish={() => setFinish(true)} 
+        onFinish={() => setFinish(true)}
       />
     ); if (view === "finance") return <Finance stats={initialStats} data={financialRows} onNew={() => openEntity("financial", "create")} onAction={(mode, index) => openEntity("financial", mode, index)} onReverse={index => confirmAction("Estornar este movimento? Um lançamento de compensação será registrado.", () => { setFinancialRows(current => current.map((item, i) => i === index ? { ...item, status: "Estornado" } : item)); notify("Movimento estornado por compensação; registro original preservado."); })} />;
     if (view === "inventory") return <Inventory data={productRows} onNew={() => openEntity("product", "create")} onAction={(mode, index) => openEntity("product", mode, index)} onDelete={(index) => { openEntity("product", "edit", index); notify("Atualize o campo \"Saldo atual\" para corrigir o estoque."); }} />;
@@ -1072,7 +1090,7 @@ const [automationRows, setAutomationRows] = useState(() => [...initialTemplates]
                 setEntityModal(null);
                 notify("Agendamento atualizado!");
               } else {
-                alert(res.error);
+                alert(("error" in res ? res.error : "Erro desconhecido"));
               }
             }}
           />
@@ -1094,11 +1112,11 @@ const [automationRows, setAutomationRows] = useState(() => [...initialTemplates]
           entityModal.kind === "client" ? <ClientModal mode={entityModal.mode} client={entityModal.index !== undefined ? clientRows[entityModal.index] : undefined} close={() => setEntityModal(null)} save={saveClient} /> : (entityModal.kind !== "product" && entityModal.kind !== "service_consumables" ? <EntityModal key={`${entityModal.kind}-${entityModal.mode}-${entityModal.index ?? "new"}`} state={entityModal} close={() => setEntityModal(null)} save={saveEntity} /> : null)
         )
       )}
-      
+
       {entityModal && entityModal.kind === "product" && (
-        <ProductModal 
+        <ProductModal
           product={entityModal.mode !== "create" && entityModal.index !== undefined ? productRows[entityModal.index] : undefined}
-          close={() => setEntityModal(null)} 
+          close={() => setEntityModal(null)}
           save={async (data) => {
             let res;
             if (entityModal.mode === "create") {
@@ -1112,16 +1130,16 @@ const [automationRows, setAutomationRows] = useState(() => [...initialTemplates]
               setProductRows(fresh);
               setEntityModal(null);
             } else {
-              alert("Erro ao salvar produto: " + res.error);
+              alert("Erro ao salvar produto: " + ("error" in res ? res.error : "Erro desconhecido"));
             }
-          }} 
+          }}
         />
       )}
       {entityModal && entityModal.kind === "service_consumables" && (
-        <ServiceConsumablesModal 
+        <ServiceConsumablesModal
           service={serviceRows[entityModal.index!]}
           inventory={productRows}
-          close={() => setEntityModal(null)} 
+          close={() => setEntityModal(null)}
           save={async (items) => {
             const svc = serviceRows[entityModal.index!];
             const res = await updateServiceConsumables(svc.id, items.map(i => ({ product_id: i.product_id, quantity: i.estimated_quantity })));
@@ -1132,12 +1150,12 @@ const [automationRows, setAutomationRows] = useState(() => [...initialTemplates]
             } else {
               alert("Erro ao salvar: " + (res as any).error);
             }
-          }} 
+          }}
         />
       )}
 
-      {booking && <BookingModal clients={clientRows} professionals={professionalRows} services={serviceRows} close={() => setBooking(false)} save={async (a, rawData) => { if(rawData) { const res = await createAppointmentRecord(rawData); if (res.success) { const fresh = await getAppointments(); setRows(fresh); setBooking(false); notify("Agendamento criado com sucesso."); } else { alert(res.error); } } else { setRows(v => [...v, a]); setBooking(false); notify("Agendamento criado (demo)."); } }} />}
-      {finish && activeAppointment && <FinishModal appointment={activeAppointment} close={() => setFinish(false)} done={async (method, val) => { const res = await finishAppointment({ appointmentId: activeAppointment.id, amount: val, paymentMethod: method }); if (res.success) { setRows(v => v.map(a => a.id === activeAppointment.id ? { ...a, status: "Concluído", paid: (a.paid || 0) + val } : a)); setFinish(false); setActiveAppointment(null); setView("agenda"); notify("Atendimento concluído e pagamento registrado com sucesso."); } else { alert(res.error); } }} />}
+      {booking && <BookingModal clients={clientRows} professionals={professionalRows} services={serviceRows} close={() => setBooking(false)} save={async (a, rawData) => { if(rawData) { const res = await createAppointmentRecord(rawData); if (res.success) { const fresh = await getAppointments(); setRows(fresh); setBooking(false); notify("Agendamento criado com sucesso."); } else { alert(("error" in res ? res.error : "Erro desconhecido")); } } else { setRows(v => [...v, a]); setBooking(false); notify("Agendamento criado (demo)."); } }} />}
+      {finish && activeAppointment && <FinishModal appointment={activeAppointment} close={() => setFinish(false)} done={async (method, val) => { const res = await finishAppointment({ appointmentId: activeAppointment.id, amount: val, paymentMethod: method }); if (res.success) { setRows(v => v.map(a => a.id === activeAppointment.id ? { ...a, status: "Concluído", paid: (a.paid || 0) + val } : a)); setFinish(false); setActiveAppointment(null); setView("agenda"); notify("Atendimento concluído e pagamento registrado com sucesso."); } else { alert(("error" in res ? res.error : "Erro desconhecido")); } }} />}
       {toast && <Toast text={toast} />}
     </div>
   );
