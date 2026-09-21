@@ -77,16 +77,8 @@ export async function POST(request: Request) {
     // Executa todo o processo no banco usando a RPC. Ignora os dados de preço/duração enviados pelo navegador.
     const phoneNormalized = clientPhone.replace(/\D/g, "");
     
-    // whitelist_check: Bloqueio extra na API para impedir by-pass do frontend
-    const { data: clientExists } = await supabase.from("clients").select("id").eq("phone_normalized", phoneNormalized).maybeSingle();
-    let isWhitelisted = false;
-    if (clientExists) {
-      const { data: wl } = await supabase.from("client_deposit_whitelist").select("client_id").eq("client_id", clientExists.id).is("removed_at", null).maybeSingle();
-      if (wl) isWhitelisted = true;
-    }
-    if (!isWhitelisted) {
-      return NextResponse.json({ error: "Número não autorizado para agendamento online." }, { status: 403 });
-    }
+    // Não bloqueamos mais quem não está na whitelist.
+    // Apenas aguardamos o pagamento do sinal de 50%.
     
 
 

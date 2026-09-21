@@ -26,6 +26,7 @@ export function OnlineBooking({ professionals = [], services = [] }: { professio
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [slotError, setSlotError] = useState("");
   const [whitelistError, setWhitelistError] = useState("");
+  const [isWhitelistedState, setIsWhitelistedState] = useState(false);
   const [debugInfo, setDebugInfo] = useState<any>(null);
   const [selectedTime, setSelectedTime] = useState("");
   const [clientName, setClientName] = useState("");
@@ -77,11 +78,7 @@ export function OnlineBooking({ professionals = [], services = [] }: { professio
     setSlotError("");
     try {
       const isWhitelisted = await checkClientWhitelist(clientPhone);
-      if (!isWhitelisted) {
-        setWhitelistError("Número não autorizado para agendamento online. Por favor, entre em contato com o estúdio.");
-        setSubmittingHold(false);
-        return;
-      }
+      setIsWhitelistedState(isWhitelisted);
       const res = await fetch("/api/booking/hold", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -318,20 +315,24 @@ export function OnlineBooking({ professionals = [], services = [] }: { professio
                 <Clock3 size={24} className="mx-auto text-primary" />
                 <h3 className="mt-2 text-base font-semibold text-primary">Horário reservado com exclusividade</h3>
                 <p className="mt-1 text-xs text-muted">
-                  Sua vaga está protegida contra sobreposição por <b>{holdData?.holdMinutes || 30} minutos</b>.
+                  {!isWhitelistedState ? (
+                    <>Seu horário está reservado por <b>{holdData?.holdMinutes || 30} minutos</b>!<br/>Envie o comprovante do PIX no WhatsApp para confirmarmos.</>
+                  ) : (
+                    <>Seu horário foi reservado com sucesso e será confirmado em breve.</>
+                  )}
                 </p>
               </div>
 
-              {!isWhitelisted ? (
+              {!isWhitelistedState ? (
                 <div className="mt-4 space-y-3">
                   <div className="rounded-md border border-[#DBE3EC] p-3.5 bg-surface">
                     <div className="flex justify-between text-xs">
                       <span className="text-muted">Valor do sinal</span>
-                      <span className="font-semibold text-ink">R$ 30,00</span>
+                      <span className="font-semibold text-ink">{money.format(selectedService.price / 2)}</span>
                     </div>
                     <div className="mt-2 flex justify-between text-xs">
                       <span className="text-muted">Saldo restante no dia</span>
-                      <span className="font-semibold text-ink">{money.format(selectedService.price - 30)}</span>
+                      <span className="font-semibold text-ink">{money.format(selectedService.price / 2)}</span>
                     </div>
                   </div>
 
@@ -373,9 +374,9 @@ export function OnlineBooking({ professionals = [], services = [] }: { professio
                 <p><b>Confirmação:</b> Notificação enviada para o WhatsApp {clientPhone}</p>
               </div>
 
-              {!isWhitelisted && (
+              {!isWhitelistedState && (
                 <a 
-                  href={`https://wa.me/5511971730783?text=Olá! Fiz o agendamento de ${selectedService.name} para o dia ${selectedDate} às ${selectedTime}. Segue o comprovante do sinal de R$ 30,00:`}
+                  href={`https://wa.me/5511971730783?text=Olá! Fiz o agendamento de ${selectedService.name} para o dia ${selectedDate} às ${selectedTime}. Segue o comprovante do sinal de ${money.format(selectedService.price / 2)}:`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="btn-primary mt-5 w-full bg-emerald-600 hover:bg-emerald-700"
