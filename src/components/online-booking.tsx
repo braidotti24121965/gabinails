@@ -25,6 +25,7 @@ export function OnlineBooking({ professionals = [], services = [] }: { professio
   const [slots, setSlots] = useState<string[]>(["09:00", "10:30", "13:30", "15:00", "16:30", "18:00"]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [slotError, setSlotError] = useState("");
+  const [whitelistError, setWhitelistError] = useState("");
   const [debugInfo, setDebugInfo] = useState<any>(null);
   const [selectedTime, setSelectedTime] = useState("");
   const [clientName, setClientName] = useState("");
@@ -72,7 +73,15 @@ export function OnlineBooking({ professionals = [], services = [] }: { professio
   const handleCreateHold = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmittingHold(true);
+    setWhitelistError("");
+    setSlotError("");
     try {
+      const isWhitelisted = await checkClientWhitelist(clientPhone);
+      if (!isWhitelisted) {
+        setWhitelistError("Número não autorizado para agendamento online. Por favor, entre em contato com o estúdio.");
+        setSubmittingHold(false);
+        return;
+      }
       const res = await fetch("/api/booking/hold", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
