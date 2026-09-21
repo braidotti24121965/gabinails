@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { findAvailableProfessionalForSlot } from "@/lib/availability-engine";
 
 export async function POST(request: Request) {
   try {
@@ -58,11 +59,11 @@ export async function POST(request: Request) {
         if (profs && profs.length > 0) finalProfessionalId = profs[0].id;
       }
       
-      if (!finalProfessionalId) {
-        // Fallback to any professional if name not found or not provided
-        const { data: prof } = await supabase.from("professionals").select("id").limit(1).single();
-        if (!prof) throw new Error("Nenhum profissional cadastrado no sistema.");
-        finalProfessionalId = prof.id;
+      if (!finalProfessionalId || finalProfessionalId === "any") {
+        // Encontra quem realmente está livre nesse horário pelo Motor Único!
+        const freeProf = await findAvailableProfessionalForSlot({ date, time, serviceDuration: durationMinutes, serviceId });
+        if (!freeProf) throw new Error("Infelizmente esse horário acabou de ser ocupado. Por favor, escolha outro.");
+        finalProfessionalId = freeProf;
       }
     }
     

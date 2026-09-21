@@ -209,14 +209,16 @@ function ClientDetailsModal({ client, close }: { client: any; close: () => void 
   useEffect(() => {
     if (client?.id) {
       getClientDetails(client.id).then(res => {
-        if (!res) { setData(null); setLoading(false); return; }
+        if (!res) { setData(null); // eslint-disable-next-line react-hooks/set-state-in-effect
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLoading(false); return; }
         setData(res);
         setLoading(false);
       });
     } else {
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [client]);
 
   
@@ -368,7 +370,7 @@ function ProfessionalCommissionsModal({ professional, close }: { professional: a
     } else {
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [professional]);
 
   const handlePay = async () => {
