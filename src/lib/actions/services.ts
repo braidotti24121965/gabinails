@@ -101,3 +101,24 @@ export async function updateServiceConsumables(serviceId: string, consumables: {
   revalidatePath("/");
   return { success: true };
 }
+
+export async function archiveServiceRecord(serviceId: string) {
+  const supabase = await createClient();
+  if (!supabase) return { success: false };
+  const { error } = await supabase.from('services').update({ active: false }).eq('id', serviceId);
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/");
+  return { success: true };
+}
+
+export async function deleteServiceRecord(serviceId: string) {
+  const supabase = await createClient();
+  if (!supabase) return { success: false };
+  const { error } = await supabase.from('services').delete().eq('id', serviceId);
+  if (error) {
+    // se falhar por FK, faz archive fallback
+    await supabase.from('services').update({ active: false }).eq('id', serviceId);
+  }
+  revalidatePath("/");
+  return { success: true };
+}
