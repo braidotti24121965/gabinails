@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/exhaustive-deps, react/no-unescaped-entities */
+/* eslint-disable react-hooks/exhaustive-deps, react/no-unescaped-entities, react-hooks/set-state-in-effect */
 "use client";
 import { updateAppointmentRecord, addServiceToAppointment, removeServiceFromAppointment } from "@/lib/actions/appointments";
 

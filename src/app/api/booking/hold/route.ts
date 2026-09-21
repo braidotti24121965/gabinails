@@ -73,85 +73,39 @@ export async function POST(request: Request) {
     // 0. Expira holds vencidos para liberar a agenda (idempotente)
     await supabase.from("appointments").update({ status: 'cancelled', notes: 'Expirado automaticamente após 30 minutos sem confirmação de sinal.' }).eq("status", "awaiting_deposit").lt("hold_expires_at", new Date().toISOString());
 
-    // 1. Encontra ou cria cliente
+    // --- TRANSAÇÃO ATÔMICA SEGURA ---
+    // Executa todo o processo no banco usando a RPC. Ignora os dados de preço/duração enviados pelo navegador.
     const phoneNormalized = clientPhone.replace(/\D/g, "");
-    let clientId: string | null = null;
-
-    const { data: existingClient } = await supabase
-      .from("clients")
-      .select("id")
-      .eq("phone_normalized", phoneNormalized)
-      .maybeSingle();
-
-    if (existingClient) {
-      clientId = existingClient.id;
-    } else {
-      const { data: newClient, error: clientError } = await supabase
-        .from("clients")
-        .insert({
-          name: clientName,
-          phone: clientPhone,
-          phone_normalized: phoneNormalized,
-          source: "online",
-          organization_id: org.id,
-        })
-        .select("id")
-        .single();
-
-      if (clientError) {
-        return NextResponse.json({ error: clientError.message }, { status: 500 });
-      }
-      clientId = newClient.id;
+    
+    // In demo environments where serviceId is like "demo-1", we bypass RPC because demo services aren't in DB
+    if (serviceId && serviceId.includes("demo-")) {
+       return NextResponse.json({ error: "O ambiente de demonstração não suporta reservas seguras. Por favor cadastre serviços reais no painel." }, { status: 400 });
     }
 
-    // 2. Insere agendamento em estado awaiting_deposit com hold_expires_at
-    // Nota: O PostgreSQL disparará a exclusion constraint caso ocorra colisão
-    const { data: appointment, error: appError } = await supabase
-      .from("appointments")
-      .insert({
-        client_id: clientId,
-        professional_id: finalProfessionalId,
-        starts_at: startsAt.toISOString(),
-        ends_at: endsAt.toISOString(),
-        status: "awaiting_deposit",
-        hold_expires_at: expiresAt.toISOString(),
-        source: "online",
-        organization_id: org.id,
-      })
-      .select()
-      .single();
+    const { data: result, error: rpcError } = await supabase.rpc('create_booking_transaction', {
+      p_org_id: org.id,
+      p_client_name: clientName,
+      p_client_phone: clientPhone,
+      p_client_phone_normalized: phoneNormalized,
+      p_professional_id: finalProfessionalId,
+      p_service_id: serviceId,
+      p_starts_at: startsAt.toISOString(),
+      p_hold_minutes: holdMinutes
+    });
 
-    if (appError) {
-      if (appError.message.includes("appointments_no_overlap")) {
-        return NextResponse.json(
-          { error: "Este horário acabou de ser reservado por outra cliente. Por favor, escolha outro slot." },
-          { status: 409 }
-        );
-      }
-      return NextResponse.json({ error: appError.message }, { status: 500 });
+    if (rpcError) {
+      console.error("RPC Error:", rpcError);
+      return NextResponse.json({ error: "Erro interno ao processar reserva." }, { status: 500 });
     }
 
-    if (appointment && serviceId && serviceName && servicePrice) {
-      const { error: itemError } = await supabase.from("appointment_items").insert({
-        organization_id: org.id,
-        appointment_id: appointment.id,
-        service_id: serviceId.includes("-") ? serviceId : null, // handle mock IDs
-        professional_id: finalProfessionalId,
-        description: serviceName,
-        duration_minutes: durationMinutes,
-        unit_price: servicePrice,
-        quantity: 1,
-        discount: 0,
-        commission_type: "percentage",
-        commission_value: 50
-      });
-      if (itemError) console.error("Error inserting item:", itemError.message);
+    if (!result.success) {
+      return NextResponse.json({ error: result.error }, { status: 409 });
     }
 
     return NextResponse.json({
       success: true,
-      appointmentId: appointment.id,
-      holdExpiresAt: expiresAt.toISOString(),
+      appointmentId: result.appointment_id,
+      holdExpiresAt: result.hold_expires_at,
       holdMinutes,
       message: `Horário reservado com sucesso por ${holdMinutes} minutos para confirmação do sinal.`,
       mode: "supabase",
