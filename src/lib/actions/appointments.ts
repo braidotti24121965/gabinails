@@ -38,8 +38,8 @@ export async function getAppointments(): Promise<Appointment[]> {
     // Format times
     const dStart = new Date(row.starts_at);
     const dEnd = new Date(row.ends_at);
-    const time = dStart.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-    const end = dEnd.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    const time = dStart.toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" });
+    const end = dEnd.toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" });
 
     // Sum prices
     const price = row.items?.reduce((acc: number, item: any) => acc + Number(item.unit_price || 0), 0) || 0;
@@ -96,7 +96,7 @@ export async function createAppointmentRecord(data: {
   if (!profile?.organization_id) return { success: false, error: "Organização não encontrada" };
 
   // Calculate timestamps
-  const startsAt = new Date(`${data.dateStr}T${data.timeStr}:00`).toISOString();
+  const startsAt = new Date(`${data.dateStr}T${data.timeStr}:00-03:00`).toISOString();
   const endsAt = new Date(new Date(startsAt).getTime() + data.durationMinutes * 60000).toISOString();
 
   // Insert appointment
