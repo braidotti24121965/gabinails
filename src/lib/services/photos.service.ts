@@ -35,11 +35,13 @@ export async function uploadClientPhotoService({ supabase, file, clientId, kind 
   const uuid = crypto.randomUUID();
   const storagePath = `${profile.organization_id}/${clientId}/${uuid}.${extension}`;
 
+  const buffer = await file.arrayBuffer();
+
   const { error: uploadError } = await supabase.storage
     .from('client-photos')
-    .upload(storagePath, file, { contentType: validation.mime, upsert: false });
+    .upload(storagePath, buffer, { contentType: validation.mime, upsert: false });
 
-  if (uploadError) return { success: false, error: "Falha ao enviar arquivo." };
+  if (uploadError) return { success: false, error: "Falha ao enviar arquivo. Detalhe: " + uploadError.message };
 
   const { error: dbError } = await supabase
     .from('client_photos')
