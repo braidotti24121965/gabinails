@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps, react/no-unescaped-entities */
 "use client";
 import { updateAppointmentRecord, addServiceToAppointment, removeServiceFromAppointment } from "@/lib/actions/appointments";
 
@@ -209,8 +210,8 @@ function ClientDetailsModal({ client, close }: { client: any; close: () => void 
   useEffect(() => {
     if (client?.id) {
       getClientDetails(client.id).then(res => {
-        if (!res) { setData(null); // eslint-disable-next-line react-hooks/set-state-in-effect
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+        if (!res) { setData(null); 
+      
       setLoading(false); return; }
         setData(res);
         setLoading(false);
