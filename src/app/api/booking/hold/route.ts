@@ -52,16 +52,21 @@ export async function POST(request: Request) {
     if (!org) throw new Error("Organização não encontrada");
 
     let finalProfessionalId = professionalId;
+    const phoneNormalized = clientPhone.replace(/\D/g, "");
+    
     if (!finalProfessionalId) {
       if (professionalName) {
-        // Try to find the professional by name
         const { data: profs } = await supabase.from("professionals").select("id").ilike("name", professionalName).limit(1);
         if (profs && profs.length > 0) finalProfessionalId = profs[0].id;
       }
       
       if (!finalProfessionalId || finalProfessionalId === "any") {
+        // Obter preferred_professional_id do cliente se existir
+        const { data: existingClient } = await supabase.from("clients").select("preferred_professional_id").eq("phone_normalized", phoneNormalized).maybeSingle();
+        const preferredProfessionalId = existingClient?.preferred_professional_id;
+        
         // Encontra quem realmente está livre nesse horário pelo Motor Único!
-        const freeProf = await findAvailableProfessionalForSlot({ date, time, serviceDuration: durationMinutes, serviceId });
+        const freeProf = await findAvailableProfessionalForSlot({ date, time, serviceDuration: durationMinutes, serviceId, preferredProfessionalId });
         if (!freeProf) throw new Error("Infelizmente esse horário acabou de ser ocupado. Por favor, escolha outro.");
         finalProfessionalId = freeProf;
       }
@@ -75,7 +80,7 @@ export async function POST(request: Request) {
 
     // --- TRANSAÇÃO ATÔMICA SEGURA ---
     // Executa todo o processo no banco usando a RPC. Ignora os dados de preço/duração enviados pelo navegador.
-    const phoneNormalized = clientPhone.replace(/\D/g, "");
+    // phoneNormalized já foi extraído acima
     
     // Não bloqueamos mais quem não está na whitelist.
     // Apenas aguardamos o pagamento do sinal de 50%.

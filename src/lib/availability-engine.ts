@@ -118,16 +118,25 @@ export async function findAvailableProfessionalForSlot({
   date,
   time,
   serviceDuration,
-  serviceId
-}: { date: string, time: string, serviceDuration: number, serviceId?: string }) {
+  serviceId,
+  preferredProfessionalId
+}: { date: string, time: string, serviceDuration: number, serviceId?: string, preferredProfessionalId?: string | null }) {
   const supabase = await createAdminClient();
   if (!supabase) throw new Error("Erro ao inicializar banco");
 
   let profQuery = supabase.from("professionals").select("id").eq("active", true);
   const { data: profs } = await profQuery;
-  const eligibleProfIds = profs?.map(p => p.id) || [];
+  let eligibleProfIds = profs?.map(p => p.id) || [];
   
   if (eligibleProfIds.length === 0) return null;
+  
+  // Se houver profissional preferencial E ele for elegível, colocar no topo da lista
+  if (preferredProfessionalId && eligibleProfIds.includes(preferredProfessionalId)) {
+    eligibleProfIds = [
+      preferredProfessionalId,
+      ...eligibleProfIds.filter(id => id !== preferredProfessionalId)
+    ];
+  }
 
   const spTimeZone = "America/Sao_Paulo";
   const startOfDaySP = `${date}T00:00:00-03:00`;
