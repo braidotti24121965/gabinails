@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { OnlineBooking } from "@/components/online-booking";
 import { getProfessionals } from "@/lib/actions/professionals";
 import { getServices } from "@/lib/actions/services";

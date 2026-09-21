@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NailStudioApp } from "@/components/nail-studio-app";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
