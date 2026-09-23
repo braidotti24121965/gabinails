@@ -2,6 +2,7 @@
 "use client";
 import NextImage from "next/image";
 import { View, EntityKind, EntityModalState, Badge, statusTone, Metric, RowActions, SectionTitle, SmallMetricLink } from "./shared";
+import { formatAgeInYearsAndMonths } from "@/lib/utils/age";
 import { Professionals } from "./dashboard/professionals";
 import { Attendance } from "./dashboard/attendance";
 import { Finance } from "./dashboard/finance";
@@ -77,7 +78,6 @@ function AppointmentModal({ mode, appointment, clients, professionals, services,
   const [timeStr, setTimeStr] = useState(appointment?.time || "09:00");
   const [submitting, setSubmitting] = useState(false);
   const readOnly = mode === "view";
-
   const selectedClient = clients.find(c => c.id === clientId);
   const selectedProf = professionals.find(p => p.id === profId);
   const selectedSvcs = selectedServiceIds.map((id: string) => services.find((s: any) => s.id === id)).filter(Boolean);
@@ -487,6 +487,7 @@ function ClientModal({ mode, client, close, save }: { mode: "create" | "edit" | 
   const [submitting, setSubmitting] = useState(false);
 
   const readOnly = mode === "view";
+  const clientAge = formatAgeInYearsAndMonths(birthDate);
 
 
   const handlePhone = (v: string) => {
@@ -528,7 +529,18 @@ function ClientModal({ mode, client, close, save }: { mode: "create" | "edit" | 
     <div className="grid gap-4 sm:grid-cols-2">
       <div><label className="field-label">Nome Completo</label><input className="field-input" value={name} onChange={e => setName(e.target.value)} required disabled={readOnly} /></div>
       <div><label className="field-label">WhatsApp</label><input className="field-input" value={phone} onChange={e => handlePhone(e.target.value)} placeholder="(11) 99999-9999" maxLength={15} required disabled={readOnly} /></div>
-      <div><label className="field-label">Data de Nascimento</label><input type="date" className="field-input" value={birthDate} onChange={e => setBirthDate(e.target.value)} disabled={readOnly} /></div>
+      <div>
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
+          <label className="field-label">Data de Nascimento</label>
+          <span className="field-label w-[7.75rem]">Idade</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <input type="date" className="field-input min-w-0 flex-1" value={birthDate} onChange={e => setBirthDate(e.target.value)} disabled={readOnly} />
+          <output className="w-[7.75rem] shrink-0 whitespace-nowrap text-xs font-medium text-muted" aria-live="polite">
+            {clientAge || "—"}
+          </output>
+        </div>
+      </div>
       <div><label className="field-label">E-mail</label><input type="email" className="field-input" value={email} onChange={e => setEmail(e.target.value)} placeholder="cliente@email.com" disabled={readOnly} /></div>
       <div className="sm:col-span-2 border-t border-[#E7EDF3] pt-4 mt-2">
         <h3 className="text-sm font-semibold mb-3">Endereço</h3>
