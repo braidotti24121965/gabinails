@@ -8,6 +8,7 @@ import { Attendance } from "./dashboard/attendance";
 import { Finance } from "./dashboard/finance";
 import { Inventory } from "./dashboard/inventory";
 import { Automations } from "./dashboard/automations";
+import { Reports } from "./dashboard/reports";
 import { Clients } from "./dashboard/clients";
 import { Services } from "./dashboard/services";
 import { Agenda } from "./dashboard/agenda";
@@ -43,7 +44,7 @@ const nav: { id: View; label: string; icon: typeof Home }[] = [
   { id: "clients", label: "Clientes", icon: Users }, { id: "services", label: "Serviços", icon: Sparkles },
   { id: "professionals", label: "Profissionais", icon: UserRound }, { id: "attendance", label: "Atendimentos", icon: ClipboardCheck },
   { id: "finance", label: "Financeiro", icon: Wallet }, { id: "inventory", label: "Estoque", icon: Package },
-  { id: "automations", label: "Automações", icon: WandSparkles }, { id: "online", label: "Agendamento online", icon: ShoppingBag }
+  { id: "automations", label: "Automações", icon: WandSparkles }, { id: "reports", label: "Relatórios", icon: BarChart3 }, { id: "online", label: "Agendamento online", icon: ShoppingBag }
 ];
 
 const titles: Record<View, [string, string]> = {
@@ -51,7 +52,7 @@ const titles: Record<View, [string, string]> = {
   clients: ["Clientes", "Relacionamento, histórico e recorrência."], services: ["Serviços", "Catálogo, preços e consumo de insumos."],
   professionals: ["Profissionais", "Equipe, jornadas e indicadores."], attendance: ["Atendimentos", "Conduza cada atendimento até o recebimento."],
   finance: ["Financeiro", "Faturamento, recebimentos, despesas e comissões."], inventory: ["Estoque", "Saldo por movimentação e previsão de consumo."],
-  automations: ["Automações", "Comunicações programadas e receita recuperada."], online: ["Agendamento online", "Prévia do fluxo público para suas clientes."]
+  automations: ["Automações", "Comunicações programadas e receita recuperada."], reports: ["Relatórios", "Desempenho, clientes e consumo."], online: ["Agendamento online", "Prévia do fluxo público para suas clientes."]
 };
 
 
@@ -124,21 +125,43 @@ function AppointmentModal({ mode, appointment, clients, professionals, services,
 
 
 
-function ServiceConsumablesModal({ service, inventory, close, save }: { service: any; inventory: any[]; close: () => void; save: (consumables: any[]) => Promise<void> }) {
+function ServiceConsumablesModal({ service, inventory, close, save, createProduct }: { service: any; inventory: any[]; close: () => void; save: (consumables: any[]) => Promise<void>; createProduct: () => void }) {
   const [items, setItems] = useState<any[]>(service.consumables || []);
+  const [selectedProductId, setSelectedProductId] = useState("");
+  const [quantity, setQuantity] = useState("");
+  const [error, setError] = useState("");
   const [adding, setAdding] = useState(false); const [isSaving, setIsSaving] = useState(false);
+  const availableProducts = inventory.filter(product => !items.some(item => item.product_id === product.id));
+
+  const addItem = () => {
+    const parsedQuantity = Number(quantity);
+    if (!selectedProductId) {
+      setError("Selecione um produto.");
+      return;
+    }
+    if (!Number.isFinite(parsedQuantity) || parsedQuantity <= 0) {
+      setError("Informe uma quantidade maior que zero.");
+      return;
+    }
+    setItems(current => [...current, { product_id: selectedProductId, estimated_quantity: parsedQuantity }]);
+    setSelectedProductId("");
+    setQuantity("");
+    setError("");
+    setAdding(false);
+  };
 
   return <div className="fixed inset-0 z-[60] flex items-center justify-center p-4"><button onClick={close} className="absolute inset-0 bg-navy-dark/40" /><div className="relative w-full max-w-lg rounded-xl bg-white p-5 shadow-2xl sm:p-7"><div className="mb-6 flex items-start justify-between"><div><Badge tone="primary">Consumo Automático</Badge><h2 className="mt-2 text-xl font-bold">{service.name}</h2></div><button onClick={close} className="rounded-md p-1.5 text-muted hover:bg-bg hover:text-ink"><X size={20} /></button></div>
-  <p className="text-sm text-muted mb-4">Escolha os produtos que devem ser baixados automaticamente do estoque quando este serviço for concluído.</p>
+  <p className="mb-1 text-sm text-muted">Defina quanto de cada produto é usado em uma execução deste serviço.</p>
+  <p className="mb-4 text-xs text-muted">Ao concluir um atendimento, o sistema baixa essas quantidades do estoque uma vez para cada serviço realizado.</p>
 
   <div className="space-y-3 mb-4">
     {items.map((it, idx) => {
       const prod = inventory.find(p => p.id === it.product_id);
-      return <div key={idx} className="flex justify-between items-center bg-bg p-3 rounded-md">
+      return <div key={it.product_id} className="flex justify-between items-center bg-bg p-3 rounded-md">
         <p className="font-medium text-sm">{prod?.product || 'Produto desconhecido'}</p>
         <div className="flex items-center gap-3">
           <span className="text-sm">{it.estimated_quantity} {prod?.unit || 'un'}</span>
-          <button onClick={() => setItems(curr => curr.filter((_, i) => i !== idx))} className="text-red-500"><Trash2 size={15}/></button>
+          <button type="button" aria-label={`Remover ${prod?.product || "produto"}`} onClick={() => setItems(curr => curr.filter((_, i) => i !== idx))} className="text-red-500"><Trash2 size={15}/></button>
         </div>
       </div>
     })}
@@ -146,22 +169,21 @@ function ServiceConsumablesModal({ service, inventory, close, save }: { service:
   </div>
 
   {adding ? (
-    <div className="flex gap-2 mb-4 bg-bg p-3 rounded-md border border-[#E7EDF3]">
-      <select id="prod-select" className="field-input flex-1 !h-9 !py-1 text-sm"><option value="">Selecione o produto</option>{inventory.map(p => <option key={p.id} value={p.id}>{p.product}</option>)}</select>
-      <input id="prod-qtd" type="number" step="0.1" placeholder="Qtd" className="field-input w-20 !h-9 !py-1 text-sm" />
-      <button onClick={() => {
-        const p = document.getElementById("prod-select") as HTMLSelectElement;
-        const q = document.getElementById("prod-qtd") as HTMLInputElement;
-        if(p.value && q.value) {
-          setItems(curr => [...curr, { product_id: p.value, estimated_quantity: Number(q.value) }]);
-          setAdding(false);
-        }
-      }} className="btn-primary !h-9 !px-3"><Check size={16}/></button>
-      <button onClick={() => setAdding(false)} className="btn-outline !h-9 !px-3"><X size={16}/></button>
+    <div className="mb-4 rounded-md border border-[#E7EDF3] bg-bg p-3">
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <select aria-label="Produto" value={selectedProductId} onChange={event => { setSelectedProductId(event.target.value); setError(""); }} className="field-input flex-1 !h-9 !py-1 text-sm"><option value="">Selecione o produto</option>{availableProducts.map(p => <option key={p.id} value={p.id}>{p.product} ({p.unit})</option>)}</select>
+        <input aria-label="Quantidade consumida" value={quantity} onChange={event => { setQuantity(event.target.value); setError(""); }} type="number" min="0.001" step="0.001" placeholder="Qtd." className="field-input w-full !h-9 !py-1 text-sm sm:w-24" />
+        <button type="button" aria-label="Adicionar produto" onClick={addItem} className="btn-primary !h-9 !px-3"><Check size={16}/></button>
+        <button type="button" aria-label="Cancelar adição" onClick={() => { setAdding(false); setError(""); }} className="btn-outline !h-9 !px-3"><X size={16}/></button>
+      </div>
+      {error && <p role="alert" className="mt-2 text-xs text-red-600">{error}</p>}
     </div>
   ) : (
-    <button onClick={() => setAdding(true)} className="btn-ghost mb-4"><Plus size={15}/> Adicionar produto</button>
+    <button type="button" disabled={availableProducts.length === 0 || inventory.length === 0} onClick={() => setAdding(true)} className="btn-ghost mb-4 disabled:cursor-not-allowed disabled:opacity-50"><Plus size={15}/> Adicionar produto</button>
   )}
+
+  {inventory.length === 0 && <div className="mb-4 rounded-md bg-amber-50 p-3 text-xs text-amber-900"><p>Cadastre ao menos um produto antes de configurar o consumo.</p><button type="button" onClick={createProduct} className="mt-2 font-semibold underline">Cadastrar primeiro produto</button></div>}
+  {inventory.length > 0 && <button type="button" onClick={createProduct} className="mb-4 text-xs font-medium text-primary hover:underline">O produto não está na lista? Cadastrar novo produto</button>}
 
   <div className="mt-6 flex justify-end gap-3"><button onClick={close} className="btn-outline">Cancelar</button><button disabled={isSaving} onClick={async () => { setIsSaving(true); await save(items); setIsSaving(false); }} className="btn-primary disabled:opacity-50"><Check size={16} />{isSaving ? "Salvando..." : "Salvar configuração"}</button></div></div></div>;
 }
@@ -173,21 +195,39 @@ function ProductModal({ product, close, save }: { product?: any; close: () => vo
   const [ideal, setIdeal] = useState(product?.ideal ?? "");
   const [cost, setCost] = useState(product?.cost ?? "");
   const [stock, setStock] = useState(product?.stock ?? ""); const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState("");
 
-  return <div className="fixed inset-0 z-[60] flex items-center justify-center p-4"><button onClick={close} className="absolute inset-0 bg-navy-dark/40" /><div className="relative w-full max-w-lg rounded-xl bg-white p-5 shadow-2xl sm:p-7"><div className="mb-6 flex items-start justify-between"><div><Badge tone="primary">Novo Produto</Badge><h2 className="mt-2 text-xl font-bold">Cadastrar Produto</h2></div><button onClick={close} className="rounded-md p-1.5 text-muted hover:bg-bg hover:text-ink"><X size={20} /></button></div><div className="space-y-4">
-    <div><label className="field-label">Nome do produto</label><input className="field-input" value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Esmalte Risqué Vermelho" /></div>
+  const submit = async () => {
+    if (!name.trim()) {
+      setError("Informe o nome do produto.");
+      return;
+    }
+    const values = [min, ideal, cost, stock].map(value => Number(value));
+    if (values.some(value => !Number.isFinite(value) || value < 0)) {
+      setError("Use somente valores iguais ou maiores que zero.");
+      return;
+    }
+    setError("");
+    setIsSaving(true);
+    await save({ name: name.trim(), unit, minimum: values[0], ideal: values[1], cost: values[2], stock: values[3] });
+    setIsSaving(false);
+  };
+
+  return <div className="fixed inset-0 z-[60] flex items-center justify-center p-4"><button onClick={close} className="absolute inset-0 bg-navy-dark/40" /><div className="relative w-full max-w-lg rounded-xl bg-white p-5 shadow-2xl sm:p-7"><div className="mb-6 flex items-start justify-between"><div><Badge tone="primary">{product ? "Produto" : "Novo produto"}</Badge><h2 className="mt-2 text-xl font-bold">{product ? "Editar produto" : "Cadastrar produto"}</h2></div><button onClick={close} className="rounded-md p-1.5 text-muted hover:bg-bg hover:text-ink"><X size={20} /></button></div><div className="space-y-4">
+    <div><label htmlFor="product-name" className="field-label">Nome do produto</label><input id="product-name" className="field-input" value={name} onChange={e => { setName(e.target.value); setError(""); }} placeholder="Ex: Esmalte Risqué Vermelho" /></div>
     <div className="grid grid-cols-2 gap-4">
       <div><label className="field-label">Unidade</label><select className="field-input" value={unit} onChange={e => setUnit(e.target.value)}>
         <option value="unit">Unidade</option><option value="ml">Mililitros (ml)</option><option value="g">Gramas (g)</option><option value="pair">Par</option>
       </select></div>
-      <div><label className="field-label">Custo unitário (R$)</label><input className="field-input" type="number" step="0.01" value={cost} onChange={e => setCost(e.target.value)} /></div>
+      <div><label className="field-label">Custo unitário (R$)</label><input className="field-input" type="number" min="0" step="0.01" value={cost} onChange={e => setCost(e.target.value)} /></div>
     </div>
     <div className="grid grid-cols-2 gap-4">
-      <div><label className="field-label">Estoque mínimo</label><input className="field-input" type="number" value={min} onChange={e => setMin(e.target.value)} /></div>
-      <div><label className="field-label">Estoque ideal</label><input className="field-input" type="number" value={ideal} onChange={e => setIdeal(e.target.value)} /></div>
+      <div><label className="field-label">Estoque mínimo</label><input className="field-input" type="number" min="0" step="0.001" value={min} onChange={e => setMin(e.target.value)} /></div>
+      <div><label className="field-label">Estoque ideal</label><input className="field-input" type="number" min="0" step="0.001" value={ideal} onChange={e => setIdeal(e.target.value)} /></div>
     </div>
-    <div><label className="field-label">Saldo inicial (quantidade atual)</label><input className="field-input" type="number" value={stock} onChange={e => setStock(e.target.value)} /></div>
-  </div><div className="mt-6 flex justify-end gap-3"><button onClick={close} className="btn-outline">Cancelar</button><button disabled={isSaving} onClick={async () => { setIsSaving(true); await save({name, unit, minimum: Number(min), ideal: Number(ideal), cost: Number(cost), stock: Number(stock)}); setIsSaving(false); }} className="btn-primary disabled:opacity-50"><Check size={16} />{isSaving ? "Salvando..." : "Salvar produto"}</button></div></div></div>;
+    <div><label className="field-label">Saldo inicial (quantidade atual)</label><input className="field-input" type="number" min="0" step="0.001" value={stock} onChange={e => setStock(e.target.value)} /></div>
+    {error && <p role="alert" className="text-xs text-red-600">{error}</p>}
+  </div><div className="mt-6 flex justify-end gap-3"><button onClick={close} className="btn-outline">Cancelar</button><button disabled={isSaving} onClick={submit} className="btn-primary disabled:opacity-50"><Check size={16} />{isSaving ? "Salvando..." : "Salvar produto"}</button></div></div></div>;
 }
 
 
@@ -842,7 +882,7 @@ function FinishModal({ appointment, close, done }: { appointment: Appointment; c
 
 function Toast({ text }: { text: string }) { return <div className="fixed bottom-5 right-5 z-[80] flex max-w-sm items-center gap-3 rounded-md bg-navy-dark px-4 py-3 text-sm text-white shadow-xl"><div className="rounded-full bg-primary p-1"><Check size={12} /></div>{text}</div> }
 
-export function NailStudioApp({ initialClients = demoClients, initialProfessionals = demoProfessionals, initialSpecialties = [], initialAppointments = [], initialInventory = [], initialServices = demoServices as any[], initialFinancials = [], initialStats = { revenue: 0, expenses: 0, commissions: 0, balance: 0 } }: { initialClients?: ClientItem[]; initialProfessionals?: ProfessionalItem[]; initialSpecialties?: {id: string, name: string}[]; initialAppointments?: Appointment[]; initialServices?: any[]; initialInventory?: any[]; initialFinancials?: any[]; initialStats?: any }) {
+export function NailStudioApp({ initialClients = demoClients, initialProfessionals = demoProfessionals, initialSpecialties = [], initialAppointments = [], initialInventory = [], initialServices = demoServices as any[], initialFinancials = [], initialStats = { revenue: 0, expenses: 0, commissions: 0, balance: 0 }, initialReports = {} }: { initialClients?: ClientItem[]; initialProfessionals?: ProfessionalItem[]; initialSpecialties?: {id: string, name: string}[]; initialAppointments?: Appointment[]; initialServices?: any[]; initialInventory?: any[]; initialFinancials?: any[]; initialStats?: any; initialReports?: any }) {
   const [view, setView] = useState<View>("dashboard"); const [menu, setMenu] = useState(false); const [booking, setBooking] = useState(false); const [finish, setFinish] = useState(false); const [activeAppointment, setActiveAppointment] = useState<Appointment | null>(null); const [toast, setToast] = useState(""); const [rows, setRows] = useState(initialAppointments);
 
   // Auto-refresh appointments when looking at the agenda
@@ -858,7 +898,9 @@ export function NailStudioApp({ initialClients = demoClients, initialProfessiona
   const [clientRows, setClientRows] = useState(() => [...initialClients]); const [serviceRows, setServiceRows] = useState(() => [...initialServices]);
   const [professionalRows, setProfessionalRows] = useState(() => [...initialProfessionals]); const [productRows, setProductRows] = useState<any[]>(initialInventory);
   const initialTemplates = [{ name: "Lembrete 24h", count: "18 agendadas", tone: "success" }, { name: "Sinal pendente", count: "3 aguardando", tone: "warning" }, { name: "Manutenção vencida", count: "7 oportunidades", tone: "danger" }, { name: "Aniversário", count: "2 nesta semana", tone: "primary" }];
-const [automationRows, setAutomationRows] = useState(() => [...initialTemplates]); const [specialtyList, setSpecialtyList] = useState(() => [...initialSpecialties]); const [financialRows, setFinancialRows] = useState(() => [...initialFinancials]); const [entityModal, setEntityModal] = useState<EntityModalState | null>(null);
+const [automationRows, setAutomationRows] = useState(() => [...initialTemplates]); const [specialtyList, setSpecialtyList] = useState(() => [...initialSpecialties]); const [financialRows, setFinancialRows] = useState(() => [...initialFinancials]);
+const [reportsData] = useState(() => initialReports); const [entityModal, setEntityModal] = useState<EntityModalState | null>(null);
+  const [returnToConsumablesIndex, setReturnToConsumablesIndex] = useState<number | null>(null);
   const [closingCommissionFor, setClosingCommissionFor] = useState<any>(null);
   const [viewingClient, setViewingClient] = useState<any>(null);
   const notify = (message: string) => { setToast(message); window.setTimeout(() => setToast(""), 3200); };
@@ -867,6 +909,7 @@ const [automationRows, setAutomationRows] = useState(() => [...initialTemplates]
     if (index === undefined) return;
     if (kind === "client") { const item = clientRows[index]; setEntityModal({ kind, mode, index, name: item.name, detail: item.phone }); }
     if (kind === "service") { const item = serviceRows[index]; setEntityModal({ kind, mode, index, name: item.name, detail: item.duration.toString() }); }
+    if (kind === "service_consumables") { const item = serviceRows[index]; setEntityModal({ kind, mode, index, name: item.name, detail: "" }); }
     if (kind === "professional") { const item = professionalRows[index]; setEntityModal({ kind, mode, index, name: item.name, detail: item.specialty }); }
     if (kind === "product") { const item = productRows[index]; setEntityModal({ kind, mode, index, name: item.product, detail: `${item.stock} ${item.unit}` }); }
     if (kind === "automation") { const item = automationRows[index]; setEntityModal({ kind, mode, index, name: item.name, detail: "WhatsApp" }); }
@@ -1012,7 +1055,7 @@ const [automationRows, setAutomationRows] = useState(() => [...initialTemplates]
   }}
   onCancel={(index, id) => confirmAction("Cancelar este agendamento? O histórico será preservado.", () => { cancelAppointmentRecord(id).then(res => { if(res.success) { setRows(current => current.map((item, i) => i === index ? { ...item, status: "Cancelado" } : item)); notify("Agendamento cancelado e horário liberado."); } else alert(("error" in res ? res.error : "Erro desconhecido")); }) })} />;
     if (view === "clients") return <Clients data={clientRows} onNew={() => openEntity("client", "create")} onAction={(mode, index) => { if (mode === "view") { setViewingClient(clientRows[index]); } else { openEntity("client", mode, index); } }} onArchive={index => confirmAction("Arquivar esta cliente? O histórico será preservado.", async () => { const item = clientRows[index]; if (item.id) await archiveClientRecord(item.id); setClientRows(current => current.map((c, i) => i === index ? { ...c, status: "Inativa" } : c)); notify("Cliente arquivada; histórico preservado."); })} onRestore={async (index) => { const item = clientRows[index]; if (item.id) await updateClientRecord(item.id, { ...item, status: "active" } as any); setClientRows(current => current.map((c, i) => i === index ? { ...c, status: "Ativa" } : c)); notify("Cliente reativada."); }} />;
-    if (view === "services") return <Services data={serviceRows} onNew={() => openEntity("service", "create")} onAction={(mode, index) => openEntity("service", mode, index)} onDelete={index => confirmAction("Excluir este serviço?", async () => { const item = serviceRows[index]; if (item.id && !item.id.startsWith("demo-")) { await deleteServiceRecord(item.id); } setServiceRows(current => current.filter((_, i) => i !== index)); notify("Serviço removido."); })} onConsumables={(index) => openEntity("service_consumables" as any, "edit", index)} />;
+    if (view === "services") return <Services data={serviceRows} inventory={productRows} onNew={() => openEntity("service", "create")} onAction={(mode, index) => openEntity("service", mode, index)} onDelete={index => confirmAction("Excluir este serviço?", async () => { const item = serviceRows[index]; if (item.id && !item.id.startsWith("demo-")) { await deleteServiceRecord(item.id); } setServiceRows(current => current.filter((_, i) => i !== index)); notify("Serviço removido."); })} onConsumables={(index) => openEntity("service_consumables" as any, "edit", index)} />;
     if (view === "professionals") return <Professionals data={professionalRows} onNew={() => openEntity("professional", "create")} onAction={(mode, index) => openEntity("professional", mode, index)} onDelete={index => confirmAction("Arquivar esta profissional? Agendamentos anteriores serão preservados.", async () => { const item = professionalRows[index]; if (item.id) await archiveProfessionalRecord(item.id); setProfessionalRows(current => current.filter((_, i) => i !== index)); notify("Profissional arquivada."); })} />;
     if (view === "attendance") return (
       <Attendance
@@ -1073,6 +1116,7 @@ const [automationRows, setAutomationRows] = useState(() => [...initialTemplates]
     ); if (view === "finance") return <Finance stats={initialStats} data={financialRows} onNew={() => openEntity("financial", "create")} onAction={(mode, index) => openEntity("financial", mode, index)} onReverse={index => confirmAction("Estornar este movimento? Um lançamento de compensação será registrado.", () => { setFinancialRows(current => current.map((item, i) => i === index ? { ...item, status: "Estornado" } : item)); notify("Movimento estornado por compensação; registro original preservado."); })} />;
     if (view === "inventory") return <Inventory data={productRows} onNew={() => openEntity("product", "create")} onAction={(mode, index) => openEntity("product", mode, index)} onDelete={(index) => { openEntity("product", "edit", index); notify("Atualize o campo \"Saldo atual\" para corrigir o estoque."); }} />;
     if (view === "automations") return <Automations go={setView} />;
+    if (view === "reports") return <Reports data={reportsData} />;
     if (view === "online") return <OnlineBooking />;
   })();
 
@@ -1128,7 +1172,15 @@ const [automationRows, setAutomationRows] = useState(() => [...initialTemplates]
       {entityModal && entityModal.kind === "product" && (
         <ProductModal
           product={entityModal.mode !== "create" && entityModal.index !== undefined ? productRows[entityModal.index] : undefined}
-          close={() => setEntityModal(null)}
+          close={() => {
+            if (returnToConsumablesIndex !== null) {
+              const service = serviceRows[returnToConsumablesIndex];
+              setEntityModal({ kind: "service_consumables", mode: "edit", index: returnToConsumablesIndex, name: service.name, detail: "" });
+              setReturnToConsumablesIndex(null);
+            } else {
+              setEntityModal(null);
+            }
+          }}
           save={async (data) => {
             let res;
             if (entityModal.mode === "create") {
@@ -1140,7 +1192,14 @@ const [automationRows, setAutomationRows] = useState(() => [...initialTemplates]
             if (res.success) {
               const fresh = await getInventory();
               setProductRows(fresh);
-              setEntityModal(null);
+              if (returnToConsumablesIndex !== null) {
+                const service = serviceRows[returnToConsumablesIndex];
+                setEntityModal({ kind: "service_consumables", mode: "edit", index: returnToConsumablesIndex, name: service.name, detail: "" });
+                setReturnToConsumablesIndex(null);
+              } else {
+                setEntityModal(null);
+              }
+              notify(entityModal.mode === "create" ? "Produto cadastrado com sucesso." : "Produto atualizado com sucesso.");
             } else {
               alert("Erro ao salvar produto: " + ("error" in res ? res.error : "Erro desconhecido"));
             }
@@ -1152,6 +1211,10 @@ const [automationRows, setAutomationRows] = useState(() => [...initialTemplates]
           service={serviceRows[entityModal.index!]}
           inventory={productRows}
           close={() => setEntityModal(null)}
+          createProduct={() => {
+            setReturnToConsumablesIndex(entityModal.index!);
+            setEntityModal({ kind: "product", mode: "create", name: "", detail: "" });
+          }}
           save={async (items) => {
             const svc = serviceRows[entityModal.index!];
             const res = await updateServiceConsumables(svc.id, items.map(i => ({ product_id: i.product_id, quantity: i.estimated_quantity })));
@@ -1159,6 +1222,7 @@ const [automationRows, setAutomationRows] = useState(() => [...initialTemplates]
               const freshServices = await getServices();
               setServiceRows(freshServices as any[]);
               setEntityModal(null);
+              notify("Consumo de insumos atualizado.");
             } else {
               alert("Erro ao salvar: " + (res as any).error);
             }

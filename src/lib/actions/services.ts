@@ -76,24 +76,60 @@ export async function createServiceRecord(service: Omit<ServiceItem, 'id' | 'act
 
 export async function updateServiceConsumables(serviceId: string, consumables: { product_id: string; quantity: number }[]) {
   const supabase = await createClient();
-  if (!supabase) return { success: false };
+  if (!supabase) return { success: false, error: "Sem conexão com o banco de dados." };
 
   const { data: profile } = await supabase.from('profiles').select('organization_id').single();
-  if (!profile?.organization_id) return { success: false };
+  if (!profile?.organization_id) return { success: false, error: "Organização não encontrada." };
 
-  // First delete existing consumables for this service
-  await supabase.from("service_consumables").delete().eq("service_id", serviceId);
-
-  // Then insert the new ones
-  if (consumables.length > 0) {
-    const toInsert = consumables.map(c => ({
-      organization_id: profile.organization_id,
-      service_id: serviceId,
-      product_id: c.product_id,
-      estimated_quantity: c.quantity
-    }));
-    await supabase.from("service_consumables").insert(toInsert);
+  const normalized = consumables.map(item => ({
+    product_id: item.product_id,
+    quantity: Number(item.quantity)
+  }));
+  const hasInvalidItem = normalized.some(item => !item.product_id || !Number.isFinite(item.quantity) || item.quantity <= 0);
+  const hasDuplicateProduct = new Set(normalized.map(item => item.product_id)).size !== normalized.length;
+  if (!serviceId || hasInvalidItem || hasDuplicateProduct) {
+    return { success: false, error: "Configuração de consumo inválida." };
   }
+
+  const { data: service, error: serviceError } = await supabase
+    .from("services")
+    .select("id")
+    .eq("id", serviceId)
+    .eq("organization_id", profile.organization_id)
+    .maybeSingle();
+  if (serviceError || !service) return { success: false, error: "Serviço não encontrado." };
+
+  if (normalized.length > 0) {
+    const productIds = normalized.map(item => item.product_id);
+    const { data: products, error: productsError } = await supabase
+      .from("products")
+      .select("id")
+      .eq("organization_id", profile.organization_id)
+      .in("id", productIds);
+    if (productsError || products?.length !== productIds.length) {
+      return { success: false, error: "Um ou mais produtos não pertencem a este estoque." };
+    }
+
+    const { error: upsertError } = await supabase.from("service_consumables").upsert(
+      normalized.map(item => ({
+        organization_id: profile.organization_id,
+        service_id: serviceId,
+        product_id: item.product_id,
+        estimated_quantity: item.quantity
+      })),
+      { onConflict: "service_id,product_id" }
+    );
+    if (upsertError) return { success: false, error: upsertError.message };
+  }
+
+  let deleteQuery = supabase
+    .from("service_consumables")
+    .delete()
+    .eq("service_id", serviceId)
+    .eq("organization_id", profile.organization_id);
+  if (normalized.length > 0) deleteQuery = deleteQuery.not("product_id", "in", `(${normalized.map(item => item.product_id).join(",")})`);
+  const { error: deleteError } = await deleteQuery;
+  if (deleteError) return { success: false, error: deleteError.message };
 
   revalidatePath("/");
   revalidatePath("/agendar");

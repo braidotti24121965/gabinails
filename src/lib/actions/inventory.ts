@@ -78,14 +78,19 @@ export async function addStockMovement(productId: string, type: string, quantity
 
 export async function createProduct(data: { name: string; unit: string; minimum: number; ideal: number; cost: number; stock?: number }) {
   const supabase = await createClient();
-  if (!supabase) return { success: false };
+  if (!supabase) return { success: false, error: "Sem conexão com o banco de dados." };
 
   const { data: profile } = await supabase.from('profiles').select('organization_id').single();
-  if (!profile?.organization_id) return { success: false };
+  if (!profile?.organization_id) return { success: false, error: "Organização não encontrada." };
 
-  const { error } = await supabase.from("products").insert([{
+  const name = data.name.trim();
+  if (!name || !data.unit || !Number.isFinite(data.minimum) || !Number.isFinite(data.ideal) || !Number.isFinite(data.cost) || data.minimum < 0 || data.ideal < 0 || data.cost < 0 || (data.stock !== undefined && (!Number.isFinite(data.stock) || data.stock < 0))) {
+    return { success: false, error: "Preencha os dados do produto com valores válidos." };
+  }
+
+  const { data: product, error } = await supabase.from("products").insert([{
     organization_id: profile.organization_id,
-    name: data.name,
+    name,
     base_unit: data.unit, // Using the correct column name from schema
     minimum_stock: data.minimum,
     ideal_stock: data.ideal,
@@ -99,13 +104,14 @@ export async function createProduct(data: { name: string; unit: string; minimum:
   }
   
   if (data.stock && data.stock > 0) {
-    await supabase.from("stock_movements").insert([{
+    const { error: stockError } = await supabase.from("stock_movements").insert([{
       organization_id: profile.organization_id,
-      product_id: ((await supabase.from("products").select("id").eq("organization_id", profile.organization_id).eq("name", data.name).single()).data?.id),
+      product_id: product.id,
       movement_type: "positive_adjustment",
       quantity: data.stock,
       source: "initial_stock"
     }]);
+    if (stockError) return { success: false, error: `Produto cadastrado, mas o saldo inicial não foi lançado: ${stockError.message}` };
   }
   
   revalidatePath("/");

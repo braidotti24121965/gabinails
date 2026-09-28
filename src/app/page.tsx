@@ -9,6 +9,7 @@ import { getAppointments } from "@/lib/actions/appointments";
 import { getServices } from "@/lib/actions/services";
 import { getFinance } from "@/lib/actions/finance";
 import { getInventory } from "@/lib/actions/inventory";
+import { getReports } from "@/lib/actions/reports";
 
 export default async function Page() {
   const supabase = await createClient();
@@ -29,6 +30,7 @@ export default async function Page() {
   const services = await getServices();
   const financialData = await getFinance();
   const inventory = await getInventory();
+  const reports = await getReports();
 
   return <NailStudioApp 
     initialClients={clients} 
@@ -39,5 +41,6 @@ export default async function Page() {
     initialFinancials={financialData.data}
     initialStats={financialData.stats}
     initialInventory={inventory}
+    initialReports={reports}
   />;
 }
