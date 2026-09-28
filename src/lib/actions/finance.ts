@@ -12,17 +12,28 @@ export async function getFinance() {
   const [
     { data: payments },
     { data: expenses },
-    { data: commissions }
+    { data: commissions },
+    { data: consumptions }
   ] = await Promise.all([
     supabase.from('payments').select('id, amount, method, status, created_at, kind, client:clients(name)').order('created_at', { ascending: false }),
     supabase.from('expenses').select('id, amount, description, status, created_at, due_date').order('created_at', { ascending: false }),
-    supabase.from('commissions').select('id, amount, status, created_at, professional:professionals(name)').order('created_at', { ascending: false })
+    supabase.from('commissions').select('id, amount, status, created_at, professional:professionals(name)').order('created_at', { ascending: false }),
+    supabase.from('stock_movements').select('quantity, products(unit_cost)').eq('movement_type', 'consumption')
   ]);
 
   const rows: any[] = [];
   let revenue = 0;
   let expensesTotal = 0;
   let commTotal = 0;
+  let consumptionCost = 0;
+
+  if (consumptions) {
+    consumptions.forEach((c: any) => {
+      const qty = Number(c.quantity || 0);
+      const cost = Number(c.products?.unit_cost || 0);
+      consumptionCost += (qty * cost);
+    });
+  }
 
   if (payments) {
     payments.forEach((p: any) => {
@@ -82,7 +93,8 @@ export async function getFinance() {
       revenue,
       expenses: expensesTotal,
       commissions: commTotal,
-      balance: revenue - expensesTotal - commTotal
+      balance: revenue - expensesTotal - commTotal - consumptionCost,
+      consumptionCost
     },
     data: rows
   };
