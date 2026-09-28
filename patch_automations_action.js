@@ -1,51 +1,7 @@
-"use server";
-import { createClient } from "@/lib/supabase/server";
+const fs = require('fs');
+let code = fs.readFileSync('src/lib/actions/automations.ts', 'utf8');
 
-export async function getRemindersForTomorrow() {
-  const supabase = await createClient();
-  if (!supabase) return [];
-
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowStr = tomorrow.toISOString().split("T")[0];
-
-  const { data: appts } = await supabase
-    .from("appointments")
-    .select(`
-      id,
-      starts_at,
-      status,
-      client:clients(name, phone),
-      professional:professionals(name),
-      items:appointment_items(service:services(name))
-    `)
-    .eq("status", "scheduled")
-    .gte("starts_at", new Date().toISOString())
-    .order("starts_at", { ascending: true })
-    .limit(50);
-
-  if (!appts) return [];
-
-  return appts.map((a: any) => {
-    const time = new Date(a.starts_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-    const date = new Date(a.starts_at).toLocaleDateString("pt-BR", { day: '2-digit', month: '2-digit' });
-    const services = a.items?.map((i: any) => i.service?.name).join(" e ") || "seu procedimento";
-    const firstName = a.client?.name?.split(" ")[0] || "Cliente";
-    
-    const message = `Oi ${firstName}, tudo bem? Aqui é do Gabi Ludwig Nails! Passando para lembrar do nosso horário agendado para o dia ${date} às ${time} para fazer ${services}. Por favor, confirme respondendo a esta mensagem. Te esperamos! 🥰`;
-    
-    return {
-      id: a.id,
-      clientName: a.client?.name || "Cliente",
-      phone: a.client?.phone || "",
-      time,
-      services,
-      message,
-      sent: false
-    };
-  });
-}
-
+const newFunc = `
 export async function getOverdueMaintenances() {
   const supabase = await createClient();
   if (!supabase) return [];
@@ -53,13 +9,13 @@ export async function getOverdueMaintenances() {
   // 1. Get all completed appointments with their services
   const { data: pastAppts } = await supabase
     .from("appointments")
-    .select(`
+    .select(\`
       id,
       starts_at,
       client_id,
       client:clients(name, phone),
       items:appointment_items(service:services(name))
-    `)
+    \`)
     .eq("status", "completed")
     .order("starts_at", { ascending: false });
 
@@ -97,7 +53,7 @@ export async function getOverdueMaintenances() {
   const now = new Date();
   const overdue: any[] = [];
 
-  for (const [clientId, app] of Array.from(latestMaintenanceByClient.entries())) {
+  for (const [clientId, app] of latestMaintenanceByClient.entries()) {
     if (futureClientIds.has(clientId)) continue; // They already have a future booking
 
     const apptDate = new Date(app.starts_at);
@@ -108,7 +64,7 @@ export async function getOverdueMaintenances() {
       const firstName = app.client?.name?.split(" ")[0] || "Cliente";
       const services = app.items?.map((i: any) => i.service?.name).join(" e ") || "unhas";
       
-      const message = `Oi ${firstName}, tudo bem? Aqui é do Gabi Ludwig Nails! Vi que já faz ${diffDays} dias desde a sua última vez aqui para fazer ${services}. Para garantir que suas unhas fiquem sempre lindas e intactas, que tal agendarmos a sua manutenção para essa semana? 🥰`;
+      const message = \`Oi \${firstName}, tudo bem? Aqui é do Gabi Ludwig Nails! Vi que já faz \${diffDays} dias desde a sua última vez aqui para fazer \${services}. Para garantir que suas unhas fiquem sempre lindas e intactas, que tal agendarmos a sua manutenção para essa semana? 🥰\`;
 
       overdue.push({
         id: app.id,
@@ -126,3 +82,7 @@ export async function getOverdueMaintenances() {
 
   return overdue.sort((a, b) => b.daysSince - a.daysSince); // Most overdue first
 }
+`;
+
+code += newFunc;
+fs.writeFileSync('src/lib/actions/automations.ts', code);
