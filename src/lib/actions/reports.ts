@@ -149,7 +149,8 @@ export async function getReports() {
         const match = appsData.find(ad => ad.id === ac.appointment_id);
         if (match) {
           ac.date = match.starts_at;
-          (ac as any).client_name = match.clients?.name || "Desconhecido";
+          const c = match.clients as any;
+          (ac as any).client_name = (Array.isArray(c) ? c[0]?.name : c?.name) || "Desconhecido";
         }
       });
     }
