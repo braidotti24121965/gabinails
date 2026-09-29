@@ -1,24 +1,4 @@
-let initialAnamnesis = { diabetes: false, gestante: false, alergias: "", roeUnha: false };
-  try {
-    if (rawNotes.startsWith("{")) {
-      const parsed = JSON.parse(rawNotes);
-      if (parsed.anamnesis) {
-        initialNotes = parsed.text || "";
-        initialAnamnesis = { ...initialAnamnesis, ...parsed.anamnesis };
-      }
-    }
-  } catch(e) {}
-  
-  // Prefer relational anamnesis if it exists
-  if (client?.client_anamnesis && client.client_anamnesis.length > 0) {
-    const an = client.client_anamnesis[0];
-    initialAnamnesis = {
-      diabetes: an.diabetes,
-      gestante: an.pregnant,
-      roeUnha: an.nail_biting,
-      alergias: an.allergies || ""
-    };
-  }/* eslint-disable react-hooks/set-state-in-effect */
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 import NextImage from "next/image";
 import { View, EntityKind, EntityModalState, Badge, statusTone, Metric, RowActions, SectionTitle, SmallMetricLink } from "./shared";
@@ -559,9 +539,19 @@ function ClientModal({ mode, client, close, save }: { mode: "create" | "edit" | 
         initialNotes = parsed.text || "";
         initialAnamnesis = { ...initialAnamnesis, ...parsed.anamnesis };
       }
-      // Removed legacy JSON packages
     }
   } catch(e) {}
+  
+  // Prefer relational anamnesis if it exists
+  if (client?.client_anamnesis && client.client_anamnesis.length > 0) {
+    const an = client.client_anamnesis[0];
+    initialAnamnesis = {
+      diabetes: an.diabetes,
+      gestante: an.pregnant,
+      roeUnha: an.nail_biting,
+      alergias: an.allergies || ""
+    };
+  }
   
   const [notes, setNotes] = useState(initialNotes);
   const [anamnesis, setAnamnesis] = useState(initialAnamnesis);
