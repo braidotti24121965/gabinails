@@ -511,7 +511,7 @@ function ProfessionalCommissionsModal({ professional, close }: { professional: a
 
 
 function ClientModal({ mode, client, close, save }: { mode: "create" | "edit" | "view"; client?: any; close: () => void; save: (data: any) => Promise<void> }) {
-  const [tab, setTab] = useState<"info"|"anamnese">("info");
+  const [tab, setTab] = useState<"info"|"anamnese"|"pacotes">("info");
   const [name, setName] = useState(client?.name || "");
   const [phone, setPhone] = useState(client?.phone || "");
   const [birthDate, setBirthDate] = useState(client?.birthDate || "");
@@ -530,6 +530,7 @@ function ClientModal({ mode, client, close, save }: { mode: "create" | "edit" | 
   const rawNotes = client?.notes || "";
   let initialNotes = rawNotes;
   let initialAnamnesis = { diabetes: false, gestante: false, alergias: "", roeUnha: false };
+  let initialPackages = [];
   try {
     if (rawNotes.startsWith("{")) {
       const parsed = JSON.parse(rawNotes);
@@ -537,11 +538,13 @@ function ClientModal({ mode, client, close, save }: { mode: "create" | "edit" | 
         initialNotes = parsed.text || "";
         initialAnamnesis = { ...initialAnamnesis, ...parsed.anamnesis };
       }
+      if (parsed.packages) initialPackages = parsed.packages;
     }
   } catch(e) {}
   
   const [notes, setNotes] = useState(initialNotes);
   const [anamnesis, setAnamnesis] = useState(initialAnamnesis);
+  const [packages, setPackages] = useState(initialPackages);
 
   const readOnly = mode === "view";
   const clientAge = formatAgeInYearsAndMonths(birthDate);
@@ -583,15 +586,16 @@ function ClientModal({ mode, client, close, save }: { mode: "create" | "edit" | 
     <button onClick={close} className="rounded-md p-1.5 text-muted hover:bg-bg hover:text-ink"><X size={20} /></button>
   </div>
   
-  <div className="flex gap-4 border-b border-[#E7EDF3] mb-6">
-    <button onClick={() => setTab("info")} className={`pb-2 font-medium border-b-2 transition-colors ${tab === "info" ? "border-primary text-primary" : "border-transparent text-muted hover:text-ink"}`}>Dados Pessoais</button>
-    <button onClick={() => setTab("anamnese")} className={`pb-2 font-medium border-b-2 transition-colors ${tab === "anamnese" ? "border-primary text-primary" : "border-transparent text-muted hover:text-ink"}`}>Saúde (Anamnese)</button>
+  <div className="flex gap-4 border-b border-[#E7EDF3] mb-6 overflow-x-auto">
+    <button type="button" onClick={() => setTab("info")} className={`whitespace-nowrap pb-2 font-medium border-b-2 transition-colors ${tab === "info" ? "border-primary text-primary" : "border-transparent text-muted hover:text-ink"}`}>Dados Pessoais</button>
+    <button type="button" onClick={() => setTab("anamnese")} className={`whitespace-nowrap pb-2 font-medium border-b-2 transition-colors ${tab === "anamnese" ? "border-primary text-primary" : "border-transparent text-muted hover:text-ink"}`}>Saúde (Anamnese)</button>
+    <button type="button" onClick={() => setTab("pacotes")} className={`whitespace-nowrap pb-2 font-medium border-b-2 transition-colors ${tab === "pacotes" ? "border-primary text-primary" : "border-transparent text-muted hover:text-ink"}`}>Pacotes e Combos</button>
   </div>
 
   <form onSubmit={async (e) => {
     e.preventDefault();
     setSubmitting(true);
-    const finalNotes = JSON.stringify({ text: notes, anamnesis });
+    const finalNotes = JSON.stringify({ text: notes, anamnesis, packages });
     await save({ name, phone, birthDate, cep, street, number, complement, neighborhood, city, state, notes: finalNotes, email });
     setSubmitting(false);
   }} className="space-y-4">
@@ -660,6 +664,49 @@ function ClientModal({ mode, client, close, save }: { mode: "create" | "edit" | 
         </div>
       </div>
     )}
+
+    {tab === "pacotes" && (
+      <div className="space-y-4">
+        {client?.id && !client.id.startsWith("demo-") ? (
+          <>
+            <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-lg flex justify-between items-center">
+              <div>
+                <h4 className="font-semibold text-emerald-900">Vender Novo Pacote</h4>
+                <p className="text-xs text-emerald-700">O valor entrará no financeiro como receita hoje.</p>
+              </div>
+              <button type="button" onClick={() => alert("Simulação: Pacote adicionado! (Recarregue para ver)")} className="btn-primary bg-emerald-600 hover:bg-emerald-700 border-emerald-600 text-xs py-1.5">
+                + Adicionar Pacote
+              </button>
+            </div>
+            
+            <h4 className="font-semibold mt-6 mb-2">Pacotes Ativos</h4>
+            {(!packages || packages.length === 0) ? (
+              <p className="text-sm text-muted text-center py-6 border-2 border-dashed rounded-lg">Esta cliente ainda não possui pacotes.</p>
+            ) : (
+              <div className="space-y-2">
+                {packages.map((p: any) => (
+                  <div key={p.id} className="p-3 border rounded-lg flex justify-between items-center">
+                    <div>
+                      <p className="font-medium">{p.name}</p>
+                      <p className="text-xs text-muted">Vendido em {new Date(p.created_at).toLocaleDateString("pt-BR")}</p>
+                    </div>
+                    <div className="text-right">
+                      <Badge tone={p.used >= p.total ? "neutral" : "success"}>
+                        {p.total - p.used} sessões restantes
+                      </Badge>
+                      <p className="text-xs text-muted mt-1">{p.used} de {p.total} utilizadas</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          <p className="text-sm text-muted text-center py-6">Salve a cliente primeiro para gerenciar seus pacotes.</p>
+        )}
+      </div>
+    )}
+
 
     <div className="mt-6 flex justify-end gap-3 border-t border-[#E7EDF3] pt-4"><button type="button" onClick={close} className="btn-outline">Cancelar</button>{!readOnly && <button disabled={submitting} type="submit" className="btn-primary">{submitting ? "Salvando..." : <><Check size={16} />Salvar</>}</button>}</div>
   </form></div></div>;
@@ -937,10 +984,13 @@ function ServiceModal({ mode, service, close, save }: { mode: "create" | "view" 
   );
 }
 
-function FinishModal({ appointment, close, done }: { appointment: Appointment; close: () => void; done: (method: string, val: number) => void }) {
+function FinishModal({ appointment, close, done }: { appointment: Appointment; close: () => void; done: (method: string, val: number, packageId?: string) => void }) {
     const [method, setMethod] = useState("PIX");
     const [submitting, setSubmitting] = useState(false);
-    return <div className="fixed inset-0 z-[70] flex items-end justify-center bg-navy-dark/45 sm:items-center sm:p-4"><div className="w-full max-w-lg rounded-t-lg bg-white p-5 sm:rounded-lg"><div className="flex justify-between"><div><h2 className="text-lg font-semibold">Concluir atendimento</h2><p className="text-xs text-muted">Revise o recebimento de {appointment.client}.</p></div><button onClick={close}><X size={18} /></button></div><div className="mt-5 rounded-md bg-bg p-4"><div className="flex justify-between"><span>Total do atendimento</span><b>{money.format(appointment.price)}</b></div><div className="mt-3 flex justify-between border-t border-[#DBE3EC] pt-3 text-base"><b>A receber</b><b>{money.format(appointment.price)}</b></div></div><label className="mt-4 block"><span className="field-label">Forma de pagamento</span><select value={method} onChange={e => setMethod(e.target.value)} className="field-input"><option>PIX</option><option>Dinheiro</option><option>Débito</option><option>Crédito</option></select></label><div className="mt-4 grid grid-cols-2 gap-2 text-xs"><div className="rounded-md border border-[#DBE3EC] p-3"><p className="text-muted">Comissão gerada</p><b>{money.format(appointment.price * 0.3)}</b></div><div className="rounded-md border border-[#DBE3EC] p-3"><p className="text-muted">Status do sistema</p><b>Caixa aberto</b></div></div><button disabled={submitting} onClick={async () => { setSubmitting(true); await done(method, appointment.price); }} className="btn-primary mt-5 w-full"><Check size={16} />{submitting ? "Processando..." : "Confirmar e concluir"}</button></div></div> }
+    
+    // We don't have the clientId directly in Appointment yet, but we will mock it or fetch by name
+    return <div className="fixed inset-0 z-[70] flex items-end justify-center bg-navy-dark/45 sm:items-center sm:p-4"><div className="w-full max-w-lg rounded-t-lg bg-white p-5 sm:rounded-lg"><div className="flex justify-between"><div><h2 className="text-lg font-semibold">Concluir atendimento</h2><p className="text-xs text-muted">Revise o recebimento de {appointment.client}.</p></div><button onClick={close}><X size={18} /></button></div><div className="mt-5 rounded-md bg-bg p-4"><div className="flex justify-between"><span>Total do atendimento</span><b>{money.format(appointment.price)}</b></div><div className="mt-3 flex justify-between border-t border-[#DBE3EC] pt-3 text-base"><b>A receber</b><b>{money.format(appointment.price)}</b></div></div><label className="mt-4 block"><span className="field-label">Forma de pagamento</span><select value={method} onChange={e => setMethod(e.target.value)} className="field-input"><option value="PIX">PIX</option><option value="Dinheiro">Dinheiro</option><option value="Débito">Débito</option><option value="Crédito">Crédito</option><option value="Pacote">Abater de Pacote</option></select></label><div className="mt-4 grid grid-cols-2 gap-2 text-xs"><div className="rounded-md border border-[#DBE3EC] p-3"><p className="text-muted">Comissão gerada</p><b>{money.format(appointment.price * 0.3)}</b></div><div className="rounded-md border border-[#DBE3EC] p-3"><p className="text-muted">Status do sistema</p><b>Caixa aberto</b></div></div><button disabled={submitting} onClick={async () => { setSubmitting(true); await done(method, appointment.price, method === "Pacote" ? "dummy_pkg_id" : undefined); }} className="btn-primary mt-5 w-full"><Check size={16} />{submitting ? "Processando..." : "Confirmar e concluir"}</button></div></div> 
+}
 
 function Toast({ text }: { text: string }) { return <div className="fixed bottom-5 right-5 z-[80] flex max-w-sm items-center gap-3 rounded-md bg-navy-dark px-4 py-3 text-sm text-white shadow-xl"><div className="rounded-full bg-primary p-1"><Check size={12} /></div>{text}</div> }
 

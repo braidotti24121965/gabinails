@@ -7,6 +7,7 @@ export async function finishAppointment(data: {
   appointmentId: string;
   amount: number; // raw value to pay
   paymentMethod: string;
+  packageId?: string;
 }) {
   const supabase = await createClient();
   if (!supabase) return { success: false, error: "No connection" };
