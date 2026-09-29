@@ -53,15 +53,17 @@ export async function updateAuthCredentials(email?: string, password?: string) {
 
   if (Object.keys(updates).length === 0) return { success: true };
 
-  // Update email first if present
-  if (updates.email) {
-    const { error } = await supabase.auth.updateUser({ email: updates.email });
-    if (error) return { error: translateError(error.message) };
-  }
+  // Usar admin client para forçar a alteração sem enviar e-mail de confirmação
+  const adminClient = await createAdminClient();
+  if (!adminClient) return { error: "Service Role Key não configurada no servidor." };
+  const adminAuth = adminClient.auth.admin;
 
-  // Update password if present
-  if (updates.password) {
-    const { error } = await supabase.auth.updateUser({ password: updates.password });
+  if (updates.email || updates.password) {
+    const adminUpdates: any = { email_confirm: true }; // Força a confirmação do e-mail imediatamente
+    if (updates.email) adminUpdates.email = updates.email;
+    if (updates.password) adminUpdates.password = updates.password;
+
+    const { error } = await adminAuth.updateUserById(user.id, adminUpdates);
     if (error) {
       if (error.message.includes("different from the old")) {
         // Ignorar se tentou colocar a mesma senha
@@ -71,5 +73,5 @@ export async function updateAuthCredentials(email?: string, password?: string) {
     }
   }
   
-  return { success: true, message: updates.email ? "Por segurança, um link de confirmação foi enviado para o novo e-mail. A troca será efetivada após o clique no link." : "Senha atualizada com sucesso!" };
+  return { success: true, message: "Acesso atualizado com sucesso!" };
 }

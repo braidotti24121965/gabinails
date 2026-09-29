@@ -1168,8 +1168,8 @@ function SettingsView({ tenant, updateToast }: { tenant: any; updateToast: (t: s
           </div>
         </div>
 
-        <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm p-4 rounded-lg mb-6">
-          <strong>Atenção:</strong> Ao alterar o seu e-mail, o sistema enviará um link de verificação para a sua nova caixa de entrada. Você precisará clicar nele para confirmar a troca.
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm p-4 rounded-lg mb-6">
+          <strong>Livre:</strong> Você pode alterar o e-mail de acesso livremente (inclusive usar e-mails fictícios para sua equipe). A mudança é imediata e não exige confirmação externa.
         </div>
 
         {accessError && <div className="bg-red-50 text-red-600 p-3 rounded-md mb-4 text-sm border border-red-100">{accessError}</div>}
