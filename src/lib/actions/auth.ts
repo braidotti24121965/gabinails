@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
 export async function login(prevState: any, formData: FormData) {
-  const email = formData.get("email") as string;
+  const email = (formData.get("email") as string)?.trim();
   const password = formData.get("password") as string;
   
   const supabase = await createClient();
@@ -12,10 +12,31 @@ export async function login(prevState: any, formData: FormData) {
     return { error: "Supabase não configurado" };
   }
 
-  const { error } = await supabase.auth.signInWithPassword({
+  let { error } = await supabase.auth.signInWithPassword({
     email,
     password,
   });
+
+  if (error) {
+    // If login failed, check if the account is unconfirmed in Supabase and confirm it automatically
+    try {
+      const { createAdminClient } = await import("@/lib/supabase/server");
+      const adminClient = await createAdminClient();
+      if (adminClient) {
+        const { data: usersData } = await adminClient.auth.admin.listUsers();
+        const existingUser = usersData?.users?.find(
+          (u) => u.email?.toLowerCase() === email?.toLowerCase()
+        );
+        if (existingUser && !existingUser.email_confirmed_at) {
+          await adminClient.auth.admin.updateUserById(existingUser.id, { email_confirm: true });
+          const retry = await supabase.auth.signInWithPassword({ email, password });
+          error = retry.error;
+        }
+      }
+    } catch {
+      // Ignore fallback errors and return standard user message
+    }
+  }
 
   if (error) {
     return { error: "Credenciais inválidas. Verifique seu e-mail e senha." };
@@ -33,10 +54,10 @@ export async function logout() {
 }
 
 export async function register(prevState: any, formData: FormData) {
-  const email = formData.get("email") as string;
+  const email = (formData.get("email") as string)?.trim();
   const password = formData.get("password") as string;
-  const fullName = formData.get("fullName") as string;
-  const orgName = formData.get("orgName") as string;
+  const fullName = (formData.get("fullName") as string)?.trim();
+  const orgName = (formData.get("orgName") as string)?.trim();
   
   if (!email || !password || !fullName || !orgName) {
     return { error: "Preencha todos os campos." };
@@ -45,7 +66,7 @@ export async function register(prevState: any, formData: FormData) {
   const supabase = await createClient();
   if (!supabase) return { error: "Supabase não configurado" };
 
-  // 1. Create the user using standard client (so session cookies are set)
+  // 1. Create the user using standard client
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
     password,
@@ -65,14 +86,16 @@ export async function register(prevState: any, formData: FormData) {
     return { error: "Não foi possível criar o usuário." };
   }
 
-  // 2. We use admin client to set up Org and Profile bypassing RLS, just to be safe
+  // 2. We use admin client to set up Org and Profile bypassing RLS, and confirm user email
   const { createAdminClient } = await import("@/lib/supabase/server");
   const adminClient = await createAdminClient();
   
   if (adminClient) {
-    // Check if organization already created? 
+    // Auto-confirm user email so login works immediately without requiring email confirmation link
+    await adminClient.auth.admin.updateUserById(user.id, { email_confirm: true });
+
     // Create new organization
-    const { data: org, error: orgError } = await adminClient.from('organizations').insert([{
+    const { data: org } = await adminClient.from('organizations').insert([{
       name: orgName,
       slug: orgName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''),
       timezone: 'America/Sao_Paulo'

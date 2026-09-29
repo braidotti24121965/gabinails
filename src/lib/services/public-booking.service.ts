@@ -1,5 +1,36 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 
+export async function getOrgBySlug(supabase: SupabaseClient, slug: string) {
+  if (!slug || !supabase) return null;
+  const { data: org, error } = await supabase
+    .from("organizations")
+    .select("id, name, slug")
+    .eq("slug", slug.toLowerCase().trim())
+    .maybeSingle();
+
+  if (error || !org) return null;
+  return org;
+}
+
+export async function fetchPublicBookingDataBySlug(supabase: SupabaseClient, slug: string) {
+  if (!slug || !supabase) {
+    return { success: false, services: [], professionals: [], orgName: "", orgId: null, slug: "", error: "Missing configuration" };
+  }
+
+  const org = await getOrgBySlug(supabase, slug);
+  if (!org) {
+    return { success: false, services: [], professionals: [], orgName: "", orgId: null, slug: "", error: "Organization not found" };
+  }
+
+  const result = await fetchPublicBookingData(supabase, org.id);
+  return {
+    ...result,
+    orgName: org.name,
+    orgId: org.id,
+    slug: org.slug
+  };
+}
+
 export async function fetchPublicBookingData(supabase: SupabaseClient, orgId?: string | null) {
   if (!orgId) {
     return { success: false, services: [], professionals: [], error: "Missing configuration" };

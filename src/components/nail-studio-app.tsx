@@ -1449,7 +1449,7 @@ const [reportsData] = useState(() => initialReports); const [entityModal, setEnt
     if (view === "inventory") return <Inventory data={productRows} onNew={() => openEntity("product", "create")} onAction={(mode, index) => openEntity("product", mode, index)} onDelete={(index) => { openEntity("product", "edit", index); notify("Atualize o campo \"Saldo atual\" para corrigir o estoque."); }} />;
     if (view === "automations") return <Automations go={setView} tenant={tenant} />;
     if (view === "reports") return <Reports data={reportsData} />;
-    if (view === "online") return <OnlineBooking />;
+    if (view === "online") return <OnlineBooking slug="gabi-ludwig" orgName={tenant?.orgName || "Gabi Ludwig Nails"} />;
   })();
 
   return (

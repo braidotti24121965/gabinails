@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { createAdminClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { findAvailableProfessionalForSlot } from "@/lib/availability-engine";
+import { getOrgBySlug } from "@/lib/services/public-booking.service";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const {
+      slug = "gabi-ludwig",
       clientName,
       clientPhone,
       professionalId,
@@ -28,10 +30,8 @@ export async function POST(request: Request) {
     const holdMinutes = 30;
     const expiresAt = new Date(Date.now() + holdMinutes * 60 * 1000);
 
-    // Fallback gracioso caso Supabase ainda não esteja com credenciais ativas
     if (!isSupabaseConfigured()) {
-      
-    return NextResponse.json({
+      return NextResponse.json({
         success: true,
         holdId: `hold_${Date.now()}`,
         status: "held",
@@ -47,45 +47,56 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Erro ao conectar com banco" }, { status: 500 });
     }
 
-    // Get default organization since it's a single-tenant app
-    const { data: org } = await supabase.from("organizations").select("id").limit(1).single();
-    if (!org) throw new Error("Organização não encontrada");
+    // Resolve organization exclusively on the server by slug
+    const org = await getOrgBySlug(supabase, slug);
+    if (!org) {
+      return NextResponse.json({ error: "Salão não encontrado ou inativo." }, { status: 404 });
+    }
 
     let finalProfessionalId = professionalId;
     const phoneNormalized = clientPhone.replace(/\D/g, "");
     
     if (!finalProfessionalId) {
       if (professionalName) {
-        const { data: profs } = await supabase.from("professionals").select("id").ilike("name", professionalName).limit(1);
+        const { data: profs } = await supabase
+          .from("professionals")
+          .select("id")
+          .eq("organization_id", org.id)
+          .ilike("name", professionalName)
+          .limit(1);
         if (profs && profs.length > 0) finalProfessionalId = profs[0].id;
       }
       
       if (!finalProfessionalId || finalProfessionalId === "any") {
-        // Obter preferred_professional_id do cliente se existir
-        const { data: existingClient } = await supabase.from("clients").select("preferred_professional_id").eq("phone_normalized", phoneNormalized).maybeSingle();
+        const { data: existingClient } = await supabase
+          .from("clients")
+          .select("preferred_professional_id")
+          .eq("organization_id", org.id)
+          .eq("phone_normalized", phoneNormalized)
+          .maybeSingle();
         const preferredProfessionalId = existingClient?.preferred_professional_id;
         
-        // Encontra quem realmente está livre nesse horário pelo Motor Único!
-        const freeProf = await findAvailableProfessionalForSlot({ date, time, serviceDuration: durationMinutes, serviceId, preferredProfessionalId });
+        const freeProf = await findAvailableProfessionalForSlot({
+          orgId: org.id,
+          date,
+          time,
+          serviceDuration: durationMinutes,
+          serviceId,
+          preferredProfessionalId
+        });
         if (!freeProf) throw new Error("Infelizmente esse horário acabou de ser ocupado. Por favor, escolha outro.");
         finalProfessionalId = freeProf;
       }
     }
     
     const startsAt = new Date(`${date}T${time}:00-03:00`);
-    const endsAt = new Date(startsAt.getTime() + durationMinutes * 60 * 1000);
 
-    // 0. Expira holds vencidos para liberar a agenda (idempotente)
-    await supabase.from("appointments").update({ status: 'cancelled', notes: 'Expirado automaticamente após 30 minutos sem confirmação de sinal.' }).eq("status", "awaiting_deposit").lt("hold_expires_at", new Date().toISOString());
-
-    // --- TRANSAÇÃO ATÔMICA SEGURA ---
-    // Executa todo o processo no banco usando a RPC. Ignora os dados de preço/duração enviados pelo navegador.
-    // phoneNormalized já foi extraído acima
-    
-    // Não bloqueamos mais quem não está na whitelist.
-    // Apenas aguardamos o pagamento do sinal de 50%.
-    
-
+    // Expira holds vencidos para a organização
+    await supabase.from("appointments")
+      .update({ status: 'cancelled', notes: 'Expirado automaticamente após 30 minutos sem confirmação de sinal.' })
+      .eq("organization_id", org.id)
+      .eq("status", "awaiting_deposit")
+      .lt("hold_expires_at", new Date().toISOString());
 
     const { data: result, error: rpcError } = await supabase.rpc('create_booking_transaction', {
       p_org_id: org.id,

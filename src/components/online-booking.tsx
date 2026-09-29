@@ -16,7 +16,17 @@ const demoServices = [
 ];
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
-export function OnlineBooking({ professionals = [], services = [] }: { professionals?: any[], services?: any[] }) {
+export function OnlineBooking({
+  professionals = [],
+  services = [],
+  slug = "gabi-ludwig",
+  orgName = "Gabi Ludwig Nail Studio",
+}: {
+  professionals?: any[];
+  services?: any[];
+  slug?: string;
+  orgName?: string;
+}) {
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState(services[0] || demoServices[0]);
   const [selectedProfessional, setSelectedProfessional] = useState<string | null>(null);
@@ -51,7 +61,7 @@ export function OnlineBooking({ professionals = [], services = [] }: { professio
   const loadSlots = (date: string, duration: number) => {
     setLoadingSlots(true);
     setSlotError("");
-    fetch(`/api/booking/availability?date=${date}&duration=${duration}`)
+    fetch(`/api/booking/availability?slug=${encodeURIComponent(slug)}&date=${date}&duration=${duration}`)
       .then(res => res.json())
       .then(data => {
         setDebugInfo(data.debug);
@@ -83,6 +93,7 @@ export function OnlineBooking({ professionals = [], services = [] }: { professio
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          slug,
           clientName,
           clientPhone,
           date: selectedDate,
@@ -130,7 +141,7 @@ export function OnlineBooking({ professionals = [], services = [] }: { professio
               <Sparkles size={17} />
             </div>
             <div>
-              <p className="font-semibold">Gabi Ludwig Nail Studio</p>
+              <p className="font-semibold">{orgName}</p>
               <p className="text-xs text-white/60">Agendamento online oficial</p>
             </div>
           </div>

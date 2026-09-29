@@ -1,20 +1,17 @@
 import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/server";
-import { fetchPublicBookingData } from "@/lib/services/public-booking.service";
+import { fetchPublicBookingDataBySlug } from "@/lib/services/public-booking.service";
 
-// Using GABI_ORG_ID as requested without fallback UUID
-const ORG_ID = process.env.GABI_ORG_ID;
-
-export async function getPublicBookingData() {
+export async function getPublicBookingDataBySlug(slug: string) {
   const supabase = await createAdminClient();
 
   if (!supabase) {
     console.error("[PublicBooking] Supabase admin client not configured.");
-    return { success: false, services: [], professionals: [] };
+    return { success: false, services: [], professionals: [], orgName: "", orgId: null, slug: "" };
   }
 
-  const result = await fetchPublicBookingData(supabase, ORG_ID);
+  const result = await fetchPublicBookingDataBySlug(supabase, slug);
   if (!result.success) {
     console.error("[PublicBooking] Error:", result.error);
   }
@@ -22,6 +19,13 @@ export async function getPublicBookingData() {
   return {
     success: result.success,
     professionals: result.professionals,
-    services: result.services
+    services: result.services,
+    orgName: result.orgName,
+    orgId: result.orgId,
+    slug: result.slug
   };
+}
+
+export async function getPublicBookingData() {
+  return getPublicBookingDataBySlug("gabi-ludwig");
 }
