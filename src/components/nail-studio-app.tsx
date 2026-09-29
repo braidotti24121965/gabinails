@@ -674,7 +674,34 @@ function ClientModal({ mode, client, close, save }: { mode: "create" | "edit" | 
                 <h4 className="font-semibold text-emerald-900">Vender Novo Pacote</h4>
                 <p className="text-xs text-emerald-700">O valor entrará no financeiro como receita hoje.</p>
               </div>
-              <button type="button" onClick={() => alert("Simulação: Pacote adicionado! (Recarregue para ver)")} className="btn-primary bg-emerald-600 hover:bg-emerald-700 border-emerald-600 text-xs py-1.5">
+              <button type="button" onClick={async (e) => {
+                const pName = window.prompt("Nome do pacote (Ex: 4 Manicures)");
+                if (!pName) return;
+                const pTotal = parseInt(window.prompt("Número de sessões (Ex: 4)") || "0");
+                if (!pTotal) return;
+                const pPrice = parseFloat(window.prompt("Valor total (Ex: 120.00)") || "0");
+                if (!pPrice) return;
+                const pMethod = window.prompt("Forma de pagamento (PIX, Crédito, Débito, Dinheiro)", "PIX");
+                if (!pMethod) return;
+                
+                const btn = e.target as HTMLButtonElement;
+                const oldText = btn.innerText;
+                btn.innerText = "Processando...";
+                btn.disabled = true;
+                
+                const res = await save({ name, phone, birthDate, cep, street, number, complement, neighborhood, city, state, notes: JSON.stringify({ text: notes, anamnesis, packages }), email });
+                const { sellPackage } = await import("@/lib/actions/packages");
+                const sellRes = await sellPackage(client.id, pName, pTotal, pPrice, pMethod);
+                
+                if (sellRes.success) {
+                  setPackages([...packages, { id: Date.now().toString(), name: pName, total: pTotal, used: 0, created_at: new Date().toISOString() }]);
+                  alert("Pacote adicionado com sucesso! Já foi contabilizado no Financeiro.");
+                } else {
+                  alert("Erro ao adicionar pacote.");
+                }
+                btn.innerText = oldText;
+                btn.disabled = false;
+              }} className="btn-primary bg-emerald-600 hover:bg-emerald-700 border-emerald-600 text-xs py-1.5">
                 + Adicionar Pacote
               </button>
             </div>
@@ -1343,7 +1370,7 @@ const [reportsData] = useState(() => initialReports); const [entityModal, setEnt
       )}
 
       {booking && <BookingModal clients={clientRows} professionals={professionalRows} services={serviceRows} close={() => setBooking(false)} save={async (a, rawData) => { if(rawData) { const res = await createAppointmentRecord(rawData); if (res.success) { const fresh = await getAppointments(); setRows(fresh); setBooking(false); notify("Agendamento criado com sucesso."); } else { alert(("error" in res ? res.error : "Erro desconhecido")); } } else { setRows(v => [...v, a]); setBooking(false); notify("Agendamento criado (demo)."); } }} />}
-      {finish && activeAppointment && <FinishModal appointment={activeAppointment} close={() => setFinish(false)} done={async (method, val) => { const res = await finishAppointment({ appointmentId: activeAppointment.id, amount: val, paymentMethod: method }); if (res.success) { setRows(v => v.map(a => a.id === activeAppointment.id ? { ...a, status: "Concluído", paid: (a.paid || 0) + val } : a)); setFinish(false); setActiveAppointment(null); setView("agenda"); notify("Atendimento concluído e pagamento registrado com sucesso."); } else { alert(("error" in res ? res.error : "Erro desconhecido")); } }} />}
+      {finish && activeAppointment && <FinishModal appointment={activeAppointment} close={() => setFinish(false)} done={async (method, val, pkgId) => { const res = await finishAppointment({ appointmentId: activeAppointment.id, amount: val, paymentMethod: method, packageId: pkgId }); if (res.success) { setRows(v => v.map(a => a.id === activeAppointment.id ? { ...a, status: "Concluído", paid: (a.paid || 0) + val } : a)); setFinish(false); setActiveAppointment(null); setView("agenda"); notify("Atendimento concluído e pagamento registrado com sucesso."); } else { alert(("error" in res ? res.error : "Erro desconhecido")); } }} />}
       {toast && <Toast text={toast} />}
     </div>
   );
