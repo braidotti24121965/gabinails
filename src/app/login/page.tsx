@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { Sparkles, ArrowRight } from "lucide-react";
 import { login } from "@/lib/actions/auth";
+import Link from "next/link";
 
 export default function LoginPage() {
   const [state, formAction, pending] = useActionState(login, undefined);
@@ -61,6 +62,10 @@ export default function LoginPage() {
             {pending ? "Entrando..." : "Acessar painel"} <ArrowRight size={16} />
           </button>
         </form>
+
+        <div className="mt-6 text-center text-sm text-muted">
+          Não tem uma conta? <Link href="/cadastro" className="text-primary hover:underline font-medium">Cadastre seu Salão</Link>
+        </div>
       </div>
     </div>
   );
