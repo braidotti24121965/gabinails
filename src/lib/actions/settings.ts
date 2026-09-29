@@ -44,9 +44,23 @@ export async function updateAuthCredentials(email?: string, password?: string) {
 
   if (Object.keys(updates).length === 0) return { success: true };
 
-  const { error } = await supabase.auth.updateUser(updates);
-  
-  if (error) return { error: error.message };
+  // Update email first if present
+  if (updates.email) {
+    const { error } = await supabase.auth.updateUser({ email: updates.email });
+    if (error) return { error: "Erro ao atualizar e-mail: " + error.message };
+  }
+
+  // Update password if present
+  if (updates.password) {
+    const { error } = await supabase.auth.updateUser({ password: updates.password });
+    if (error) {
+      if (error.message.includes("different from the old")) {
+        // Ignorar se tentou colocar a mesma senha
+      } else {
+        return { error: "Erro ao atualizar senha: " + error.message };
+      }
+    }
+  }
   
   return { success: true, message: updates.email ? "Por segurança, um link de confirmação foi enviado para o novo e-mail. A troca será efetivada após o clique no link." : "Senha atualizada com sucesso!" };
 }

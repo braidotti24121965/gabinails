@@ -1174,7 +1174,7 @@ function SettingsView({ tenant, updateToast }: { tenant: any; updateToast: (t: s
           </div>
           <div>
             <label className="field-label">Nova Senha (Deixe em branco para não alterar)</label>
-            <input type="password" placeholder="••••••••" className="field-input" value={password} onChange={e => setPassword(e.target.value)} />
+            <input type="password" placeholder="••••••••" className="field-input" value={password} onChange={e => setPassword(e.target.value)} autoComplete="new-password" />
           </div>
         </div>
 
