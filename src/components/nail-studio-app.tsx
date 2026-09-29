@@ -757,7 +757,7 @@ function ClientModal({ mode, client, close, save }: { mode: "create" | "edit" | 
                         <div className="grid grid-cols-3 gap-3">
                           <div>
                             <label className="text-xs font-medium text-muted">Valor (R$)</label>
-                            <input type="number" className="field-input !py-1 !text-sm" value={editPkg.price || 0} onChange={e => setEditPkg({...editPkg, price: +e.target.value})} title="A alteração aqui é apenas informativa e não altera o caixa" />
+                            <input type="number" className="field-input !py-1 !text-sm bg-gray-50" value={editPkg.price || 0} disabled title="O valor não pode ser alterado após a venda. Faça um estorno no financeiro se necessário." />
                           </div>
                           <div>
                             <label className="text-xs font-medium text-muted">Total Sessões</label>
