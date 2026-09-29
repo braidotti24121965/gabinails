@@ -14,6 +14,7 @@ export async function getRemindersForTomorrow(orgName: string = "Studio") {
     .from("appointments")
     .select(`
       id,
+      client_id,
       starts_at,
       status,
       client:clients(name, phone),
@@ -40,6 +41,7 @@ export async function getRemindersForTomorrow(orgName: string = "Studio") {
     
     return {
       id: a.id,
+      clientId: a.client_id,
       clientName: a.client?.name || "Cliente",
       phone: a.client?.phone || "",
       time,
@@ -61,7 +63,7 @@ export async function getOverdueMaintenances(orgName: string = "Studio") {
       starts_at,
       client_id,
       client:clients(name, phone),
-      items:appointment_items(service:services(name, duration_minutes, created_at))
+      items:appointment_items(service:services(name, maintenance_days))
     `)
     .eq("status", "completed")
     .order("starts_at", { ascending: false });
@@ -119,7 +121,7 @@ export async function getOverdueMaintenances(orgName: string = "Studio") {
     
     const thresholdDays = app.maintenanceDays || 20;
 
-    if (diffDays >= thresholdDays) {
+    if (diffDays > thresholdDays) {
       const firstName = app.client?.name?.split(" ")[0] || "Cliente";
       const services = app.items?.map((i: any) => i.service?.name).join(" e ") || "unhas";
       
@@ -145,17 +147,14 @@ export async function getOverdueMaintenances(orgName: string = "Studio") {
 export async function markMessageSent(clientId: string, type: string) {
   const supabase = await createClient();
   if (!supabase) return { success: false };
-
   const { data: profile } = await supabase.from('profiles').select('organization_id').single();
-
   const { error } = await supabase.from('message_jobs').insert([{
     organization_id: profile?.organization_id,
-    type: type, // 'reminder' or 'maintenance'
+    client_id: clientId,
     status: 'sent',
-    recipient: clientId,
+    scheduled_at: new Date().toISOString(),
     sent_at: new Date().toISOString()
   }]);
-
   if (error) return { success: false, error: error.message };
   return { success: true };
 }

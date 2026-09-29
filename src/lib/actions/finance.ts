@@ -12,16 +12,20 @@ export async function getFinance(period?: string) {
   let fromDate = new Date(0);
   let toDate = new Date();
   
+  const now = new Date();
   if (period === 'today') {
-    fromDate = new Date();
-    fromDate.setHours(0, 0, 0, 0);
+    fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    toDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
   } else if (period === 'month') {
-    fromDate = new Date();
-    fromDate.setDate(1);
-    fromDate.setHours(0, 0, 0, 0);
+    fromDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
+    toDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  } else {
+    // all time
+    toDate = new Date(now.getFullYear() + 10, 0, 1);
   }
 
   const fromISO = fromDate.toISOString();
+  const toISO = toDate.toISOString();
   
   // Regime de Caixa: usar paid_at
   const [
@@ -32,21 +36,22 @@ export async function getFinance(period?: string) {
     { data: appointments }
   ] = await Promise.all([
     supabase.from('payments').select('id, amount, method, status, paid_at, kind, client:clients(name)')
-      .gte('paid_at', fromISO)
+      .gte('paid_at', fromISO).lte('paid_at', toISO).lte('paid_at', toISO)
       .order('paid_at', { ascending: false }),
     supabase.from('expenses').select('id, amount, description, status, paid_at, due_date')
       .eq('status', 'paid')
       .gte('paid_at', fromISO)
       .order('paid_at', { ascending: false }),
-    supabase.from('commissions').select('id, amount, status, created_at, professional:professionals(name)')
-      .gte('created_at', fromISO)
+    supabase.from('commissions').select('id, amount, status, paid_at, created_at, professional:professionals(name)')
+      .eq('status', 'paid')
+      .gte('paid_at', fromISO).lte('paid_at', toISO)
       .order('created_at', { ascending: false }),
     supabase.from('stock_movements').select('quantity, created_at, products(unit_cost)')
       .eq('movement_type', 'consumption')
-      .gte('created_at', fromISO),
-    supabase.from('appointments').select('id, status, created_at')
+      .gte('created_at', fromISO).lte('created_at', toISO),
+    supabase.from('appointments').select('id, status, actual_end_at, created_at')
       .eq('status', 'completed')
-      .gte('created_at', fromISO)
+      .gte('actual_end_at', fromISO).lte('actual_end_at', toISO)
   ]);
 
   const rows: any[] = [];

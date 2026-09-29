@@ -3,15 +3,46 @@ import { Plus, TrendingUp, CircleDollarSign, CreditCard, BarChart3, Download, Pi
 import { Badge, SectionTitle, RowActions, Metric } from "../shared";
 import { money } from "@/lib/demo-data";
 
+import { useState, useEffect } from "react";
 export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any[]; stats?: any; onNew: () => void; onAction: (mode: "view" | "edit", index: number) => void; onReverse: (index: number) => void }) { 
-  
+  const [period, setPeriod] = useState("month");
+  const [financeData, setFinanceData] = useState(data);
+  const [financeStats, setFinanceStats] = useState(stats);
+  const [loading, setLoading] = useState(false);
+
+  const loadData = React.useCallback(async () => {
+    setLoading(true);
+    const { getFinance } = await import("@/lib/actions/finance");
+    const res = await getFinance(period);
+    setFinanceData(res.data);
+    setFinanceStats(res.stats);
+    setLoading(false);
+  }, [period]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadData();
+  }, [loadData]);
+
+  const handleReverse = async (id: string, index: number) => {
+    if (confirm("Tem certeza que deseja estornar este pagamento?")) {
+      const { reversePayment } = await import("@/lib/actions/finance");
+      const res = await reversePayment(id);
+      if (res.success) {
+        loadData();
+      } else {
+        alert("Erro ao estornar: " + res.error);
+      }
+    }
+  };
+
   return (
     <main className="page-content space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric label="Faturamento Bruto" value={stats ? money.format(stats.revenue) : "R$ 0,00"} detail="Entrada total" icon={TrendingUp} />
-        <Metric label="Despesas Fixas" value={stats ? money.format(stats.expenses) : "R$ 0,00"} detail="Contas do mês" icon={CreditCard} tone="warning" />
-        <Metric label="Comissões" value={stats ? money.format(stats.commissions) : "R$ 0,00"} detail="A repassar" icon={CircleDollarSign} tone="warning" />
-        <Metric label="Lucro Líquido" value={stats ? money.format(stats.balance) : "R$ 0,00"} detail="No seu bolso" icon={BarChart3} tone="success" />
+        <Metric label="Faturamento Bruto" value={stats ? money.format(financeStats.revenue) : "R$ 0,00"} detail="Entrada total" icon={TrendingUp} />
+        <Metric label="Despesas Fixas" value={stats ? money.format(financeStats.expenses) : "R$ 0,00"} detail="Contas do mês" icon={CreditCard} tone="warning" />
+        <Metric label="Comissões" value={stats ? money.format(financeStats.commissions) : "R$ 0,00"} detail="A repassar" icon={CircleDollarSign} tone="warning" />
+        <Metric label="Lucro Líquido" value={stats ? money.format(financeStats.balance) : "R$ 0,00"} detail="No seu bolso" icon={BarChart3} tone="success" />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -22,33 +53,36 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
           <div className="mt-5 space-y-4 font-medium text-sm">
             <div className="flex justify-between text-success">
               <span>(+) Faturamento Bruto</span>
-              <span>{stats ? money.format(stats.revenue) : "R$ 0,00"}</span>
+              <span>{stats ? money.format(financeStats.revenue) : "R$ 0,00"}</span>
             </div>
             
             <div className="border-t border-[#E7EDF3] pt-4 flex justify-between text-danger">
               <span>(-) Custo de Produtos</span>
-              <span>{stats ? money.format(stats.consumptionCost || 0) : "R$ 0,00"}</span>
+              <span>{stats ? money.format(financeStats.consumptionCost || 0) : "R$ 0,00"}</span>
             </div>
             
             <div className="flex justify-between text-danger">
               <span>(-) Comissões da Equipe</span>
-              <span>{stats ? money.format(stats.commissions) : "R$ 0,00"}</span>
+              <span>{stats ? money.format(financeStats.commissions) : "R$ 0,00"}</span>
             </div>
             
             <div className="flex justify-between text-danger pb-4 border-b border-[#E7EDF3]">
               <span>(-) Despesas Gerais/Fixas</span>
-              <span>{stats ? money.format(stats.expenses) : "R$ 0,00"}</span>
+              <span>{stats ? money.format(financeStats.expenses) : "R$ 0,00"}</span>
             </div>
             
             <div className="flex justify-between text-lg font-bold text-navy-dark pt-2">
               <span>(=) Lucro Líquido Real</span>
-              <span className={stats?.balance >= 0 ? "text-success" : "text-danger"}>{stats ? money.format(stats.balance) : "R$ 0,00"}</span>
+              <span className={financeStats?.balance >= 0 ? "text-success" : "text-danger"}>{stats ? money.format(financeStats.balance) : "R$ 0,00"}</span>
             </div>
           </div>
           
           <div className="mt-6 rounded-md bg-emerald-50 border border-emerald-100 p-4">
-            <p className="text-xs text-emerald-800 text-center">
-              Esta visão deduz automaticamente todos os produtos consumidos nas mesas, garantindo que o seu lucro seja 100% real.
+            <p className="text-xs text-emerald-800 text-center font-semibold mb-1">
+              Ticket Médio Líquido: {financeStats ? money.format(financeStats.netAverageTicket || 0) : "R$ 0,00"}
+            </p>
+            <p className="text-xs text-emerald-700 text-center">
+              Você está tendo um desempenho incrível e sobrando caixa no final do mês.
             </p>
           </div>
         </section>
@@ -73,7 +107,7 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
                 {data.length === 0 && (
                   <tr><td colSpan={7} className="text-center py-4 text-muted">Nenhum movimento registrado.</td></tr>
                 )}
-                {data.map((item, index) => (
+                {financeData.map((item, index) => (
                   <tr key={`${item.date}-${item.name}-${index}`}>
                     <td className="whitespace-nowrap">{item.date}</td>
                     <td>

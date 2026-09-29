@@ -1,9 +1,0 @@
-const fs = require('fs');
-let code = fs.readFileSync('src/components/nail-studio-app.tsx', 'utf8');
-
-code = code.replace(
-  'type View = "dashboard" | "agenda" | "clients" | "services" | "professionals" | "attendance" | "finance" | "inventory" | "automations" | "online" | "reports";',
-  'type View = "dashboard" | "agenda" | "clients" | "services" | "professionals" | "attendance" | "finance" | "inventory" | "automations" | "online" | "reports" | "settings";'
-);
-
-fs.writeFileSync('src/components/nail-studio-app.tsx', code);

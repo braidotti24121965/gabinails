@@ -35,42 +35,18 @@ export async function finishAppointment(data: {
 
   if (getErr || !appointment) return { success: false, error: "Agendamento não encontrado" };
 
-  // 2. Mark as completed
-  await supabase
-    .from('appointments')
-    .update({ status: 'completed' })
-    .eq('id', data.appointmentId);
+  // 2 & 3. Handle Atomic Checkout
+  const { error: rpcErr } = await supabase.rpc('finish_appointment_checkout', {
+    p_appointment_id: data.appointmentId,
+    p_payment_amount: data.packageId ? 0 : data.amount,
+    p_payment_method: data.packageId ? 'other' : data.paymentMethod,
+    p_package_id: data.packageId || null
+  });
 
-  // 3. Handle Payment or Package Deduction
-  if (data.packageId) {
-    const { error: deductErr } = await supabase.rpc('use_package_session', {
-      p_package_id: data.packageId,
-      p_appointment_id: data.appointmentId
-    });
-    if (deductErr) {
-      console.error("Error deducting package:", deductErr);
-      return { success: false, error: deductErr.message };
-    }
-  } else {
-    const { error: payErr } = await supabase
-      .from('payments')
-      .insert([{
-        organization_id: profile.organization_id,
-        appointment_id: data.appointmentId,
-        client_id: appointment.client_id,
-        kind: 'payment',
-        method: data.paymentMethod === 'PIX' ? 'pix' : 
-                data.paymentMethod === 'Dinheiro' ? 'cash' : 
-                data.paymentMethod === 'Débito' ? 'debit' : 
-                data.paymentMethod === 'Crédito' ? 'credit' : 'other',
-        amount: data.amount,
-        status: 'paid',
-        paid_at: new Date().toISOString()
-      }]);
-
-    if (payErr) console.error("Error creating payment:", payErr);
+  if (rpcErr) {
+    return { success: false, error: "Erro no checkout: " + rpcErr.message };
   }
-
+  
   // 4. Create Commissions (Sum from items or default calculation)
   // MVP: just calculate 30% of total if not specified, to show in the UI.
   // Insert commissions per item
@@ -92,7 +68,7 @@ export async function finishAppointment(data: {
     });
     
     const { error: commErr } = await supabase.from('commissions').insert(commissionsToInsert);
-    if (commErr) console.error("Error creating commissions:", commErr);
+    if (commErr) return { success: false, error: "Erro ao gerar comissões: " + commErr.message };
   }
 
   
@@ -130,7 +106,7 @@ export async function finishAppointment(data: {
 
         if (movementsToInsert.length > 0) {
           const { error: invErr } = await supabase.from('stock_movements').insert(movementsToInsert);
-          if (invErr) console.error("Error deducting inventory:", invErr);
+          if (invErr) return { success: false, error: "Erro na baixa de estoque: " + invErr.message };
         }
       }
     }

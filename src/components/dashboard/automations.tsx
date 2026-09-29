@@ -6,29 +6,32 @@ import { Check, Calendar, Users, Copy, AlertTriangle } from "lucide-react";
 
 export const initialTemplates = [{ name: "Lembrete 24h", count: "18 agendadas", tone: "success" }, { name: "Sinal pendente", count: "3 aguardando", tone: "warning" }, { name: "Manutenção vencida", count: "7 oportunidades", tone: "danger" }, { name: "Aniversário", count: "2 nesta semana", tone: "primary" }];
 
-export function Automations({ go }: { go: (v: View) => void }) {
+export function Automations({ go, tenant }: { go: (v: View) => void, tenant?: any }) {
   const [reminders, setReminders] = useState<any[]>([]);
   const [overdue, setOverdue] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"reminders" | "retention">("reminders");
 
-  const loadData = async () => {
+  const loadData = React.useCallback(async () => {
     setLoading(true);
     const [remRes, overRes] = await Promise.all([
-      getRemindersForTomorrow(),
-      getOverdueMaintenances()
+      getRemindersForTomorrow(tenant?.orgName),
+      getOverdueMaintenances(tenant?.orgName)
     ]);
     setReminders(remRes);
     setOverdue(overRes);
     setLoading(false);
-  };
+  }, [tenant?.orgName]);
 
   useEffect(() => {
-    // eslint-disable-next-line
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData();
-  }, []);
+  }, [loadData, tenant?.orgName]);
 
-  const openWhatsApp = (phone: string, message: string, list: "reminders" | "overdue", index: number) => {
+  const openWhatsApp = async (phone: string, message: string, list: "reminders" | "overdue", index: number, clientId: string) => {
+    const { markMessageSent } = await import("@/lib/actions/automations");
+    await markMessageSent(clientId, list);
     const cleanPhone = phone.replace(/\D/g, "");
     let finalPhone = cleanPhone;
     if (finalPhone.startsWith("55") && finalPhone.length > 11) {
@@ -95,7 +98,7 @@ export function Automations({ go }: { go: (v: View) => void }) {
             ) : (
               <div className="space-y-4 mt-6">
                 {reminders.map((r, i) => (
-                  <MessageCard key={r.id} item={r} onSend={() => openWhatsApp(r.phone, r.message, "reminders", i)} />
+                  <MessageCard key={r.id} item={r} onSend={() => openWhatsApp(r.phone, r.message, "reminders", i, r.clientId || r.id)} />
                 ))}
               </div>
             )}
@@ -126,7 +129,7 @@ export function Automations({ go }: { go: (v: View) => void }) {
                   <MessageCard 
                     key={r.id} 
                     item={r} 
-                    onSend={() => openWhatsApp(r.phone, r.message, "overdue", i)} 
+                    onSend={() => openWhatsApp(r.phone, r.message, "overdue", i, r.clientId || r.id)} 
                     badgeText={`Há ${r.daysSince} dias`}
                   />
                 ))}

@@ -153,6 +153,16 @@ export async function createClientRecord(client: { name: string; phone: string; 
 
   const phoneNormalized = client.phone.replace(/\D/g, "");
 
+  let text = client.notes || "";
+  let anamnesisObj: any = null;
+  try {
+    if (client.notes && client.notes.startsWith("{")) {
+      const parsed = JSON.parse(client.notes);
+      text = parsed.text || "";
+      anamnesisObj = parsed.anamnesis;
+    }
+  } catch(e) {}
+
   const { data, error } = await supabase
     .from("clients")
     .insert({
@@ -160,7 +170,7 @@ export async function createClientRecord(client: { name: string; phone: string; 
       name: client.name,
       phone: client.phone,
       phone_normalized: phoneNormalized,
-      notes: client.notes || null,
+      notes: text || null,
       birth_date: client.birthDate || null,
       cep: client.cep || null,
       street: client.street || null,
@@ -178,18 +188,51 @@ export async function createClientRecord(client: { name: string; phone: string; 
     return { success: false, error: error.message };
   }
 
+  if (anamnesisObj && profile?.organization_id) {
+    await supabase.from('client_anamnesis').insert({
+      organization_id: profile.organization_id,
+      client_id: data.id,
+      diabetes: anamnesisObj.diabetes || false,
+      pregnant: anamnesisObj.gestante || false,
+      nail_biting: anamnesisObj.roeUnha || false,
+      allergies: anamnesisObj.alergias || "",
+      notes: ""
+    });
+  }
+
   return { success: true, mode: "supabase", data };
 }
 
 export async function updateClientRecord(id: string, client: { name: string; phone: string; notes?: string; birthDate?: string; cep?: string; street?: string; number?: string; complement?: string; neighborhood?: string; city?: string; state?: string }) {
-  if (!isSupabaseConfigured() || id.startsWith("demo-")) {
-    return { success: true };
-  }
-
+  if (!isSupabaseConfigured() || id.startsWith("demo-")) return { success: true };
   const supabase = await createClient();
   if (!supabase) return { success: false, error: "Supabase não conectado" };
-
   const phoneNormalized = client.phone.replace(/\D/g, "");
+  
+  let text = client.notes || "";
+  let anamnesisObj = null;
+  try {
+    if (client.notes && client.notes.startsWith("{")) {
+      const parsed = JSON.parse(client.notes);
+      text = parsed.text || "";
+      anamnesisObj = parsed.anamnesis;
+    }
+  } catch(e) {}
+
+  const { data: profile } = await supabase.from('profiles').select('organization_id').single();
+
+  if (anamnesisObj && profile?.organization_id) {
+    const { error: anError } = await supabase.from('client_anamnesis').upsert({
+      organization_id: profile.organization_id,
+      client_id: id,
+      diabetes: anamnesisObj.diabetes || false,
+      pregnant: anamnesisObj.gestante || false,
+      nail_biting: anamnesisObj.roeUnha || false,
+      allergies: anamnesisObj.alergias || "",
+      notes: ""
+    }, { onConflict: 'client_id' });
+    if (anError) console.error("Anamnesis error:", anError);
+  }
 
   const { error } = await supabase
     .from("clients")
@@ -366,4 +409,11 @@ export async function deleteClientPhoto(photoId: string) {
   }
 
   return result;
+}
+
+export async function getClientAnamnesis(clientId: string) {
+  const supabase = await createClient();
+  if (!supabase) return null;
+  const { data } = await supabase.from('client_anamnesis').select('*').eq('client_id', clientId).single();
+  return data;
 }
