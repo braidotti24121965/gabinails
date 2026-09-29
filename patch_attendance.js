@@ -1,41 +1,10 @@
-"use server";
+const fs = require('fs');
 
-import { createClient } from "@/lib/supabase/server";
-import { revalidatePath } from "next/cache";
+let code = fs.readFileSync('src/lib/actions/attendance.ts', 'utf8');
 
-export async function finishAppointment(data: {
-  appointmentId: string;
-  amount: number; // raw value to pay
-  paymentMethod: string;
-  packageId?: string;
-}) {
-  const supabase = await createClient();
-  if (!supabase) return { success: false, error: "No connection" };
+const regex = /\/\/ 2 & 3\. Handle Atomic Checkout[\s\S]*return \{ success: true \};\n\}/;
 
-  const { data: profile } = await supabase.from('profiles').select('organization_id').single();
-  if (!profile?.organization_id) return { success: false, error: "Organização não encontrada" };
-
-  // 1. Get Appointment and items
-  const { data: appointment, error: getErr } = await supabase
-    .from('appointments')
-    .select(`
-      id,
-      client_id,
-      professional_id,
-      items:appointment_items(
-        id,
-        service_id,
-        professional_id,
-        unit_price,
-        commission_value
-      )
-    `)
-    .eq('id', data.appointmentId)
-    .single();
-
-  if (getErr || !appointment) return { success: false, error: "Agendamento não encontrado" };
-
-    // 2. Prepare Commissions
+const replace = `  // 2. Prepare Commissions
   const commissions: any[] = [];
   if (appointment.items && appointment.items.length > 0) {
     appointment.items.forEach((item: any) => {
@@ -95,4 +64,8 @@ export async function finishAppointment(data: {
   revalidatePath("/");
 
   return { success: true };
-}
+}`;
+
+code = code.replace(regex, replace);
+
+fs.writeFileSync('src/lib/actions/attendance.ts', code);

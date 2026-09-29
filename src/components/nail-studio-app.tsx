@@ -1080,13 +1080,7 @@ function ServiceModal({ mode, service, close, save }: { mode: "create" | "view" 
   );
 }
 
-function FinishModalOld({ appointment, close, done }: { appointment: Appointment; close: () => void; done: (method: string, val: number, packageId?: string) => void }) {
-    const [method, setMethod] = useState("PIX");
-    const [submitting, setSubmitting] = useState(false);
-    
-    // We don't have the clientId directly in Appointment yet, but we will mock it or fetch by name
-    return <div className="fixed inset-0 z-[70] flex items-end justify-center bg-navy-dark/45 sm:items-center sm:p-4"><div className="w-full max-w-lg rounded-t-lg bg-white p-5 sm:rounded-lg"><div className="flex justify-between"><div><h2 className="text-lg font-semibold">Concluir atendimento</h2><p className="text-xs text-muted">Revise o recebimento de {appointment.client}.</p></div><button onClick={close}><X size={18} /></button></div><div className="mt-5 rounded-md bg-bg p-4"><div className="flex justify-between"><span>Total do atendimento</span><b>{money.format(appointment.price)}</b></div><div className="mt-3 flex justify-between border-t border-[#DBE3EC] pt-3 text-base"><b>A receber</b><b>{money.format(appointment.price)}</b></div></div><label className="mt-4 block"><span className="field-label">Forma de pagamento</span><select value={method} onChange={e => setMethod(e.target.value)} className="field-input"><option value="PIX">PIX</option><option value="Dinheiro">Dinheiro</option><option value="Débito">Débito</option><option value="Crédito">Crédito</option><option value="Pacote">Abater de Pacote</option></select></label><div className="mt-4 grid grid-cols-2 gap-2 text-xs"><div className="rounded-md border border-[#DBE3EC] p-3"><p className="text-muted">Comissão gerada</p><b>{money.format(appointment.price * 0.3)}</b></div><div className="rounded-md border border-[#DBE3EC] p-3"><p className="text-muted">Status do sistema</p><b>Caixa aberto</b></div></div><button disabled={submitting} onClick={async () => { setSubmitting(true); await done(method, appointment.price, method === "Pacote" ? "dummy_pkg_id" : undefined); }} className="btn-primary mt-5 w-full"><Check size={16} />{submitting ? "Processando..." : "Confirmar e concluir"}</button></div></div> 
-}
+
 
 function Toast({ text }: { text: string }) { return <div className="fixed bottom-5 right-5 z-[80] flex max-w-sm items-center gap-3 rounded-md bg-navy-dark px-4 py-3 text-sm text-white shadow-xl"><div className="rounded-full bg-primary p-1"><Check size={12} /></div>{text}</div> }
 
@@ -1427,7 +1421,7 @@ const [reportsData] = useState(() => initialReports); const [entityModal, setEnt
       />
     ); if (view === "finance") return <Finance stats={initialStats} data={financialRows} onNew={() => openEntity("financial", "create")} onAction={(mode, index) => openEntity("financial", mode, index)} onReverse={index => confirmAction("Estornar este movimento? Um lançamento de compensação será registrado.", () => { setFinancialRows(current => current.map((item, i) => i === index ? { ...item, status: "Estornado" } : item)); notify("Movimento estornado por compensação; registro original preservado."); })} />;
     if (view === "inventory") return <Inventory data={productRows} onNew={() => openEntity("product", "create")} onAction={(mode, index) => openEntity("product", mode, index)} onDelete={(index) => { openEntity("product", "edit", index); notify("Atualize o campo \"Saldo atual\" para corrigir o estoque."); }} />;
-    if (view === "automations") return <Automations go={setView} />;
+    if (view === "automations") return <Automations go={setView} tenant={tenant} />;
     if (view === "reports") return <Reports data={reportsData} />;
     if (view === "online") return <OnlineBooking />;
   })();
@@ -1543,14 +1537,14 @@ const [reportsData] = useState(() => initialReports); const [entityModal, setEnt
       )}
 
       {booking && <BookingModal clients={clientRows} professionals={professionalRows} services={serviceRows} close={() => setBooking(false)} save={async (a, rawData) => { if(rawData) { const res = await createAppointmentRecord(rawData); if (res.success) { const fresh = await getAppointments(); setRows(fresh); setBooking(false); notify("Agendamento criado com sucesso."); } else { alert(("error" in res ? res.error : "Erro desconhecido")); } } else { setRows(v => [...v, a]); setBooking(false); notify("Agendamento criado (demo)."); } }} />}
-      {finish && activeAppointment && <FinishModalV2 appointment={activeAppointment} close={() => setFinish(false)} done={async (method, val, pkgId) => { const res = await finishAppointment({ appointmentId: activeAppointment.id, amount: val, paymentMethod: method, packageId: pkgId }); if (res.success) { setRows(v => v.map(a => a.id === activeAppointment.id ? { ...a, status: "Concluído", paid: (a.paid || 0) + val } : a)); setFinish(false); setActiveAppointment(null); setView("agenda"); notify("Atendimento concluído e pagamento registrado com sucesso."); } else { alert(("error" in res ? res.error : "Erro desconhecido")); } }} />}
+      {finish && activeAppointment && <FinishModal appointment={activeAppointment} close={() => setFinish(false)} done={async (method, val, pkgId) => { const res = await finishAppointment({ appointmentId: activeAppointment.id, amount: val, paymentMethod: method, packageId: pkgId }); if (res.success) { setRows(v => v.map(a => a.id === activeAppointment.id ? { ...a, status: "Concluído", paid: (a.paid || 0) + val } : a)); setFinish(false); setActiveAppointment(null); setView("agenda"); notify("Atendimento concluído e pagamento registrado com sucesso."); } else { alert(("error" in res ? res.error : "Erro desconhecido")); } }} />}
       {toast && <Toast text={toast} />}
     </div>
   );
 }
 
 
-function FinishModalV2({ appointment, close, done }: { appointment: Appointment; close: () => void; done: (method: string, val: number, packageId?: string) => void }) {
+function FinishModal({ appointment, close, done }: { appointment: Appointment; close: () => void; done: (method: string, val: number, packageId?: string) => void }) {
   const [method, setMethod] = useState("PIX");
   const [submitting, setSubmitting] = useState(false);
   const [packages, setPackages] = useState<any[]>([]);

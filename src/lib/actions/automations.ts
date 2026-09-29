@@ -47,7 +47,7 @@ export async function getRemindersForTomorrow(orgName: string = "Studio") {
       time,
       services,
       message,
-      sent: false
+      sent: Array.isArray(a.message_jobs) && a.message_jobs.some((job: any) => job.payload?.list === "reminders")
     };
   });
 }
@@ -63,7 +63,8 @@ export async function getOverdueMaintenances(orgName: string = "Studio") {
       starts_at,
       client_id,
       client:clients(name, phone),
-      items:appointment_items(service:services(name, maintenance_days))
+      items:appointment_items(service:services(name, maintenance_days)),
+      message_jobs (id, status, payload)
     `)
     .eq("status", "completed")
     .order("starts_at", { ascending: false });
@@ -136,7 +137,7 @@ export async function getOverdueMaintenances(orgName: string = "Studio") {
         lastService: services,
         lastDate: apptDate.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" }),
         message,
-        sent: false
+        sent: Array.isArray(a.message_jobs) && a.message_jobs.some((job: any) => job.payload?.list === "overdue")
       });
     }
   }
@@ -151,9 +152,12 @@ export async function markMessageSent(clientId: string, type: string) {
   const { error } = await supabase.from('message_jobs').insert([{
     organization_id: profile?.organization_id,
     client_id: clientId,
+    channel: 'whatsapp',
+    provider: 'manual',
     status: 'sent',
     scheduled_at: new Date().toISOString(),
-    sent_at: new Date().toISOString()
+    sent_at: new Date().toISOString(),
+    payload: { list, type: list === 'reminders' ? 'reminder' : 'overdue' }
   }]);
   if (error) return { success: false, error: error.message };
   return { success: true };

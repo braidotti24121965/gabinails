@@ -104,7 +104,7 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
                 </tr>
               </thead>
               <tbody>
-                {data.length === 0 && (
+                {financeData.length === 0 && (
                   <tr><td colSpan={7} className="text-center py-4 text-muted">Nenhum movimento registrado.</td></tr>
                 )}
                 {financeData.map((item, index) => (
@@ -126,7 +126,7 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
                       {money.format(item.value)}
                     </td>
                     <td>
-                      <RowActions onView={() => onAction("view", index)} onEdit={() => onAction("edit", index)} onDelete={() => onReverse(index)} deleteLabel="Estornar" />
+                      <RowActions onView={() => onAction("view", index)} onEdit={() => onAction("edit", index)} onDelete={() => handleReverse(item.id, index)} deleteLabel="Estornar" />
                     </td>
                   </tr>
                 ))}
