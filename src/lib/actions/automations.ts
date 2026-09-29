@@ -1,5 +1,6 @@
 "use server";
 import { createClient } from "@/lib/supabase/server";
+import { markMessageSentService } from "@/lib/services/automations.service";
 
 export async function getRemindersForTomorrow(orgName: string = "Studio") {
   const supabase = await createClient();
@@ -19,7 +20,8 @@ export async function getRemindersForTomorrow(orgName: string = "Studio") {
       status,
       client:clients(name, phone),
       professional:professionals(name),
-      items:appointment_items(service:services(name))
+      items:appointment_items(service:services(name)),
+      message_jobs(id, status, payload)
     `)
     .eq("status", "scheduled")
     .gte("starts_at", `${tomorrowStr}T00:00:00-03:00`)
@@ -47,7 +49,7 @@ export async function getRemindersForTomorrow(orgName: string = "Studio") {
       time,
       services,
       message,
-      sent: Array.isArray((a as any).message_jobs) && (a as any).message_jobs.some((job: any) => job.payload?.list === "reminders")
+      sent: Array.isArray((a as any).message_jobs) && (a as any).message_jobs.some((job: any) => job.status === "sent" && job.payload?.list === "reminders")
     };
   });
 }
@@ -92,11 +94,8 @@ export async function getOverdueMaintenances(orgName: string = "Studio") {
 
     app.items?.forEach((i: any) => {
       const name = i.service?.name?.toLowerCase() || "";
-      // Assume maintenance_days if available, else check keywords
       if (keywords.some(k => name.includes(k))) {
         hasMaintenance = true;
-        // In this schema, maybe maintenance_days isn't loaded so use 20
-        // We will default to 20 for this exercise unless it has `maintenance_days`
         if (i.service?.maintenance_days) {
             fallbackDays = i.service.maintenance_days;
         }
@@ -137,7 +136,7 @@ export async function getOverdueMaintenances(orgName: string = "Studio") {
         lastService: services,
         lastDate: apptDate.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" }),
         message,
-        sent: Array.isArray((app as any).message_jobs) && (app as any).message_jobs.some((job: any) => job.payload?.list === "overdue")
+        sent: Array.isArray((app as any).message_jobs) && (app as any).message_jobs.some((job: any) => job.status === "sent" && job.payload?.list === "overdue")
       });
     }
   }
@@ -145,20 +144,7 @@ export async function getOverdueMaintenances(orgName: string = "Studio") {
   return overdue.sort((a, b) => b.daysSince - a.daysSince); 
 }
 
-export async function markMessageSent(clientId: string, list: string) {
+export async function markMessageSent(clientId: string, list: string, appointmentId?: string) {
   const supabase = await createClient();
-  if (!supabase) return { success: false };
-  const { data: profile } = await supabase.from('profiles').select('organization_id').single();
-  const { error } = await supabase.from('message_jobs').insert([{
-    organization_id: profile?.organization_id,
-    client_id: clientId,
-    channel: 'whatsapp',
-    provider: 'manual',
-    status: 'sent',
-    scheduled_at: new Date().toISOString(),
-    sent_at: new Date().toISOString(),
-    payload: { list, type: list === 'reminders' ? 'reminder' : 'overdue' }
-  }]);
-  if (error) return { success: false, error: error.message };
-  return { success: true };
+  return markMessageSentService(supabase, clientId, list, appointmentId);
 }

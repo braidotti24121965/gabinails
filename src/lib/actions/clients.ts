@@ -2,8 +2,9 @@
 import { uploadClientPhotoService, deleteClientPhotoService, generateSignedUrlsService } from "../services/photos.service.ts";
 import { revalidatePath } from "next/cache";
 
-import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import { clients as demoClients } from "@/lib/demo-data";
+import { createClient, isSupabaseConfigured } from "../supabase/server.ts";
+import { clients as demoClients } from "../demo-data.ts";
+import { createClientRecordService, updateClientRecordService } from "../services/clients.service.ts";
 
 export interface ClientItem {
   id?: string;
@@ -146,7 +147,7 @@ export async function checkClientWhitelist(phoneNormalized: string): Promise<boo
 }
 
 export async function createClientRecord(client: { name: string; phone: string; notes?: string; birthDate?: string; cep?: string; street?: string; number?: string; complement?: string; neighborhood?: string; city?: string; state?: string }) {
-  if (!isSupabaseConfigured()) {
+  if (!isSupabaseConfigured() || client.phone.startsWith("demo-")) {
     return {
       success: true,
       mode: "demo",
@@ -165,121 +166,13 @@ export async function createClientRecord(client: { name: string; phone: string; 
   }
 
   const supabase = await createClient();
-  if (!supabase) {
-    return { success: false, error: "Supabase não conectado" };
-  }
-
-  const { data: profile } = await supabase.from('profiles').select('organization_id').single();
-  if (!profile?.organization_id) {
-    return { success: false, error: "Organização não encontrada" };
-  }
-
-  const phoneNormalized = client.phone.replace(/\D/g, "");
-
-  let text = client.notes || "";
-  let anamnesisObj: any = null;
-  try {
-    if (client.notes && client.notes.startsWith("{")) {
-      const parsed = JSON.parse(client.notes);
-      text = parsed.text || "";
-      anamnesisObj = parsed.anamnesis;
-    }
-  } catch(e) {}
-
-  const { data, error } = await supabase
-    .from("clients")
-    .insert({
-      organization_id: profile.organization_id,
-      name: client.name,
-      phone: client.phone,
-      phone_normalized: phoneNormalized,
-      notes: text || null,
-      birth_date: client.birthDate || null,
-      cep: client.cep || null,
-      street: client.street || null,
-      number: client.number || null,
-      complement: client.complement || null,
-      neighborhood: client.neighborhood || null,
-      city: client.city || null,
-      state: client.state || null,
-      status: "active",
-    })
-    .select()
-    .single();
-
-  if (error) {
-    return { success: false, error: error.message };
-  }
-
-  if (anamnesisObj && profile?.organization_id) {
-    await supabase.from('client_anamnesis').insert({
-      organization_id: profile.organization_id,
-      client_id: data.id,
-      diabetes: anamnesisObj.diabetes || false,
-      pregnant: anamnesisObj.gestante || false,
-      nail_biting: anamnesisObj.roeUnha || false,
-      allergies: anamnesisObj.alergias || "",
-      notes: ""
-    });
-  }
-
-  return { success: true, mode: "supabase", data };
+  return createClientRecordService(supabase, client);
 }
 
 export async function updateClientRecord(id: string, client: { name: string; phone: string; notes?: string; birthDate?: string; cep?: string; street?: string; number?: string; complement?: string; neighborhood?: string; city?: string; state?: string }) {
   if (!isSupabaseConfigured() || id.startsWith("demo-")) return { success: true };
   const supabase = await createClient();
-  if (!supabase) return { success: false, error: "Supabase não conectado" };
-  const phoneNormalized = client.phone.replace(/\D/g, "");
-  
-  let text = client.notes || "";
-  let anamnesisObj = null;
-  try {
-    if (client.notes && client.notes.startsWith("{")) {
-      const parsed = JSON.parse(client.notes);
-      text = parsed.text || "";
-      anamnesisObj = parsed.anamnesis;
-    }
-  } catch(e) {}
-
-  const { data: profile } = await supabase.from('profiles').select('organization_id').single();
-
-  if (anamnesisObj && profile?.organization_id) {
-    const { error: anError } = await supabase.from('client_anamnesis').upsert({
-      organization_id: profile.organization_id,
-      client_id: id,
-      diabetes: anamnesisObj.diabetes || false,
-      pregnant: anamnesisObj.gestante || false,
-      nail_biting: anamnesisObj.roeUnha || false,
-      allergies: anamnesisObj.alergias || "",
-      notes: ""
-    }, { onConflict: 'client_id' });
-    if (anError) console.error("Anamnesis error:", anError);
-  }
-
-  const { error } = await supabase
-    .from("clients")
-    .update({
-      name: client.name,
-      phone: client.phone,
-      phone_normalized: phoneNormalized,
-      notes: text || null,
-      birth_date: client.birthDate || null,
-      cep: client.cep || null,
-      street: client.street || null,
-      number: client.number || null,
-      complement: client.complement || null,
-      neighborhood: client.neighborhood || null,
-      city: client.city || null,
-      state: client.state || null,
-    })
-    .eq("id", id);
-
-  if (error) {
-    return { success: false, error: error.message };
-  }
-
-  return { success: true };
+  return updateClientRecordService(supabase, id, client);
 }
 
 export async function archiveClientRecord(id: string) {

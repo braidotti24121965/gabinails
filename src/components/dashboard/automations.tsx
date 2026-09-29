@@ -28,9 +28,13 @@ export function Automations({ go, tenant }: { go: (v: View) => void, tenant?: an
     run();
   }, [loadData, tenant?.orgName]);
 
-  const openWhatsApp = async (phone: string, message: string, list: "reminders" | "overdue", index: number, clientId: string) => {
+  const openWhatsApp = async (phone: string, message: string, list: "reminders" | "overdue", index: number, clientId: string, appointmentId?: string) => {
     const { markMessageSent } = await import("@/lib/actions/automations");
-    await markMessageSent(clientId, list);
+    const res = await markMessageSent(clientId, list, appointmentId);
+    if (!res.success) {
+      alert("Erro ao registrar envio da mensagem no banco de dados.");
+      return;
+    }
     const cleanPhone = phone.replace(/\D/g, "");
     let finalPhone = cleanPhone;
     if (finalPhone.startsWith("55") && finalPhone.length > 11) {
@@ -38,7 +42,7 @@ export function Automations({ go, tenant }: { go: (v: View) => void, tenant?: an
     }
     const url = `https://wa.me/55${finalPhone}?text=${encodeURIComponent(message)}`;
     window.open(url, "_blank");
-    
+
     // Mark as sent visually
     if (list === "reminders") {
       setReminders(curr => curr.map((r, i) => i === index ? { ...r, sent: true } : r));
@@ -61,13 +65,13 @@ export function Automations({ go, tenant }: { go: (v: View) => void, tenant?: an
 
       <div className="mb-6 border-b border-[#E7EDF3]">
         <div className="flex gap-6">
-          <button 
+          <button
             onClick={() => setTab("reminders")}
             className={`pb-3 font-medium border-b-2 transition-colors ${tab === "reminders" ? "border-primary text-primary" : "border-transparent text-muted hover:text-ink"}`}
           >
             Lembretes de Agenda
           </button>
-          <button 
+          <button
             onClick={() => setTab("retention")}
             className={`pb-3 font-medium border-b-2 transition-colors ${tab === "retention" ? "border-primary text-primary" : "border-transparent text-muted hover:text-ink"}`}
           >
@@ -86,7 +90,7 @@ export function Automations({ go, tenant }: { go: (v: View) => void, tenant?: an
 
           <section className="card">
             <SectionTitle title="Fila de Mensagens" subtitle="Clique em Enviar para abrir o WhatsApp Web com o texto pronto." />
-            
+
             {loading ? (
               <div className="py-12 flex justify-center"><div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full"></div></div>
             ) : reminders.length === 0 ? (
@@ -97,7 +101,7 @@ export function Automations({ go, tenant }: { go: (v: View) => void, tenant?: an
             ) : (
               <div className="space-y-4 mt-6">
                 {reminders.map((r, i) => (
-                  <MessageCard key={r.id} item={r} onSend={() => openWhatsApp(r.phone, r.message, "reminders", i, r.clientId || r.id)} />
+                  <MessageCard key={r.id} item={r} onSend={() => openWhatsApp(r.phone, r.message, "reminders", i, r.clientId, r.id)} />
                 ))}
               </div>
             )}
@@ -114,7 +118,7 @@ export function Automations({ go, tenant }: { go: (v: View) => void, tenant?: an
 
           <section className="card">
             <SectionTitle title="Clientes em Risco" subtitle="Fizeram manutenção/alongamento há mais de 20 dias e não têm retorno agendado." />
-            
+
             {loading ? (
               <div className="py-12 flex justify-center"><div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full"></div></div>
             ) : overdue.length === 0 ? (
@@ -125,10 +129,10 @@ export function Automations({ go, tenant }: { go: (v: View) => void, tenant?: an
             ) : (
               <div className="space-y-4 mt-6">
                 {overdue.map((r, i) => (
-                  <MessageCard 
-                    key={r.id} 
-                    item={r} 
-                    onSend={() => openWhatsApp(r.phone, r.message, "overdue", i, r.clientId || r.id)} 
+                  <MessageCard
+                    key={r.id}
+                    item={r}
+                    onSend={() => openWhatsApp(r.phone, r.message, "overdue", i, r.clientId, r.id)}
                     badgeText={`Há ${r.daysSince} dias`}
                   />
                 ))}
@@ -158,12 +162,12 @@ function MessageCard({ item, onSend, badgeText }: { item: any, onSend: () => voi
           <Badge tone={item.sent ? "success" : "warning"}>{item.sent ? "Enviado" : "Pendente"}</Badge>
         </div>
       </div>
-      
+
       <div className="bg-white p-3 rounded border border-[#E7EDF3] text-sm text-ink font-sans relative">
         <div className="absolute top-0 right-0 bottom-0 w-1 bg-green-500 rounded-r"></div>
         {item.message}
       </div>
-      
+
       <div className="mt-4 flex justify-end gap-2">
         <button onClick={() => {
           navigator.clipboard.writeText(item.message);
@@ -171,7 +175,7 @@ function MessageCard({ item, onSend, badgeText }: { item: any, onSend: () => voi
         }} className="btn-outline py-1.5 px-3 text-xs">
           <Copy size={14} /> Copiar texto
         </button>
-        <button 
+        <button
           onClick={onSend}
           className="btn-primary bg-green-600 hover:bg-green-700 border-green-600 py-1.5 px-3 text-xs"
         >

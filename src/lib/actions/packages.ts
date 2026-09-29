@@ -3,12 +3,22 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
 export async function sellPackage(clientId: string, name: string, totalSessions: number, price: number, method: string) {
+  if (!name || name.trim().length === 0) {
+    return { success: false, error: "Nome do pacote não pode ser vazio" };
+  }
+  if (!price || price <= 0) {
+    return { success: false, error: "Preço deve ser maior que zero" };
+  }
+  if (!totalSessions || totalSessions <= 0) {
+    return { success: false, error: "Total de sessões deve ser maior que zero" };
+  }
+
   const supabase = await createClient();
   if (!supabase) return { success: false, error: "No DB" };
 
   const { data, error } = await supabase.rpc('sell_package', {
     p_client_id: clientId,
-    p_name: name,
+    p_name: name.trim(),
     p_total_sessions: totalSessions,
     p_price: price,
     p_payment_method: method,

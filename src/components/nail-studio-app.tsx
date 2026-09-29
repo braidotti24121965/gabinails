@@ -565,6 +565,18 @@ function ClientModal({ mode, client, close, save }: { mode: "create" | "edit" | 
           setPackages(pkgs);
         });
       });
+      import('@/lib/actions/clients').then(m => {
+        m.getClientAnamnesis(client.id).then(an => {
+          if (an) {
+            setAnamnesis({
+              diabetes: Boolean(an.diabetes),
+              gestante: Boolean(an.pregnant),
+              roeUnha: Boolean(an.nail_biting),
+              alergias: an.allergies || ""
+            });
+          }
+        });
+      });
     }
   }, [client?.id]);
   const [newPkg, setNewPkg] = useState({ name: "", total: 4, price: 120, method: "PIX" });
