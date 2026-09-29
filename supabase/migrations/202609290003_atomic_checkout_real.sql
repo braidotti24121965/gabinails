@@ -1,4 +1,7 @@
--- Fix sell_package security and schema
+-- Fix sell_package security and schema. Replace the legacy seven-argument
+-- version instead of leaving an overload that makes permission statements
+-- and RPC resolution ambiguous.
+DROP FUNCTION IF EXISTS public.sell_package(UUID, TEXT, INTEGER, NUMERIC, TEXT, TIMESTAMPTZ, UUID);
 CREATE OR REPLACE FUNCTION public.sell_package(
     p_client_id UUID,
     p_name TEXT,
@@ -50,8 +53,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-REVOKE EXECUTE ON FUNCTION public.sell_package FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.sell_package TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.sell_package(UUID, TEXT, INTEGER, NUMERIC, TEXT, TIMESTAMPTZ) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.sell_package(UUID, TEXT, INTEGER, NUMERIC, TEXT, TIMESTAMPTZ) TO authenticated;
 
 -- Fully atomic checkout including commissions and inventory
 CREATE OR REPLACE FUNCTION public.finish_appointment_checkout_full(
@@ -148,5 +151,5 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-REVOKE EXECUTE ON FUNCTION public.finish_appointment_checkout_full FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.finish_appointment_checkout_full TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.finish_appointment_checkout_full(UUID, NUMERIC, TEXT, UUID, JSONB, JSONB) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.finish_appointment_checkout_full(UUID, NUMERIC, TEXT, UUID, JSONB, JSONB) TO authenticated;
