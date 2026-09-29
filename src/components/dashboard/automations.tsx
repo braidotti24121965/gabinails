@@ -24,9 +24,8 @@ export function Automations({ go, tenant }: { go: (v: View) => void, tenant?: an
   }, [tenant?.orgName]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadData();
+    const run = async () => { await loadData(); };
+    run();
   }, [loadData, tenant?.orgName]);
 
   const openWhatsApp = async (phone: string, message: string, list: "reminders" | "overdue", index: number, clientId: string) => {

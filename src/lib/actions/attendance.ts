@@ -58,10 +58,12 @@ export async function finishAppointment(data: {
   if (appointment.items && appointment.items.length > 0) {
     const serviceIds = appointment.items.map((i: any) => i.service_id).filter(Boolean);
     if (serviceIds.length > 0) {
-      const { data: consumables } = await supabase
+      const { data: consumables, error: consErr } = await supabase
         .from('service_consumables')
         .select('product_id, estimated_quantity, service_id')
         .in('service_id', serviceIds);
+
+      if (consErr) return { success: false, error: "Erro ao buscar consumíveis." };
 
       if (consumables && consumables.length > 0) {
         for (const item of appointment.items) {
@@ -70,7 +72,8 @@ export async function finishAppointment(data: {
           for (const cons of serviceConsumables) {
             inventoryDeductions.push({
               product_id: cons.product_id,
-              quantity: cons.estimated_quantity
+              quantity: cons.estimated_quantity,
+              appointment_item_id: item.id
             });
           }
         }

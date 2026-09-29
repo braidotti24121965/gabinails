@@ -47,7 +47,7 @@ export async function getRemindersForTomorrow(orgName: string = "Studio") {
       time,
       services,
       message,
-      sent: Array.isArray(a.message_jobs) && a.message_jobs.some((job: any) => job.payload?.list === "reminders")
+      sent: Array.isArray((a as any).message_jobs) && (a as any).message_jobs.some((job: any) => job.payload?.list === "reminders")
     };
   });
 }
@@ -137,7 +137,7 @@ export async function getOverdueMaintenances(orgName: string = "Studio") {
         lastService: services,
         lastDate: apptDate.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" }),
         message,
-        sent: Array.isArray(a.message_jobs) && a.message_jobs.some((job: any) => job.payload?.list === "overdue")
+        sent: Array.isArray((app as any).message_jobs) && (app as any).message_jobs.some((job: any) => job.payload?.list === "overdue")
       });
     }
   }
@@ -145,7 +145,7 @@ export async function getOverdueMaintenances(orgName: string = "Studio") {
   return overdue.sort((a, b) => b.daysSince - a.daysSince); 
 }
 
-export async function markMessageSent(clientId: string, type: string) {
+export async function markMessageSent(clientId: string, list: string) {
   const supabase = await createClient();
   if (!supabase) return { success: false };
   const { data: profile } = await supabase.from('profiles').select('organization_id').single();

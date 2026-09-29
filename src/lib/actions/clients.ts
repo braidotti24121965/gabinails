@@ -263,7 +263,7 @@ export async function updateClientRecord(id: string, client: { name: string; pho
       name: client.name,
       phone: client.phone,
       phone_normalized: phoneNormalized,
-      notes: client.notes || null,
+      notes: text || null,
       birth_date: client.birthDate || null,
       cep: client.cep || null,
       street: client.street || null,

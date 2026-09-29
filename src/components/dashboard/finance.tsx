@@ -77,13 +77,15 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
             </div>
           </div>
           
-          <div className="mt-6 rounded-md bg-emerald-50 border border-emerald-100 p-4">
+          <div className={`mt-6 rounded-md border p-4 ${financeStats?.balance >= 0 ? "bg-emerald-50 border-emerald-100" : "bg-red-50 border-red-100"}`}>
             <p className="text-xs text-emerald-800 text-center font-semibold mb-1">
               Ticket Médio Líquido: {financeStats ? money.format(financeStats.netAverageTicket || 0) : "R$ 0,00"}
             </p>
-            <p className="text-xs text-emerald-700 text-center">
-              Você está tendo um desempenho incrível e sobrando caixa no final do mês.
-            </p>
+            {financeStats?.balance >= 0 ? (
+              <p className="text-xs text-emerald-700 text-center">Você está com saldo positivo neste período. Excelente!</p>
+            ) : (
+              <p className="text-xs text-red-700 text-center">Atenção: O saldo está negativo neste período.</p>
+            )}
           </div>
         </section>
 

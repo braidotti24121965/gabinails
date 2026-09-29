@@ -1,4 +1,24 @@
-/* eslint-disable react-hooks/set-state-in-effect */
+let initialAnamnesis = { diabetes: false, gestante: false, alergias: "", roeUnha: false };
+  try {
+    if (rawNotes.startsWith("{")) {
+      const parsed = JSON.parse(rawNotes);
+      if (parsed.anamnesis) {
+        initialNotes = parsed.text || "";
+        initialAnamnesis = { ...initialAnamnesis, ...parsed.anamnesis };
+      }
+    }
+  } catch(e) {}
+  
+  // Prefer relational anamnesis if it exists
+  if (client?.client_anamnesis && client.client_anamnesis.length > 0) {
+    const an = client.client_anamnesis[0];
+    initialAnamnesis = {
+      diabetes: an.diabetes,
+      gestante: an.pregnant,
+      roeUnha: an.nail_biting,
+      alergias: an.allergies || ""
+    };
+  }/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 import NextImage from "next/image";
 import { View, EntityKind, EntityModalState, Badge, statusTone, Metric, RowActions, SectionTitle, SmallMetricLink } from "./shared";
@@ -765,6 +785,10 @@ function ClientModal({ mode, client, close, save }: { mode: "create" | "edit" | 
                           <div className="flex gap-3 justify-end pt-2">
                             <button type="button" onClick={() => setEditingPkgId(null)} className="text-xs text-muted hover:text-ink">Cancelar</button>
                             <button type="button" onClick={async () => {
+                              if (editPkg.used < 0 || editPkg.used > editPkg.total) {
+                                alert("O número de sessões restantes não pode ser negativo nem maior que o total.");
+                                return;
+                              }
                               const { updatePackage, getActivePackages } = await import("@/lib/actions/packages");
                               await updatePackage(p.id, editPkg.name, editPkg.total, editPkg.used);
                               const pkgs = await getActivePackages(client.id);
@@ -1537,7 +1561,7 @@ const [reportsData] = useState(() => initialReports); const [entityModal, setEnt
       )}
 
       {booking && <BookingModal clients={clientRows} professionals={professionalRows} services={serviceRows} close={() => setBooking(false)} save={async (a, rawData) => { if(rawData) { const res = await createAppointmentRecord(rawData); if (res.success) { const fresh = await getAppointments(); setRows(fresh); setBooking(false); notify("Agendamento criado com sucesso."); } else { alert(("error" in res ? res.error : "Erro desconhecido")); } } else { setRows(v => [...v, a]); setBooking(false); notify("Agendamento criado (demo)."); } }} />}
-      {finish && activeAppointment && <FinishModal appointment={activeAppointment} close={() => setFinish(false)} done={async (method, val, pkgId) => { const res = await finishAppointment({ appointmentId: activeAppointment.id, amount: val, paymentMethod: method, packageId: pkgId }); if (res.success) { setRows(v => v.map(a => a.id === activeAppointment.id ? { ...a, status: "Concluído", paid: (a.paid || 0) + val } : a)); setFinish(false); setActiveAppointment(null); setView("agenda"); notify("Atendimento concluído e pagamento registrado com sucesso."); } else { alert(("error" in res ? res.error : "Erro desconhecido")); } }} />}
+      {finish && activeAppointment && <FinishModal appointment={activeAppointment} close={() => setFinish(false)} done={async (method, val, pkgId) => { const res = await finishAppointment({ appointmentId: activeAppointment.id, amount: val, paymentMethod: method, packageId: pkgId }); if (res.success) { setRows(v => v.map(a => a.id === activeAppointment.id ? { ...a, status: "Concluído", paid: (a.paid || 0) + (pkgId ? 0 : val) } : a)); setFinish(false); setActiveAppointment(null); setView("agenda"); notify("Atendimento concluído e pagamento registrado com sucesso."); } else { alert(("error" in res ? res.error : "Erro desconhecido")); } }} />}
       {toast && <Toast text={toast} />}
     </div>
   );
