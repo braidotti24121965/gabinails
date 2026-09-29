@@ -2,6 +2,15 @@
 
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 
+
+function translateError(msg: string) {
+  if (msg.includes("after") && msg.includes("seconds")) return "Por segurança, aguarde alguns segundos antes de tentar novamente.";
+  if (msg.includes("different from the old")) return "A nova senha deve ser diferente da atual.";
+  if (msg.includes("already registered")) return "Este e-mail já está em uso por outra conta.";
+  if (msg.includes("Password should be at least")) return "A senha deve ter pelo menos 6 caracteres.";
+  return "Ocorreu um erro: " + msg;
+}
+
 export async function updateOrganization(name: string) {
   const supabase = await createClient();
   if (!supabase) return { error: "Supabase não configurado" };
@@ -47,7 +56,7 @@ export async function updateAuthCredentials(email?: string, password?: string) {
   // Update email first if present
   if (updates.email) {
     const { error } = await supabase.auth.updateUser({ email: updates.email });
-    if (error) return { error: "Erro ao atualizar e-mail: " + error.message };
+    if (error) return { error: translateError(error.message) };
   }
 
   // Update password if present
@@ -57,7 +66,7 @@ export async function updateAuthCredentials(email?: string, password?: string) {
       if (error.message.includes("different from the old")) {
         // Ignorar se tentou colocar a mesma senha
       } else {
-        return { error: "Erro ao atualizar senha: " + error.message };
+        return { error: translateError(error.message) };
       }
     }
   }

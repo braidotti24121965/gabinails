@@ -1100,9 +1100,12 @@ function SettingsView({ tenant, updateToast }: { tenant: any; updateToast: (t: s
   const [password, setPassword] = useState("");
   const [savingOrg, setSavingOrg] = useState(false);
   const [savingAccess, setSavingAccess] = useState(false);
+  const [orgError, setOrgError] = useState("");
+  const [accessError, setAccessError] = useState("");
 
   async function handleSaveOrg() {
     setSavingOrg(true);
+    setOrgError("");
     const { updateOrganization, updateProfile } = await import("@/lib/actions/settings");
     await updateOrganization(orgName);
     await updateProfile(fullName);
@@ -1111,12 +1114,13 @@ function SettingsView({ tenant, updateToast }: { tenant: any; updateToast: (t: s
   }
 
   async function handleSaveAccess() {
-    if (!email) return alert("E-mail não pode ser vazio");
+    if (!email) return setAccessError("O e-mail não pode ficar vazio.");
     setSavingAccess(true);
+    setAccessError("");
     const { updateAuthCredentials } = await import("@/lib/actions/settings");
     const res = await updateAuthCredentials(email, password || undefined);
     if (res.error) {
-      alert("Erro ao atualizar credenciais: " + res.error);
+      setAccessError(res.error);
     } else {
       updateToast(res.message || "Acesso atualizado!");
       setPassword("");
@@ -1136,6 +1140,7 @@ function SettingsView({ tenant, updateToast }: { tenant: any; updateToast: (t: s
           </div>
         </div>
 
+        {orgError && <div className="bg-red-50 text-red-600 p-3 rounded-md mb-4 text-sm border border-red-100">{orgError}</div>}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="field-label">Nome do Salão (SaaS)</label>
@@ -1167,6 +1172,7 @@ function SettingsView({ tenant, updateToast }: { tenant: any; updateToast: (t: s
           <strong>Atenção:</strong> Ao alterar o seu e-mail, o sistema enviará um link de verificação para a sua nova caixa de entrada. Você precisará clicar nele para confirmar a troca.
         </div>
 
+        {accessError && <div className="bg-red-50 text-red-600 p-3 rounded-md mb-4 text-sm border border-red-100">{accessError}</div>}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="field-label">E-mail de Login</label>

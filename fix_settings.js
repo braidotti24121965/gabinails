@@ -1,27 +1,29 @@
 const fs = require('fs');
 let code = fs.readFileSync('src/lib/actions/settings.ts', 'utf8');
 
+const errorMapCode = `
+function translateError(msg: string) {
+  if (msg.includes("after") && msg.includes("seconds")) return "Por segurança, aguarde alguns segundos antes de tentar novamente.";
+  if (msg.includes("different from the old")) return "A nova senha deve ser diferente da atual.";
+  if (msg.includes("already registered")) return "Este e-mail já está em uso por outra conta.";
+  if (msg.includes("Password should be at least")) return "A senha deve ter pelo menos 6 caracteres.";
+  return "Ocorreu um erro: " + msg;
+}
+`;
+
 code = code.replace(
-  '  if (Object.keys(updates).length === 0) return { success: true };\n\n  const { error } = await supabase.auth.updateUser(updates);\n  \n  if (error) return { error: error.message };',
-  `  if (Object.keys(updates).length === 0) return { success: true };
+  'export async function updateOrganization',
+  errorMapCode + '\nexport async function updateOrganization'
+);
 
-  // Update email first if present
-  if (updates.email) {
-    const { error } = await supabase.auth.updateUser({ email: updates.email });
-    if (error) return { error: "Erro ao atualizar e-mail: " + error.message };
-  }
+code = code.replace(
+  'if (error) return { error: "Erro ao atualizar e-mail: " + error.message };',
+  'if (error) return { error: translateError(error.message) };'
+);
 
-  // Update password if present
-  if (updates.password) {
-    const { error } = await supabase.auth.updateUser({ password: updates.password });
-    if (error) {
-      if (error.message.includes("different from the old")) {
-        // Ignorar se tentou colocar a mesma senha
-      } else {
-        return { error: "Erro ao atualizar senha: " + error.message };
-      }
-    }
-  }`
+code = code.replace(
+  'return { error: "Erro ao atualizar senha: " + error.message };',
+  'return { error: translateError(error.message) };'
 );
 
 fs.writeFileSync('src/lib/actions/settings.ts', code);
