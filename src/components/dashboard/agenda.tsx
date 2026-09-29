@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Plus, ArrowRight, Search, CalendarDays } from "lucide-react";
+import { Plus, ArrowRight, Search, CalendarDays, Activity } from "lucide-react";
 import { type Appointment } from "@/lib/demo-data";
 import { Badge, SectionTitle, statusTone, RowActions } from "../shared";
 
@@ -16,6 +16,24 @@ export function Agenda({ rows, onNew, onAttendance, onAction, onCancel, onStatus
   const uniqueProfs = Array.from(new Set(rows.map(r => r.professional))).filter(Boolean);
   const uniqueStatus = ["Aguardando sinal", "Agendado", "Confirmado", "Cliente chegou", "Em atendimento", "Concluído"];
   
+  
+  const getMedicalAlert = (notes: string) => {
+    if (!notes || !notes.startsWith("{")) return null;
+    try {
+      const parsed = JSON.parse(notes);
+      if (parsed.anamnesis) {
+        const an = parsed.anamnesis;
+        const issues = [];
+        if (an.diabetes) issues.push("Diabetes");
+        if (an.gestante) issues.push("Gestante");
+        if (an.roeUnha) issues.push("Roe unhas");
+        if (an.alergias) issues.push(`Alergia: ${an.alergias}`);
+        if (issues.length > 0) return issues.join(" | ");
+      }
+    } catch(e) {}
+    return null;
+  };
+
   const visibleRows = rows.filter((r: any) => {
     let inRange = false;
     if (calendarView === "dia") {
@@ -54,7 +72,8 @@ export function Agenda({ rows, onNew, onAttendance, onAction, onCancel, onStatus
     {calendarView !== "dia" && <p className="text-[10px] font-bold text-primary mb-0.5">{(a as any).dateStr.split("-").reverse().slice(0,2).join("/")}</p>}
     <p className="font-semibold">{a.time}</p>
     <p className="text-[10px] text-muted">{a.end}</p>
-  </div><div className={`h-12 w-1 rounded-full bg-primary`} /><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><p className="truncate font-medium">{a.client}</p>{a.source === "Online" && <Badge tone="blue">Online</Badge>}</div><p className="truncate text-xs text-muted">{a.service} · {a.professional}</p></div><div className="hidden text-right md:block"><p className="font-medium">{money.format(a.price)}</p><p className="text-[10px] text-muted">{a.paid ? `${money.format(a.paid)} recebido` : "Pagamento pendente"}</p></div><div className="hidden sm:block">
+  </div><div className={`h-12 w-1 rounded-full bg-primary`} /><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><p className="truncate font-medium">{a.client}</p>{a.source === "Online" && <Badge tone="blue">Online</Badge>}
+{(() => { const alert = getMedicalAlert((a as any).clientNotes); return alert ? <span title={alert} className="cursor-help"><Badge tone="danger"><Activity size={12} className="mr-1 inline" /> Alerta Médico</Badge></span> : null; })()}</div><p className="truncate text-xs text-muted">{a.service} · {a.professional}</p></div><div className="hidden text-right md:block"><p className="font-medium">{money.format(a.price)}</p><p className="text-[10px] text-muted">{a.paid ? `${money.format(a.paid)} recebido` : "Pagamento pendente"}</p></div><div className="hidden sm:block">
      <select 
        value={a.status}
        disabled={a.status === "Concluído"}

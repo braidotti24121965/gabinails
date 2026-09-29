@@ -16,7 +16,7 @@ export async function getAppointments(): Promise<Appointment[]> {
       ends_at,
       status,
       source,
-      client:clients(name, phone),
+      client:clients(name, phone, notes),
       professional:professionals(name),
       items:appointment_items(
         id,
@@ -69,6 +69,7 @@ export async function getAppointments(): Promise<Appointment[]> {
       end,
       client: row.client?.name || "Desconhecida",
       phone: row.client?.phone || "",
+      clientNotes: row.client?.notes || "",
       professional: row.professional?.name || "Desconhecida",
       service: serviceName,
       status: (statusMap[row.status] || "Pendente") as AppointmentStatus,
