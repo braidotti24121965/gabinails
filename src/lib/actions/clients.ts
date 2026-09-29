@@ -16,6 +16,8 @@ export interface ClientItem {
   status: string;
   whitelist: boolean;
   tag: string;
+  activePackages?: number;
+  packageCredits?: number;
 }
 
 export async function getClients(): Promise<ClientItem[]> {
@@ -52,6 +54,10 @@ export async function getClients(): Promise<ClientItem[]> {
       client_deposit_whitelist (
         client_id,
         removed_at
+      ),
+      packages (
+        status,
+        remaining_sessions
       )
     `)
     .order("name", { ascending: true });
@@ -89,6 +95,8 @@ export async function getClients(): Promise<ClientItem[]> {
       status: item.status === "archived" ? "Inativa" : "Ativa",
       whitelist: isWhitelisted,
       tag: isWhitelisted ? "VIP" : "Cadastrada",
+      activePackages: item.packages?.filter(p => p.status === 'active' && p.remaining_sessions > 0).length || 0,
+      packageCredits: item.packages?.filter(p => p.status === 'active').reduce((acc, p) => acc + (p.remaining_sessions || 0), 0) || 0,
     };
   });
 }
