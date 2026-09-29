@@ -2,23 +2,51 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
-export async function getFinance() {
+export async function getFinance(period?: string) {
   const supabase = await createClient();
   if (!supabase) return { stats: null, data: [] };
 
   const { data: profile } = await supabase.from('profiles').select('organization_id').single();
   if (!profile?.organization_id) return { stats: null, data: [] };
 
+  let fromDate = new Date(0);
+  let toDate = new Date();
+  
+  if (period === 'today') {
+    fromDate = new Date();
+    fromDate.setHours(0, 0, 0, 0);
+  } else if (period === 'month') {
+    fromDate = new Date();
+    fromDate.setDate(1);
+    fromDate.setHours(0, 0, 0, 0);
+  }
+
+  const fromISO = fromDate.toISOString();
+  
+  // Regime de Caixa: usar paid_at
   const [
     { data: payments },
     { data: expenses },
     { data: commissions },
-    { data: consumptions }
+    { data: consumptions },
+    { data: appointments }
   ] = await Promise.all([
-    supabase.from('payments').select('id, amount, method, status, created_at, kind, client:clients(name)').order('created_at', { ascending: false }),
-    supabase.from('expenses').select('id, amount, description, status, created_at, due_date').order('created_at', { ascending: false }),
-    supabase.from('commissions').select('id, amount, status, created_at, professional:professionals(name)').order('created_at', { ascending: false }),
-    supabase.from('stock_movements').select('quantity, products(unit_cost)').eq('movement_type', 'consumption')
+    supabase.from('payments').select('id, amount, method, status, paid_at, kind, client:clients(name)')
+      .gte('paid_at', fromISO)
+      .order('paid_at', { ascending: false }),
+    supabase.from('expenses').select('id, amount, description, status, paid_at, due_date')
+      .eq('status', 'paid')
+      .gte('paid_at', fromISO)
+      .order('paid_at', { ascending: false }),
+    supabase.from('commissions').select('id, amount, status, created_at, professional:professionals(name)')
+      .gte('created_at', fromISO)
+      .order('created_at', { ascending: false }),
+    supabase.from('stock_movements').select('quantity, created_at, products(unit_cost)')
+      .eq('movement_type', 'consumption')
+      .gte('created_at', fromISO),
+    supabase.from('appointments').select('id, status, created_at')
+      .eq('status', 'completed')
+      .gte('created_at', fromISO)
   ]);
 
   const rows: any[] = [];
@@ -26,6 +54,7 @@ export async function getFinance() {
   let expensesTotal = 0;
   let commTotal = 0;
   let consumptionCost = 0;
+  const concludedAppointments = appointments?.length || 0;
 
   if (consumptions) {
     consumptions.forEach((c: any) => {
@@ -37,8 +66,10 @@ export async function getFinance() {
 
   if (payments) {
     payments.forEach((p: any) => {
-      revenue += Number(p.amount);
-      const d = new Date(p.created_at);
+      if (p.status === 'paid') {
+        revenue += Number(p.amount);
+      }
+      const d = new Date(p.paid_at || p.created_at || Date.now());
       rows.push({
         id: p.id,
         date: d.toLocaleDateString("pt-BR"),
@@ -47,15 +78,17 @@ export async function getFinance() {
         method: p.method === 'pix' ? 'PIX' : p.method === 'credit' ? 'Crédito' : p.method === 'debit' ? 'Débito' : p.method === 'cash' ? 'Dinheiro' : 'Outro',
         status: p.status === 'paid' ? 'Pago' : p.status === 'refunded' ? 'Estornado' : p.status,
         value: Number(p.amount),
-        rawDate: p.created_at
+        rawDate: d.toISOString()
       });
     });
   }
 
   if (expenses) {
     expenses.forEach((e: any) => {
-      expensesTotal += Number(e.amount);
-      const d = new Date(e.created_at);
+      if (e.status === 'paid') {
+        expensesTotal += Number(e.amount);
+      }
+      const d = new Date(e.paid_at || e.due_date || Date.now());
       rows.push({
         id: e.id,
         date: d.toLocaleDateString("pt-BR"),
@@ -64,7 +97,7 @@ export async function getFinance() {
         method: '—',
         status: e.status === 'paid' ? 'Pago' : e.status === 'pending' ? 'Pendente' : e.status,
         value: -Number(e.amount),
-        rawDate: e.created_at
+        rawDate: d.toISOString()
       });
     });
   }
@@ -88,13 +121,17 @@ export async function getFinance() {
 
   rows.sort((a, b) => new Date(b.rawDate).getTime() - new Date(a.rawDate).getTime());
 
+  const balance = revenue - expensesTotal - commTotal - consumptionCost;
+  const netAverageTicket = concludedAppointments > 0 ? (balance / concludedAppointments) : 0;
+
   return {
     stats: {
       revenue,
       expenses: expensesTotal,
       commissions: commTotal,
-      balance: revenue - expensesTotal - commTotal - consumptionCost,
-      consumptionCost
+      balance,
+      consumptionCost,
+      netAverageTicket
     },
     data: rows
   };
@@ -123,7 +160,8 @@ export async function createExpense(description: string, amount: number) {
     competence_date: new Date().toISOString().split('T')[0],
     due_date: new Date().toISOString().split('T')[0],
     amount: Math.abs(amount),
-    status: 'paid'
+    status: 'paid',
+    paid_at: new Date().toISOString()
   }]);
 
   if (error) return { success: false, error: error.message };

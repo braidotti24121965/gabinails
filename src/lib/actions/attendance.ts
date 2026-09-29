@@ -41,24 +41,35 @@ export async function finishAppointment(data: {
     .update({ status: 'completed' })
     .eq('id', data.appointmentId);
 
-  // 3. Create Payment
-  const { error: payErr } = await supabase
-    .from('payments')
-    .insert([{
-      organization_id: profile.organization_id,
-      appointment_id: data.appointmentId,
-      client_id: appointment.client_id,
-      kind: 'payment',
-      method: data.paymentMethod === 'PIX' ? 'pix' : 
-              data.paymentMethod === 'Dinheiro' ? 'cash' : 
-              data.paymentMethod === 'Débito' ? 'debit' : 
-              data.paymentMethod === 'Crédito' ? 'credit' : 'other',
-      amount: data.amount,
-      status: 'paid',
-      paid_at: new Date().toISOString()
-    }]);
+  // 3. Handle Payment or Package Deduction
+  if (data.packageId) {
+    const { error: deductErr } = await supabase.rpc('use_package_session', {
+      p_package_id: data.packageId,
+      p_appointment_id: data.appointmentId
+    });
+    if (deductErr) {
+      console.error("Error deducting package:", deductErr);
+      return { success: false, error: deductErr.message };
+    }
+  } else {
+    const { error: payErr } = await supabase
+      .from('payments')
+      .insert([{
+        organization_id: profile.organization_id,
+        appointment_id: data.appointmentId,
+        client_id: appointment.client_id,
+        kind: 'payment',
+        method: data.paymentMethod === 'PIX' ? 'pix' : 
+                data.paymentMethod === 'Dinheiro' ? 'cash' : 
+                data.paymentMethod === 'Débito' ? 'debit' : 
+                data.paymentMethod === 'Crédito' ? 'credit' : 'other',
+        amount: data.amount,
+        status: 'paid',
+        paid_at: new Date().toISOString()
+      }]);
 
-  if (payErr) console.error("Error creating payment:", payErr);
+    if (payErr) console.error("Error creating payment:", payErr);
+  }
 
   // 4. Create Commissions (Sum from items or default calculation)
   // MVP: just calculate 30% of total if not specified, to show in the UI.

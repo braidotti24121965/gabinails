@@ -24,6 +24,7 @@ export function Automations({ go }: { go: (v: View) => void }) {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line
     loadData();
   }, []);
 

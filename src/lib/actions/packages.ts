@@ -4,61 +4,42 @@ import { revalidatePath } from "next/cache";
 
 export async function sellPackage(clientId: string, name: string, totalSessions: number, price: number, method: string) {
   const supabase = await createClient();
-  if (!supabase) return { success: false };
+  if (!supabase) return { success: false, error: "No DB" };
 
   const { data: profile } = await supabase.from('profiles').select('organization_id').single();
   
-  // 1. Fetch client to update notes
-  const { data: client } = await supabase.from('clients').select('notes').eq('id', clientId).single();
-  let parsedNotes: any = { text: "" };
-  try {
-    if (client?.notes?.startsWith("{")) parsedNotes = JSON.parse(client.notes);
-    else parsedNotes.text = client?.notes || "";
-  } catch(e) {}
-  
-  if (!parsedNotes.packages) parsedNotes.packages = [];
-  
-  parsedNotes.packages.push({
-    id: Date.now().toString(),
-    name,
-    total: totalSessions,
-    price: price,
-    used: 0,
-    created_at: new Date().toISOString()
+  const { data, error } = await supabase.rpc('sell_package', {
+    p_organization_id: profile?.organization_id,
+    p_client_id: clientId,
+    p_name: name,
+    p_total_sessions: totalSessions,
+    p_price: price,
+    p_payment_method: method,
+    p_payment_status: 'paid',
+    p_expires_at: null
   });
 
-  // 2. Update client
-  await supabase.from('clients').update({ notes: JSON.stringify(parsedNotes) }).eq('id', clientId);
-
-  // 3. Create payment
-  await supabase.from('payments').insert([{
-    organization_id: profile?.organization_id,
-    client_id: clientId,
-    kind: 'package',
-    method: method,
-    amount: price,
-    status: 'paid',
-    paid_at: new Date().toISOString()
-  }]);
+  if (error) {
+    console.error("sellPackage error", error);
+    return { success: false, error: error.message };
+  }
 
   revalidatePath("/");
-  return { success: true };
+  return { success: true, packageId: data };
 }
 
-export async function deductPackage(clientId: string, packageId: string) {
+export async function deductPackage(clientId: string, packageId: string, appointmentId?: string) {
   const supabase = await createClient();
-  if (!supabase) return { success: false };
+  if (!supabase) return { success: false, error: "No DB" };
 
-  const { data: client } = await supabase.from('clients').select('notes').eq('id', clientId).single();
-  if (!client || !client.notes?.startsWith("{")) return { success: false };
-  
-  const parsed = JSON.parse(client.notes);
-  if (!parsed.packages) return { success: false };
-  
-  const pkg = parsed.packages.find((p: any) => p.id === packageId);
-  if (pkg) {
-    pkg.used += 1;
-    await supabase.from('clients').update({ notes: JSON.stringify(parsed) }).eq('id', clientId);
+  const { error } = await supabase.rpc('use_package_session', {
+    p_package_id: packageId,
+    p_appointment_id: appointmentId || null
+  });
+
+  if (error) {
+    console.error("deductPackage error", error);
+    return { success: false, error: error.message };
   }
   
   return { success: true };
