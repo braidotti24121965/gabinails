@@ -539,14 +539,24 @@ function ClientModal({ mode, client, close, save }: { mode: "create" | "edit" | 
         initialNotes = parsed.text || "";
         initialAnamnesis = { ...initialAnamnesis, ...parsed.anamnesis };
       }
-      if (parsed.packages) initialPackages = parsed.packages;
+      // Removed legacy JSON packages
     }
   } catch(e) {}
   
   const [notes, setNotes] = useState(initialNotes);
   const [anamnesis, setAnamnesis] = useState(initialAnamnesis);
-  const [packages, setPackages] = useState(initialPackages);
+  const [packages, setPackages] = useState<any[]>([]);
   const [isAddingPackage, setIsAddingPackage] = useState(false);
+  
+  useEffect(() => {
+    if (client?.id && !client.id.startsWith("demo-")) {
+      import('@/lib/actions/packages').then(m => {
+        m.getActivePackages(client.id).then(pkgs => {
+          setPackages(pkgs);
+        });
+      });
+    }
+  }, [client?.id]);
   const [newPkg, setNewPkg] = useState({ name: "", total: 4, price: 120, method: "PIX" });
   const [editingPkgId, setEditingPkgId] = useState<string | null>(null);
   const [editPkg, setEditPkg] = useState({ name: "", total: 0, used: 0, price: 0 });
