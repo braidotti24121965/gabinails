@@ -15,11 +15,25 @@ export default async function Page() {
   const supabase = await createClient();
   
   // Protect route
+  let tenantContext = { profileName: "Usuário", orgName: "Studio" };
   if (supabase) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       redirect("/login");
     }
+    
+    // Fetch tenant profile and organization
+    const { data: profile } = await supabase.from('profiles').select('full_name, organization_id').eq('id', user.id).single();
+    let organization = { name: "Nail Studio" };
+    tenantContext.profileName = profile?.full_name || "Usuário";
+    if (profile?.organization_id) {
+      const { data: org } = await supabase.from('organizations').select('name').eq('id', profile.organization_id).single();
+      if (org) tenantContext.orgName = org.name;
+    }
+    
+    // Pass to component (we will add to props)
+
+
   }
 
   // Load real data
@@ -42,5 +56,6 @@ export default async function Page() {
     initialStats={financialData.stats}
     initialInventory={inventory}
     initialReports={reports}
+    tenant={tenantContext}
   />;
 }
