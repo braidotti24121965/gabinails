@@ -15,12 +15,13 @@ export default async function Page() {
   const supabase = await createClient();
   
   // Protect route
-  let tenantContext = { profileName: "Usuário", orgName: "Studio" };
+  let tenantContext = { profileName: "Usuário", orgName: "Studio", email: "" };
   if (supabase) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       redirect("/login");
     }
+    tenantContext.email = user.email || "";
     
     // Fetch tenant profile and organization
     const { data: profile } = await supabase.from('profiles').select('full_name, organization_id').eq('id', user.id).single();

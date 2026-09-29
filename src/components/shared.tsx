@@ -2,7 +2,7 @@ import React from "react";
 import { Eye, Pencil, Trash2, Archive, LucideIcon } from "lucide-react";
 import { type AppointmentStatus } from "@/lib/demo-data";
 
-export type View = "dashboard" | "agenda" | "clients" | "services" | "professionals" | "attendance" | "finance" | "inventory" | "automations" | "online" | "reports";
+export type View = "dashboard" | "agenda" | "clients" | "services" | "professionals" | "attendance" | "finance" | "inventory" | "automations" | "online" | "reports" | "settings";
 export type EntityKind = "client" | "service" | "professional" | "product" | "automation" | "appointment" | "financial" | "service_consumables";
 export type EntityModalState = { kind: EntityKind; mode: "view" | "edit" | "create"; index?: number; name: string; detail: string; fullItem?: any; };
 

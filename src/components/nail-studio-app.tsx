@@ -48,6 +48,7 @@ const nav: { id: View; label: string; icon: typeof Home }[] = [
 ];
 
 const titles: Record<View, [string, string]> = {
+  settings: ["Configurações", "Gerencie os dados e o acesso do seu salão."],
   dashboard: ["Bom dia, Gabi", "Acompanhe o ritmo do ateliê hoje."], agenda: ["Agenda", "Domingo, 14 de setembro de 2026"],
   clients: ["Clientes", "Relacionamento, histórico e recorrência."], services: ["Serviços", "Catálogo, preços e consumo de insumos."],
   professionals: ["Profissionais", "Equipe, jornadas e indicadores."], attendance: ["Atendimentos", "Conduza cada atendimento até o recebimento."],
@@ -920,7 +921,7 @@ function Header({ view, onMenu, tenant }: { view: View; onMenu: () => void; tena
 }
 
 function Sidebar({ view, setView, open, close, tenant }: { view: View; setView: (v: View) => void; open: boolean; close: () => void; tenant: any }) {
-  return <>{open && <button onClick={close} aria-label="Fechar menu" className="fixed inset-0 z-40 bg-navy-dark/40 lg:hidden" />}<aside className={`fixed inset-y-0 left-0 z-50 flex w-[min(250px,calc(100vw-36px))] flex-col bg-navy text-white transition-transform lg:w-60 lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}><div className="flex h-[65px] items-center justify-between border-b border-white/10 px-5"><button onClick={() => setView("dashboard")} className="flex items-center gap-3 text-left"><div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary"><Sparkles size={16} /></div><div><span className="block text-sm font-semibold line-clamp-1">{tenant.profileName}</span><span className="block text-[10px] text-white/55 line-clamp-1">{tenant.orgName}</span></div></button><button onClick={close} className="text-white/70 lg:hidden"><X size={19} /></button></div><nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4"><p className="px-3 pb-2 text-[10px] font-medium uppercase tracking-[.12em] text-white/45">Operação</p>{nav.slice(0, 6).map(({ id, label, icon: Icon }) => <button key={id} onClick={() => { setView(id); close(); }} className={`flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-[13.5px] transition ${view === id ? "bg-primary text-white" : "text-white/75 hover:bg-white/10 hover:text-white"}`}><Icon size={17} strokeWidth={1.5} />{label}</button>)}<p className="px-3 pb-2 pt-5 text-[10px] font-medium uppercase tracking-[.12em] text-white/45">Gestão</p>{nav.slice(6).map(({ id, label, icon: Icon }) => <button key={id} onClick={() => { setView(id); close(); }} className={`flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-[13.5px] transition ${view === id ? "bg-primary text-white" : "text-white/75 hover:bg-white/10 hover:text-white"}`}><Icon size={17} strokeWidth={1.5} />{label}</button>)}</nav><div className="border-t border-white/10 p-3"><button onClick={() => setView("services")} className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-xs text-white/65 hover:bg-white/10"><Settings size={16} />Configurações</button><button onClick={() => logout()} className="mt-1 flex w-full items-center gap-3 rounded-md px-3 py-2 text-xs text-white/65 hover:bg-white/10 hover:text-rose-400 transition-colors"><Trash2 size={16} />Sair do sistema</button></div></aside></>;
+  return <>{open && <button onClick={close} aria-label="Fechar menu" className="fixed inset-0 z-40 bg-navy-dark/40 lg:hidden" />}<aside className={`fixed inset-y-0 left-0 z-50 flex w-[min(250px,calc(100vw-36px))] flex-col bg-navy text-white transition-transform lg:w-60 lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}><div className="flex h-[65px] items-center justify-between border-b border-white/10 px-5"><button onClick={() => setView("dashboard")} className="flex items-center gap-3 text-left"><div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary"><Sparkles size={16} /></div><div><span className="block text-sm font-semibold line-clamp-1">{tenant.profileName}</span><span className="block text-[10px] text-white/55 line-clamp-1">{tenant.orgName}</span></div></button><button onClick={close} className="text-white/70 lg:hidden"><X size={19} /></button></div><nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4"><p className="px-3 pb-2 text-[10px] font-medium uppercase tracking-[.12em] text-white/45">Operação</p>{nav.slice(0, 6).map(({ id, label, icon: Icon }) => <button key={id} onClick={() => { setView(id); close(); }} className={`flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-[13.5px] transition ${view === id ? "bg-primary text-white" : "text-white/75 hover:bg-white/10 hover:text-white"}`}><Icon size={17} strokeWidth={1.5} />{label}</button>)}<p className="px-3 pb-2 pt-5 text-[10px] font-medium uppercase tracking-[.12em] text-white/45">Gestão</p>{nav.slice(6).map(({ id, label, icon: Icon }) => <button key={id} onClick={() => { setView(id); close(); }} className={`flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-[13.5px] transition ${view === id ? "bg-primary text-white" : "text-white/75 hover:bg-white/10 hover:text-white"}`}><Icon size={17} strokeWidth={1.5} />{label}</button>)}</nav><div className="border-t border-white/10 p-3"><button onClick={() => setView("settings")} className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-xs text-white/65 hover:bg-white/10"><Settings size={16} />Configurações</button><button onClick={() => logout()} className="mt-1 flex w-full items-center gap-3 rounded-md px-3 py-2 text-xs text-white/65 hover:bg-white/10 hover:text-rose-400 transition-colors"><Trash2 size={16} />Sair do sistema</button></div></aside></>;
 }
 
 function Dashboard({ go, stats, onAttendance, appointments = [], clients = [], tenant }: { go: (v: View) => void, stats?: any, onAttendance?: (a: Appointment) => void, appointments?: Appointment[], clients?: any[], tenant: any }) {
@@ -1091,7 +1092,104 @@ function FinishModal({ appointment, close, done }: { appointment: Appointment; c
 
 function Toast({ text }: { text: string }) { return <div className="fixed bottom-5 right-5 z-[80] flex max-w-sm items-center gap-3 rounded-md bg-navy-dark px-4 py-3 text-sm text-white shadow-xl"><div className="rounded-full bg-primary p-1"><Check size={12} /></div>{text}</div> }
 
-export function NailStudioApp({ tenant = { profileName: "Gabi", orgName: "Gabi Ludwig Nail Studio" }, initialClients = demoClients, initialProfessionals = demoProfessionals, initialSpecialties = [], initialAppointments = [], initialInventory = [], initialServices = demoServices as any[], initialFinancials = [], initialStats = { revenue: 0, expenses: 0, commissions: 0, balance: 0 }, initialReports = {} }: { tenant?: { profileName: string; orgName: string; }; initialClients?: ClientItem[]; initialProfessionals?: ProfessionalItem[]; initialSpecialties?: {id: string, name: string}[]; initialAppointments?: Appointment[]; initialServices?: any[]; initialInventory?: any[]; initialFinancials?: any[]; initialStats?: any; initialReports?: any }) {
+
+function SettingsView({ tenant, updateToast }: { tenant: any; updateToast: (t: string) => void }) {
+  const [orgName, setOrgName] = useState(tenant?.orgName || "");
+  const [fullName, setFullName] = useState(tenant?.profileName || "");
+  const [email, setEmail] = useState(tenant?.email || "");
+  const [password, setPassword] = useState("");
+  const [savingOrg, setSavingOrg] = useState(false);
+  const [savingAccess, setSavingAccess] = useState(false);
+
+  async function handleSaveOrg() {
+    setSavingOrg(true);
+    const { updateOrganization, updateProfile } = await import("@/lib/actions/settings");
+    await updateOrganization(orgName);
+    await updateProfile(fullName);
+    updateToast("Dados da empresa salvos! Atualize a página para ver os novos nomes no menu.");
+    setSavingOrg(false);
+  }
+
+  async function handleSaveAccess() {
+    if (!email) return alert("E-mail não pode ser vazio");
+    setSavingAccess(true);
+    const { updateAuthCredentials } = await import("@/lib/actions/settings");
+    const res = await updateAuthCredentials(email, password || undefined);
+    if (res.error) {
+      alert("Erro ao atualizar credenciais: " + res.error);
+    } else {
+      updateToast(res.message || "Acesso atualizado!");
+      setPassword("");
+    }
+    setSavingAccess(false);
+  }
+
+  return (
+    <div className="mx-auto max-w-4xl p-4 sm:p-6 space-y-6">
+      
+      <div className="bg-white rounded-lg border shadow-sm p-6">
+        <div className="flex items-center gap-3 mb-6 border-b pb-4">
+          <div className="bg-primary/10 text-primary p-2 rounded-lg"><Settings size={20} /></div>
+          <div>
+            <h3 className="font-semibold text-lg text-ink">Dados do Salão</h3>
+            <p className="text-sm text-muted">Informações públicas que aparecem no sistema</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="field-label">Nome do Salão (SaaS)</label>
+            <input className="field-input" value={orgName} onChange={e => setOrgName(e.target.value)} />
+          </div>
+          <div>
+            <label className="field-label">Seu Nome (Proprietário/a)</label>
+            <input className="field-input" value={fullName} onChange={e => setFullName(e.target.value)} />
+          </div>
+        </div>
+        
+        <div className="mt-6 flex justify-end">
+          <button onClick={handleSaveOrg} disabled={savingOrg} className="btn-primary">
+            {savingOrg ? "Salvando..." : "Salvar Dados do Salão"}
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-lg border shadow-sm p-6">
+        <div className="flex items-center gap-3 mb-6 border-b pb-4">
+          <div className="bg-emerald-100 text-emerald-700 p-2 rounded-lg"><Settings size={20} /></div>
+          <div>
+            <h3 className="font-semibold text-lg text-ink">Segurança e Acesso</h3>
+            <p className="text-sm text-muted">Credenciais para login na plataforma</p>
+          </div>
+        </div>
+
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm p-4 rounded-lg mb-6">
+          <strong>Atenção:</strong> Ao alterar o seu e-mail, o sistema enviará um link de verificação para a sua nova caixa de entrada. Você precisará clicar nele para confirmar a troca.
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="field-label">E-mail de Login</label>
+            <input type="email" className="field-input" value={email} onChange={e => setEmail(e.target.value)} />
+          </div>
+          <div>
+            <label className="field-label">Nova Senha (Deixe em branco para não alterar)</label>
+            <input type="password" placeholder="••••••••" className="field-input" value={password} onChange={e => setPassword(e.target.value)} />
+          </div>
+        </div>
+
+        <div className="mt-6 flex justify-end">
+          <button onClick={handleSaveAccess} disabled={savingAccess} className="btn-primary bg-emerald-600 border-emerald-600 hover:bg-emerald-700">
+            {savingAccess ? "Salvando..." : "Atualizar Acesso"}
+          </button>
+        </div>
+      </div>
+
+    </div>
+  );
+}
+
+export function NailStudioApp({ tenant = { profileName: "Gabi", orgName: "Gabi Ludwig Nail Studio" }, initialClients = demoClients, initialProfessionals = demoProfessionals, initialSpecialties = [], initialAppointments = [], initialInventory = [], initialServices = demoServices as any[], initialFinancials = [], initialStats = { revenue: 0, expenses: 0, commissions: 0, balance: 0 }, initialReports = {} }: { tenant?: { profileName: string; orgName: string; email?: string; }; initialClients?: ClientItem[]; initialProfessionals?: ProfessionalItem[]; initialSpecialties?: {id: string, name: string}[]; initialAppointments?: Appointment[]; initialServices?: any[]; initialInventory?: any[]; initialFinancials?: any[]; initialStats?: any; initialReports?: any }) {
   const [view, setView] = useState<View>("dashboard"); const [menu, setMenu] = useState(false); const [booking, setBooking] = useState(false); const [finish, setFinish] = useState(false); const [activeAppointment, setActiveAppointment] = useState<Appointment | null>(null); const [toast, setToast] = useState(""); const [rows, setRows] = useState(initialAppointments);
 
   // Auto-refresh appointments when looking at the agenda
@@ -1235,6 +1333,7 @@ const [reportsData] = useState(() => initialReports); const [entityModal, setEnt
   const confirmAction = (message: string, action: () => void) => { if (window.confirm(message)) action(); };
   const content = (() => {
     if (view === "dashboard") return <Dashboard stats={initialStats} go={setView} appointments={rows} clients={clientRows} tenant={tenant} onAttendance={(a) => { setActiveAppointment(a); setView("attendance"); }} />;
+    if (view === "settings") return <SettingsView tenant={tenant} updateToast={(t) => { setToast(t); setTimeout(() => setToast(""), 3000); }} />;
     if (view === "agenda") return <Agenda rows={rows} onNew={() => setBooking(true)} onAttendance={(a) => { setActiveAppointment(a); setView("attendance"); }} onAction={(mode, index) => openEntity("appointment", mode, index)} onStatusChange={async (a, statusUI) => {
     if (statusUI === "Concluído") {
       // Intercept to open payment/checkout modal
