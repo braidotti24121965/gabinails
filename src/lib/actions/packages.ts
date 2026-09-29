@@ -22,6 +22,7 @@ export async function sellPackage(clientId: string, name: string, totalSessions:
     id: Date.now().toString(),
     name,
     total: totalSessions,
+    price: price,
     used: 0,
     created_at: new Date().toISOString()
   });

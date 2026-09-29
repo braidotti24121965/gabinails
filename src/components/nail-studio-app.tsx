@@ -548,7 +548,7 @@ function ClientModal({ mode, client, close, save }: { mode: "create" | "edit" | 
   const [isAddingPackage, setIsAddingPackage] = useState(false);
   const [newPkg, setNewPkg] = useState({ name: "", total: 4, price: 120, method: "PIX" });
   const [editingPkgId, setEditingPkgId] = useState<string | null>(null);
-  const [editPkg, setEditPkg] = useState({ name: "", total: 0, used: 0 });
+  const [editPkg, setEditPkg] = useState({ name: "", total: 0, used: 0, price: 0 });
 
   const readOnly = mode === "view";
   const clientAge = formatAgeInYearsAndMonths(birthDate);
@@ -725,7 +725,7 @@ function ClientModal({ mode, client, close, save }: { mode: "create" | "edit" | 
                       const res = await sellPackage(client.id, newPkg.name, newPkg.total, newPkg.price, newPkg.method);
                       
                       if (res.success) {
-                        setPackages([...packages, { id: Date.now().toString(), name: newPkg.name, total: newPkg.total, used: 0, created_at: new Date().toISOString() }]);
+                        setPackages([...packages, { id: Date.now().toString(), name: newPkg.name, total: newPkg.total, price: newPkg.price, used: 0, created_at: new Date().toISOString() }]);
                         setIsAddingPackage(false);
                         setNewPkg({ name: "", total: 4, price: 120, method: "PIX" });
                       } else {
@@ -754,20 +754,24 @@ function ClientModal({ mode, client, close, save }: { mode: "create" | "edit" | 
                           <label className="text-xs font-medium text-muted">Nome do Pacote</label>
                           <input className="field-input !py-1 !text-sm" value={editPkg.name} onChange={e => setEditPkg({...editPkg, name: e.target.value})} />
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-3 gap-3">
                           <div>
-                            <label className="text-xs font-medium text-muted">Total de Sessões</label>
+                            <label className="text-xs font-medium text-muted">Valor (R$)</label>
+                            <input type="number" className="field-input !py-1 !text-sm" value={editPkg.price || 0} onChange={e => setEditPkg({...editPkg, price: +e.target.value})} title="A alteração aqui é apenas informativa e não altera o caixa" />
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium text-muted">Total Sessões</label>
                             <input type="number" className="field-input !py-1 !text-sm" value={editPkg.total} onChange={e => setEditPkg({...editPkg, total: +e.target.value})} />
                           </div>
                           <div>
-                            <label className="text-xs font-medium text-muted">Sessões Usadas</label>
+                            <label className="text-xs font-medium text-muted">Usadas</label>
                             <input type="number" className="field-input !py-1 !text-sm" value={editPkg.used} onChange={e => setEditPkg({...editPkg, used: +e.target.value})} />
                           </div>
                         </div>
                         <div className="flex gap-2 justify-end pt-2">
                           <button type="button" onClick={() => setEditingPkgId(null)} className="text-xs text-muted hover:text-ink">Cancelar</button>
                           <button type="button" onClick={() => {
-                            setPackages(packages.map((pkg: any) => pkg.id === p.id ? { ...pkg, name: editPkg.name, total: editPkg.total, used: editPkg.used } : pkg));
+                            setPackages(packages.map((pkg: any) => pkg.id === p.id ? { ...pkg, name: editPkg.name, total: editPkg.total, used: editPkg.used, price: editPkg.price } : pkg));
                             setEditingPkgId(null);
                           }} className="text-xs text-primary font-medium hover:underline">Salvar Edição</button>
                         </div>
@@ -775,10 +779,10 @@ function ClientModal({ mode, client, close, save }: { mode: "create" | "edit" | 
                     ) : (
                       <div className="flex justify-between items-center">
                         <div>
-                          <p className="font-medium">{p.name}</p>
+                          <p className="font-medium">{p.name} {p.price ? <span className="text-muted font-normal ml-2">R$ {p.price.toFixed(2).replace(".",",")}</span> : null}</p>
                           <p className="text-xs text-muted">Adicionado em {new Date(p.created_at).toLocaleDateString("pt-BR")}</p>
                           <div className="mt-2 flex gap-2">
-                            <button type="button" onClick={() => { setEditPkg({ name: p.name, total: p.total, used: p.used || 0 }); setEditingPkgId(p.id); }} className="text-xs text-primary hover:underline">Editar</button>
+                            <button type="button" onClick={() => { setEditPkg({ name: p.name, total: p.total, used: p.used || 0, price: p.price || 0 }); setEditingPkgId(p.id); }} className="text-xs text-primary hover:underline">Editar</button>
                             <button type="button" onClick={() => { if(confirm("Tem certeza que deseja apagar este pacote? O financeiro não será estornado automaticamente.")) setPackages(packages.filter((pkg: any) => pkg.id !== p.id)); }} className="text-xs text-danger hover:underline">Excluir</button>
                           </div>
                         </div>
