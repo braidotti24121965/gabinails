@@ -65,6 +65,9 @@ export function Agenda({
 
   const visibleRows = rows
     .filter((r: any) => {
+      // Exclude system block entries from the client appointment list
+      if (r.service?.includes("Bloqueio")) return false;
+
       let inRange = false;
       if (calendarView === "dia") {
         inRange = r.dateStr === selectedDate;

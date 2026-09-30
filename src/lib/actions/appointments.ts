@@ -344,7 +344,7 @@ export async function toggleBlockDayRecord(dateStr: string) {
       .from("appointments")
       .insert([{
         organization_id: orgId,
-        client_id: firstClient?.id || null,
+        client_id: null,
         professional_id: prof.id,
         starts_at: startsAt,
         ends_at: endsAt,
