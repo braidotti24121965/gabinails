@@ -46,8 +46,11 @@ export async function getAppointments(): Promise<Appointment[]> {
     const price = row.items?.reduce((acc: number, item: any) => acc + Number(item.unit_price || 0), 0) || 0;
     const paid = row.payments?.reduce((acc: number, p: any) => acc + Number(p.amount || 0), 0) || 0;
 
-    // Service name (first service or generic)
-    const serviceName = row.items?.map((i: any) => i.service?.name || i.description).filter(Boolean).join(" + ") || "Serviço";
+    // Service name & block detection
+    const isBlock = !row.client_id || row.items?.some((i: any) => i.description?.toLowerCase().includes("bloqueio"));
+    const serviceName = isBlock
+      ? "Bloqueio de Agenda (Dia Inteiro)"
+      : (row.items?.map((i: any) => i.service?.name || i.description).filter(Boolean).join(" + ") || "Serviço");
 
     // Map status from db to UI readable
     const statusMap: Record<string, string> = {
@@ -68,7 +71,7 @@ export async function getAppointments(): Promise<Appointment[]> {
       startsAtIso: row.starts_at,
       time,
       end,
-      client: row.client?.name || "Desconhecida",
+      client: row.client?.name || (isBlock ? "Bloqueio de Agenda" : "Desconhecida"),
       clientId: row.client_id,
       phone: row.client?.phone || "",
       clientNotes: row.client?.notes || "",
@@ -78,7 +81,7 @@ export async function getAppointments(): Promise<Appointment[]> {
       price,
       paid,
       source: row.source === "online" ? "Online" : "Interno",
-      items: row.items?.map((i: any) => ({ id: i.id, name: i.service?.name || "Serviço", price: Number(i.unit_price) })) || []
+      items: row.items?.map((i: any) => ({ id: i.id, name: i.service?.name || i.description || "Serviço", price: Number(i.unit_price) })) || []
     };
   });
 }
@@ -284,24 +287,25 @@ export async function toggleBlockDayRecord(dateStr: string) {
   // Find existing appointments for this org on this date
   const { data: existingAppts } = await supabase
     .from("appointments")
-    .select("id, status")
+    .select("id, status, client_id")
     .eq("organization_id", orgId)
     .gte("starts_at", new Date(startOfDaySP).toISOString())
     .lte("starts_at", new Date(endOfDaySP).toISOString())
     .neq("status", "cancelled");
 
-  // Check if any of these appointments has item description "Bloqueio de Agenda (Dia Inteiro)"
+  // Check if any appointment has null client_id OR item description containing "Bloqueio"
   let blockedApptIds: string[] = [];
   if (existingAppts && existingAppts.length > 0) {
+    const nullClientApptIds = existingAppts.filter(a => a.client_id === null).map(a => a.id);
+
     const { data: items } = await supabase
       .from("appointment_items")
       .select("appointment_id")
       .in("appointment_id", existingAppts.map(a => a.id))
-      .eq("description", "Bloqueio de Agenda (Dia Inteiro)");
+      .ilike("description", "%bloqueio%");
 
-    if (items && items.length > 0) {
-      blockedApptIds = items.map(i => i.appointment_id);
-    }
+    const itemApptIds = items ? items.map(i => i.appointment_id) : [];
+    blockedApptIds = Array.from(new Set([...nullClientApptIds, ...itemApptIds]));
   }
 
   // If already blocked -> UNBLOCK

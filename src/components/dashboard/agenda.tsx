@@ -38,7 +38,11 @@ export function Agenda({
       r.dateStr === selectedDate &&
       r.status !== "Cancelado" &&
       r.status !== "Cancelada" &&
-      (r.service?.includes("Bloqueio de Agenda") || r.service?.includes("Bloqueio"))
+      (
+        r.clientId === null ||
+        r.client === "Bloqueio de Agenda" ||
+        r.service?.toLowerCase().includes("bloqueio")
+      )
   );
 
   const handleOpenBlockModal = () => {
@@ -66,7 +70,13 @@ export function Agenda({
   const visibleRows = rows
     .filter((r: any) => {
       // Exclude system block entries from the client appointment list
-      if (r.service?.includes("Bloqueio")) return false;
+      if (
+        r.clientId === null ||
+        r.client === "Bloqueio de Agenda" ||
+        r.service?.toLowerCase().includes("bloqueio")
+      ) {
+        return false;
+      }
 
       let inRange = false;
       if (calendarView === "dia") {
