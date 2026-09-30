@@ -107,6 +107,23 @@ export function Agenda({
       return a.time.localeCompare(b.time);
     });
 
+  const blockedDays = Array.from(
+    new Set(
+      rows
+        .filter(
+          (r: any) =>
+            r.status !== "Cancelado" &&
+            r.status !== "Cancelada" &&
+            (
+              r.clientId === null ||
+              r.client === "Bloqueio de Agenda" ||
+              r.service?.toLowerCase().includes("bloqueio")
+            )
+        )
+        .map((r: any) => r.dateStr)
+    )
+  ).sort();
+
   return (
     <main className="page-content">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
@@ -170,6 +187,35 @@ export function Agenda({
           </button>
         </div>
       </div>
+
+      {blockedDays.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50/90 p-3 text-xs text-amber-900">
+          <div className="flex items-center gap-1.5 font-semibold shrink-0">
+            <Lock size={14} className="text-amber-700" />
+            Dias Bloqueados na Agenda ({blockedDays.length}):
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {blockedDays.map((dStr) => {
+              const isSelected = dStr === selectedDate;
+              const formatted = dStr.split("-").reverse().join("/");
+              return (
+                <button
+                  key={dStr}
+                  type="button"
+                  onClick={() => setSelectedDate(dStr)}
+                  className={`rounded-md px-2.5 py-1 font-medium transition ${
+                    isSelected
+                      ? "bg-amber-600 text-white shadow-xs"
+                      : "bg-white border border-amber-300 text-amber-900 hover:bg-amber-100"
+                  }`}
+                >
+                  📅 {formatted} {isSelected ? "(selecionado)" : ""}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {isDayBlocked && (
         <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
