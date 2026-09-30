@@ -1,5 +1,5 @@
 import React from "react";
-import { Eye, Pencil, Trash2, Archive, LucideIcon } from "lucide-react";
+import { Eye, Pencil, Trash2, Archive, LucideIcon, AlertCircle, X } from "lucide-react";
 import { type AppointmentStatus } from "@/lib/demo-data";
 
 export type View = "dashboard" | "agenda" | "clients" | "services" | "professionals" | "attendance" | "finance" | "inventory" | "automations" | "online" | "reports" | "settings";
@@ -39,4 +39,45 @@ export function SectionTitle({ title, subtitle, action }: { title: string; subti
 
 export function SmallMetricLink({ label, value, target, go }: { label: string; value: string; target: View; go: (view: View) => void }) {
   return <button type="button" onClick={() => go(target)} className="group flex w-full flex-col rounded-lg border border-surface bg-white p-3 text-left transition hover:border-primary/30 hover:bg-primary-light focus:outline-none focus:ring-2 focus:ring-primary/25"><span className="text-[10px] font-medium uppercase tracking-wider text-muted group-hover:text-primary">{label}</span><span className="mt-1 font-semibold text-ink">{value}</span></button>;
+}
+
+export function SystemAlertModal({
+  title = "Aviso do Sistema",
+  message,
+  close
+}: {
+  title?: string;
+  message: string;
+  close: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <button type="button" onClick={close} className="fixed inset-0 bg-navy-dark/40" />
+      <div className="relative w-full max-w-md rounded-xl bg-white p-6 shadow-2xl z-10 text-left border border-[#E7EDF3]">
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-rose-100 text-rose-600 shrink-0">
+            <AlertCircle size={24} />
+          </div>
+          <button
+            type="button"
+            onClick={close}
+            className="rounded-md p-1.5 text-muted hover:bg-bg hover:text-ink transition-colors"
+          >
+            <X size={18} />
+          </button>
+        </div>
+        <h3 className="text-lg font-bold text-ink">{title}</h3>
+        <p className="mt-2 text-sm text-muted leading-relaxed">{message}</p>
+        <div className="mt-6 flex justify-end border-t border-[#E7EDF3] pt-4">
+          <button
+            type="button"
+            onClick={close}
+            className="btn-primary bg-primary hover:bg-primary-dark text-white px-5 py-2 text-sm font-medium rounded-lg shadow-sm"
+          >
+            Entendi
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }

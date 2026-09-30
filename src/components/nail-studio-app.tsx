@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 import NextImage from "next/image";
-import { View, EntityKind, EntityModalState, Badge, statusTone, Metric, RowActions, SectionTitle, SmallMetricLink } from "./shared";
+import { View, EntityKind, EntityModalState, Badge, statusTone, Metric, RowActions, SectionTitle, SmallMetricLink, SystemAlertModal } from "./shared";
 import { formatAgeInYearsAndMonths } from "@/lib/utils/age";
 import { Professionals } from "./dashboard/professionals";
 import { Attendance } from "./dashboard/attendance";
@@ -1226,6 +1226,18 @@ function SettingsView({ tenant, updateToast }: { tenant: any; updateToast: (t: s
 
 export function NailStudioApp({ tenant = { profileName: "Gabi", orgName: "Gabi Ludwig Nail Studio" }, initialClients = demoClients, initialProfessionals = demoProfessionals, initialSpecialties = [], initialAppointments = [], initialInventory = [], initialServices = demoServices as any[], initialFinancials = [], initialStats = { revenue: 0, expenses: 0, commissions: 0, balance: 0 }, initialReports = {} }: { tenant?: { profileName: string; orgName: string; email?: string; }; initialClients?: ClientItem[]; initialProfessionals?: ProfessionalItem[]; initialSpecialties?: {id: string, name: string}[]; initialAppointments?: Appointment[]; initialServices?: any[]; initialInventory?: any[]; initialFinancials?: any[]; initialStats?: any; initialReports?: any }) {
   const [view, setView] = useState<View>("dashboard"); const [menu, setMenu] = useState(false); const [booking, setBooking] = useState(false); const [finish, setFinish] = useState(false); const [activeAppointment, setActiveAppointment] = useState<Appointment | null>(null); const [toast, setToast] = useState(""); const [rows, setRows] = useState(initialAppointments);
+  const [systemAlertMessage, setSystemAlertMessage] = useState<string | null>(null);
+
+  // Catch native alert calls and display styled SystemAlertModal instead
+  useEffect(() => {
+    const originalAlert = window.alert;
+    window.alert = (msg?: any) => {
+      setSystemAlertMessage(String(msg || "Aviso do sistema"));
+    };
+    return () => {
+      window.alert = originalAlert;
+    };
+  }, []);
 
   // Auto-refresh appointments when looking at the agenda
   useEffect(() => {
@@ -1588,6 +1600,7 @@ const [reportsData] = useState(() => initialReports); const [entityModal, setEnt
       {booking && <BookingModal clients={clientRows} professionals={professionalRows} services={serviceRows} close={() => setBooking(false)} save={async (a, rawData) => { if(rawData) { const res = await createAppointmentRecord(rawData); if (res.success) { const fresh = await getAppointments(); setRows(fresh); setBooking(false); notify("Agendamento criado com sucesso."); } else { alert(("error" in res ? res.error : "Erro desconhecido")); } } else { setRows(v => [...v, a]); setBooking(false); notify("Agendamento criado (demo)."); } }} />}
       {finish && activeAppointment && <FinishModal appointment={activeAppointment} close={() => setFinish(false)} done={async (method, val, pkgId) => { const res = await finishAppointment({ appointmentId: activeAppointment.id, amount: val, paymentMethod: method, packageId: pkgId }); if (res.success) { setRows(v => v.map(a => a.id === activeAppointment.id ? { ...a, status: "Concluído", paid: (a.paid || 0) + (pkgId ? 0 : val) } : a)); setFinish(false); setActiveAppointment(null); setView("agenda"); notify("Atendimento concluído e pagamento registrado com sucesso."); } else { alert(("error" in res ? res.error : "Erro desconhecido")); } }} />}
       {toast && <Toast text={toast} />}
+      {systemAlertMessage && <SystemAlertModal message={systemAlertMessage} close={() => setSystemAlertMessage(null)} />}
     </div>
   );
 }
