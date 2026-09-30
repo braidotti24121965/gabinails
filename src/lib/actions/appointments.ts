@@ -34,8 +34,15 @@ export async function getAppointments(): Promise<Appointment[]> {
     return [];
   }
 
+  // Filter out legacy system block appointments from normal list
+  const filteredData = data.filter((row: any) => {
+    if (!row.client_id) return false;
+    if (row.items?.some((i: any) => i.description?.toLowerCase().includes("bloqueio"))) return false;
+    return true;
+  });
+
   // Map DB structure to the UI structure (Appointment interface)
-  return data.map((row: any) => {
+  const mappedAppointments: Appointment[] = filteredData.map((row: any) => {
     // Format times
     const dStart = new Date(row.starts_at);
     const dEnd = new Date(row.ends_at);
@@ -46,11 +53,7 @@ export async function getAppointments(): Promise<Appointment[]> {
     const price = row.items?.reduce((acc: number, item: any) => acc + Number(item.unit_price || 0), 0) || 0;
     const paid = row.payments?.reduce((acc: number, p: any) => acc + Number(p.amount || 0), 0) || 0;
 
-    // Service name & block detection
-    const isBlock = !row.client_id || row.items?.some((i: any) => i.description?.toLowerCase().includes("bloqueio"));
-    const serviceName = isBlock
-      ? "Bloqueio de Agenda (Dia Inteiro)"
-      : (row.items?.map((i: any) => i.service?.name || i.description).filter(Boolean).join(" + ") || "Serviço");
+    const serviceName = row.items?.map((i: any) => i.service?.name || i.description).filter(Boolean).join(" + ") || "Serviço";
 
     // Map status from db to UI readable
     const statusMap: Record<string, string> = {
@@ -71,7 +74,7 @@ export async function getAppointments(): Promise<Appointment[]> {
       startsAtIso: row.starts_at,
       time,
       end,
-      client: row.client?.name || (isBlock ? "Bloqueio de Agenda" : "Desconhecida"),
+      client: row.client?.name || "Desconhecida",
       clientId: row.client_id,
       phone: row.client?.phone || "",
       clientNotes: row.client?.notes || "",
@@ -84,6 +87,37 @@ export async function getAppointments(): Promise<Appointment[]> {
       items: row.items?.map((i: any) => ({ id: i.id, name: i.service?.name || i.description || "Serviço", price: Number(i.unit_price) })) || []
     };
   });
+
+  // Also query active day blocks from professional_availability
+  const { data: availBlocks } = await supabase
+    .from("professional_availability")
+    .select("id, starts_at, ends_at, notes, professional:professionals(name)")
+    .eq("kind", "block");
+
+  const mappedAvailBlocks: Appointment[] = (availBlocks || []).map((b: any) => {
+    const dStart = new Date(b.starts_at);
+    const dEnd = new Date(b.ends_at);
+    return {
+      id: `block-${b.id}`,
+      dateStr: dStart.toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }),
+      startsAtIso: b.starts_at,
+      time: dStart.toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" }),
+      end: dEnd.toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" }),
+      client: "Bloqueio de Agenda",
+      clientId: null,
+      phone: "",
+      clientNotes: "",
+      professional: b.professional?.name || "Desconhecida",
+      service: b.notes || "Bloqueio de Agenda (Dia Inteiro)",
+      status: "Agendado" as AppointmentStatus,
+      price: 0,
+      paid: 0,
+      source: "Interno" as const,
+      items: []
+    };
+  });
+
+  return [...mappedAppointments, ...mappedAvailBlocks];
 }
 
 export async function createAppointmentRecord(data: {
@@ -284,45 +318,58 @@ export async function toggleBlockDayRecord(dateStr: string) {
   const startOfDaySP = `${dateStr}T00:00:00-03:00`;
   const endOfDaySP = `${dateStr}T23:59:59-03:00`;
 
-  // Find existing appointments for this org on this date
-  const { data: existingAppts } = await supabase
+  // Find existing blocks in professional_availability
+  const { data: existingBlocks } = await supabase
+    .from("professional_availability")
+    .select("id")
+    .eq("organization_id", orgId)
+    .eq("kind", "block")
+    .gte("starts_at", new Date(startOfDaySP).toISOString())
+    .lte("starts_at", new Date(endOfDaySP).toISOString());
+
+  // Also check for legacy block appointments in appointments table
+  const { data: legacyAppts } = await supabase
     .from("appointments")
-    .select("id, status, client_id")
+    .select("id, client_id")
     .eq("organization_id", orgId)
     .gte("starts_at", new Date(startOfDaySP).toISOString())
     .lte("starts_at", new Date(endOfDaySP).toISOString())
     .neq("status", "cancelled");
 
-  // Check if any appointment has null client_id OR item description containing "Bloqueio"
-  let blockedApptIds: string[] = [];
-  if (existingAppts && existingAppts.length > 0) {
-    const nullClientApptIds = existingAppts.filter(a => a.client_id === null).map(a => a.id);
-
+  let legacyBlockIds: string[] = [];
+  if (legacyAppts && legacyAppts.length > 0) {
     const { data: items } = await supabase
       .from("appointment_items")
       .select("appointment_id")
-      .in("appointment_id", existingAppts.map(a => a.id))
+      .in("appointment_id", legacyAppts.map(a => a.id))
       .ilike("description", "%bloqueio%");
 
-    const itemApptIds = items ? items.map(i => i.appointment_id) : [];
-    blockedApptIds = Array.from(new Set([...nullClientApptIds, ...itemApptIds]));
+    const nullClientAppts = legacyAppts.filter(a => a.client_id === null).map(a => a.id);
+    const itemBlockAppts = items ? items.map(i => i.appointment_id) : [];
+    legacyBlockIds = Array.from(new Set([...nullClientAppts, ...itemBlockAppts]));
   }
 
-  // If already blocked -> UNBLOCK
-  if (blockedApptIds.length > 0) {
-    const { error } = await supabase
-      .from("appointments")
-      .update({ status: "cancelled" })
-      .in("id", blockedApptIds);
+  const isBlocked = (existingBlocks && existingBlocks.length > 0) || legacyBlockIds.length > 0;
 
-    if (error) {
-      return { success: false, error: error.message };
+  // IF ALREADY BLOCKED -> UNBLOCK
+  if (isBlocked) {
+    if (existingBlocks && existingBlocks.length > 0) {
+      await supabase
+        .from("professional_availability")
+        .delete()
+        .in("id", existingBlocks.map(b => b.id));
+    }
+    if (legacyBlockIds.length > 0) {
+      await supabase
+        .from("appointments")
+        .update({ status: "cancelled" })
+        .in("id", legacyBlockIds);
     }
     revalidatePath("/");
     return { success: true, action: "unblocked" as const };
   }
 
-  // Otherwise -> BLOCK
+  // OTHERWISE -> BLOCK
   const { data: profs } = await supabase
     .from("professionals")
     .select("id")
@@ -333,69 +380,23 @@ export async function toggleBlockDayRecord(dateStr: string) {
     return { success: false, error: "Nenhum profissional ativo encontrado." };
   }
 
-  const { data: firstClient } = await supabase
-    .from("clients")
-    .select("id")
-    .eq("organization_id", orgId)
-    .limit(1)
-    .maybeSingle();
-
-  let clientId = firstClient?.id;
-  if (!clientId) {
-    const { data: systemClient } = await supabase
-      .from("clients")
-      .insert([{
-        organization_id: orgId,
-        name: "Bloqueio de Agenda",
-        phone: "00000000000",
-        phone_normalized: `system_block_${orgId.slice(0, 8)}`,
-        status: "active"
-      }])
-      .select("id")
-      .single();
-    clientId = systemClient?.id;
-  }
-
-  if (!clientId) {
-    return { success: false, error: "Erro ao resolver cliente de sistema para o bloqueio." };
-  }
-
   const startsAt = new Date(`${dateStr}T08:00:00-03:00`).toISOString();
   const endsAt = new Date(`${dateStr}T19:00:00-03:00`).toISOString();
 
+  // Cancel any legacy block appointment rows so appointments table is completely free for manual admin bookings
+  if (legacyBlockIds.length > 0) {
+    await supabase.from("appointments").update({ status: "cancelled" }).in("id", legacyBlockIds);
+  }
+
   for (const prof of profs) {
-    const { data: appt, error: apptErr } = await supabase
-      .from("appointments")
-      .insert([{
-        organization_id: orgId,
-        client_id: clientId,
-        professional_id: prof.id,
-        starts_at: startsAt,
-        ends_at: endsAt,
-        status: "scheduled",
-        source: "internal"
-      }])
-      .select("id")
-      .single();
-
-    if (apptErr) {
-      console.error("Error creating block appointment:", apptErr);
-      continue;
-    }
-
-    if (appt?.id) {
-      await supabase.from("appointment_items").insert([{
-        organization_id: orgId,
-        appointment_id: appt.id,
-        service_id: null,
-        professional_id: prof.id,
-        description: "Bloqueio de Agenda (Dia Inteiro)",
-        duration_minutes: 660,
-        unit_price: 0,
-        commission_type: "percentage",
-        commission_value: 0
-      }]);
-    }
+    await supabase.from("professional_availability").insert([{
+      organization_id: orgId,
+      professional_id: prof.id,
+      kind: "block",
+      starts_at: startsAt,
+      ends_at: endsAt,
+      notes: "Bloqueio de Agenda (Dia Inteiro)"
+    }]);
   }
 
   revalidatePath("/");

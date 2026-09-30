@@ -51,6 +51,38 @@ export async function calculateAvailability({
     .eq("status", "awaiting_deposit")
     .lt("hold_expires_at", new Date().toISOString());
 
+  // Check if date is blocked for online booking via professional_availability or legacy blocks
+  const { data: dayBlocks } = await supabase
+    .from("professional_availability")
+    .select("professional_id")
+    .eq("organization_id", orgId)
+    .in("professional_id", eligibleProfIds)
+    .eq("kind", "block")
+    .gte("starts_at", new Date(startOfDaySP).toISOString())
+    .lte("starts_at", new Date(endOfDaySP).toISOString());
+
+  const { data: legacyAppts } = await supabase
+    .from("appointments")
+    .select("id")
+    .eq("organization_id", orgId)
+    .gte("starts_at", new Date(startOfDaySP).toISOString())
+    .lte("starts_at", new Date(endOfDaySP).toISOString())
+    .neq("status", "cancelled");
+
+  let isLegacyBlocked = false;
+  if (legacyAppts && legacyAppts.length > 0) {
+    const { data: items } = await supabase
+      .from("appointment_items")
+      .select("appointment_id")
+      .in("appointment_id", legacyAppts.map(a => a.id))
+      .ilike("description", "%bloqueio%");
+    if (items && items.length > 0) isLegacyBlocked = true;
+  }
+
+  if ((dayBlocks && dayBlocks.length >= eligibleProfIds.length) || isLegacyBlocked) {
+    return { availableSlots: [], debug: { reason: "Dia bloqueado para agendamentos online" } };
+  }
+
   // Buscar todos os agendamentos do dia para os profissionais elegíveis da organização
   const { data: appointments, error: appErr } = await supabase
     .from("appointments")
@@ -146,6 +178,19 @@ export async function findAvailableProfessionalForSlot({
 
   const startOfDaySP = `${date}T00:00:00-03:00`;
   const endOfDaySP = `${date}T23:59:59-03:00`;
+
+  const { data: dayBlocks } = await supabase
+    .from("professional_availability")
+    .select("professional_id")
+    .eq("organization_id", orgId)
+    .in("professional_id", eligibleProfIds)
+    .eq("kind", "block")
+    .gte("starts_at", new Date(startOfDaySP).toISOString())
+    .lte("starts_at", new Date(endOfDaySP).toISOString());
+
+  if (dayBlocks && dayBlocks.length >= eligibleProfIds.length) {
+    return null;
+  }
 
   const { data: appointments } = await supabase
     .from("appointments")
