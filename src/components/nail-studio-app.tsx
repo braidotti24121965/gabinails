@@ -1373,7 +1373,7 @@ const [reportsData] = useState(() => initialReports); const [entityModal, setEnt
       const res = await toggleBlockDayRecord(dateStr);
       if (res.success) {
         const fresh = await getAppointments();
-        if (fresh && fresh.length > 0) {
+        if (fresh) {
           setRows(fresh);
         }
         const dateFormatted = dateStr.split("-").reverse().join("/");

@@ -327,7 +327,7 @@ export async function toggleBlockDayRecord(dateStr: string) {
     .from("professionals")
     .select("id")
     .eq("organization_id", orgId)
-    .eq("active", true);
+    .neq("active", false);
 
   if (!profs || profs.length === 0) {
     return { success: false, error: "Nenhum profissional ativo encontrado." };
@@ -340,6 +340,26 @@ export async function toggleBlockDayRecord(dateStr: string) {
     .limit(1)
     .maybeSingle();
 
+  let clientId = firstClient?.id;
+  if (!clientId) {
+    const { data: systemClient } = await supabase
+      .from("clients")
+      .insert([{
+        organization_id: orgId,
+        name: "Bloqueio de Agenda",
+        phone: "00000000000",
+        phone_normalized: `system_block_${orgId.slice(0, 8)}`,
+        status: "active"
+      }])
+      .select("id")
+      .single();
+    clientId = systemClient?.id;
+  }
+
+  if (!clientId) {
+    return { success: false, error: "Erro ao resolver cliente de sistema para o bloqueio." };
+  }
+
   const startsAt = new Date(`${dateStr}T08:00:00-03:00`).toISOString();
   const endsAt = new Date(`${dateStr}T19:00:00-03:00`).toISOString();
 
@@ -348,7 +368,7 @@ export async function toggleBlockDayRecord(dateStr: string) {
       .from("appointments")
       .insert([{
         organization_id: orgId,
-        client_id: null,
+        client_id: clientId,
         professional_id: prof.id,
         starts_at: startsAt,
         ends_at: endsAt,
