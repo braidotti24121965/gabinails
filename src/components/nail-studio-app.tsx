@@ -541,7 +541,7 @@ function ClientModal({ mode, client, close, save }: { mode: "create" | "edit" | 
       }
     }
   } catch(e) {}
-  
+
   // Prefer relational anamnesis if it exists
   if (client?.client_anamnesis && client.client_anamnesis.length > 0) {
     const an = client.client_anamnesis[0];
@@ -552,12 +552,12 @@ function ClientModal({ mode, client, close, save }: { mode: "create" | "edit" | 
       alergias: an.allergies || ""
     };
   }
-  
+
   const [notes, setNotes] = useState(initialNotes);
   const [anamnesis, setAnamnesis] = useState(initialAnamnesis);
   const [packages, setPackages] = useState<any[]>([]);
   const [isAddingPackage, setIsAddingPackage] = useState(false);
-  
+
   useEffect(() => {
     if (client?.id && !client.id.startsWith("demo-")) {
       import('@/lib/actions/packages').then(m => {
@@ -614,224 +614,235 @@ function ClientModal({ mode, client, close, save }: { mode: "create" | "edit" | 
     }
   };
 
-  return <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 overflow-y-auto"><button onClick={close} className="fixed inset-0 bg-navy-dark/40" /><div className="relative w-full max-w-2xl rounded-xl bg-white p-5 shadow-2xl sm:p-7 my-8">
-  <div className="mb-6 flex items-start justify-between">
-    <div>
-      <Badge tone="primary">{mode === "create" ? "Nova Cliente" : mode === "view" ? "Detalhes" : "Edição"}</Badge>
-      <h2 className="mt-2 text-xl font-bold">{name || "Novo registro"}</h2>
-    </div>
-    <button onClick={close} className="rounded-md p-1.5 text-muted hover:bg-bg hover:text-ink"><X size={20} /></button>
-  </div>
-  
-  <div className="flex gap-4 border-b border-[#E7EDF3] mb-6 overflow-x-auto">
-    <button type="button" onClick={() => setTab("info")} className={`whitespace-nowrap pb-2 font-medium border-b-2 transition-colors ${tab === "info" ? "border-primary text-primary" : "border-transparent text-muted hover:text-ink"}`}>Dados Pessoais</button>
-    <button type="button" onClick={() => setTab("anamnese")} className={`whitespace-nowrap pb-2 font-medium border-b-2 transition-colors ${tab === "anamnese" ? "border-primary text-primary" : "border-transparent text-muted hover:text-ink"}`}>Saúde (Anamnese)</button>
-    <button type="button" onClick={() => setTab("pacotes")} className={`whitespace-nowrap pb-2 font-medium border-b-2 transition-colors ${tab === "pacotes" ? "border-primary text-primary" : "border-transparent text-muted hover:text-ink"}`}>Pacotes e Combos</button>
-  </div>
-
-  <form onSubmit={async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
-    const finalNotes = JSON.stringify({ text: notes, anamnesis });
-    await save({ name, phone, birthDate, cep, street, number, complement, neighborhood, city, state, notes: finalNotes, email });
-    setSubmitting(false);
-  }} className="space-y-4">
-    
-    {tab === "info" && (
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div><label className="field-label">Nome Completo</label><input className="field-input" value={name} onChange={e => setName(e.target.value)} required disabled={readOnly} /></div>
-        <div><label className="field-label">WhatsApp</label><input className="field-input" value={phone} onChange={e => handlePhone(e.target.value)} placeholder="(11) 99999-9999" maxLength={15} required disabled={readOnly} /></div>
-        <div>
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
-            <label className="field-label">Data de Nascimento</label>
-            <span className="field-label w-[7.75rem]">Idade</span>
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto">
+      <button onClick={close} className="fixed inset-0 bg-navy-dark/40" />
+      <div className="relative w-full max-w-2xl rounded-t-xl sm:rounded-xl bg-white p-4 sm:p-7 my-0 sm:my-8 max-h-[92vh] flex flex-col shadow-2xl z-10">
+        <div className="mb-4 flex-shrink-0 flex items-start justify-between">
+          <div>
+            <Badge tone="primary">{mode === "create" ? "Nova Cliente" : mode === "view" ? "Detalhes" : "Edição"}</Badge>
+            <h2 className="mt-1 text-xl font-bold">{name || "Novo registro"}</h2>
           </div>
-          <div className="flex items-center gap-3">
-            <input type="date" className="field-input min-w-0 flex-1" value={birthDate} onChange={e => setBirthDate(e.target.value)} disabled={readOnly} />
-            <output className="w-[7.75rem] shrink-0 whitespace-nowrap text-xs font-medium text-muted" aria-live="polite">
-              {clientAge || "—"}
-            </output>
-          </div>
-        </div>
-        <div><label className="field-label">E-mail</label><input type="email" className="field-input" value={email} onChange={e => setEmail(e.target.value)} placeholder="cliente@email.com" disabled={readOnly} /></div>
-        <div className="sm:col-span-2 border-t border-[#E7EDF3] pt-4 mt-2">
-          <h3 className="text-sm font-semibold mb-3">Endereço</h3>
-          <div className="grid gap-4 sm:grid-cols-6">
-            <div className="sm:col-span-2"><label className="field-label">CEP {loadingCep && <span className="text-xs text-primary animate-pulse">(Buscando...)</span>}</label><input className="field-input" value={cep} onChange={e => handleCep(e.target.value)} disabled={readOnly} maxLength={9} placeholder="00000-000" /></div>
-            <div className="sm:col-span-4"><label className="field-label">Rua</label><input className="field-input" value={street} onChange={e => setStreet(e.target.value)} disabled={readOnly} /></div>
-            <div className="sm:col-span-2"><label className="field-label">Número</label><input id="address-number" className="field-input" value={number} onChange={e => setNumber(e.target.value)} disabled={readOnly} /></div>
-            <div className="sm:col-span-4"><label className="field-label">Complemento</label><input className="field-input" value={complement} onChange={e => setComplement(e.target.value)} disabled={readOnly} /></div>
-            <div className="sm:col-span-2"><label className="field-label">Bairro</label><input className="field-input" value={neighborhood} onChange={e => setNeighborhood(e.target.value)} disabled={readOnly} /></div>
-            <div className="sm:col-span-3"><label className="field-label">Cidade</label><input className="field-input" value={city} onChange={e => setCity(e.target.value)} disabled={readOnly} /></div>
-            <div className="sm:col-span-1"><label className="field-label">UF</label><input className="field-input" value={state} onChange={e => setState(e.target.value)} disabled={readOnly} maxLength={2} /></div>
-          </div>
-        </div>
-      </div>
-    )}
-
-    {tab === "anamnese" && (
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="sm:col-span-2 bg-rose-50 border border-rose-100 p-3 rounded text-sm text-rose-800">
-          <strong>Atenção:</strong> Respostas de saúde gerarão alertas visuais automáticos na tela da Agenda.
-        </div>
-        
-        <div className="flex items-center gap-3 p-3 border rounded-md">
-          <input type="checkbox" id="diabetes" checked={anamnesis.diabetes} onChange={e => setAnamnesis({...anamnesis, diabetes: e.target.checked})} disabled={readOnly} className="w-5 h-5 text-primary" />
-          <label htmlFor="diabetes" className="font-medium cursor-pointer">Paciente Diabética</label>
-        </div>
-        
-        <div className="flex items-center gap-3 p-3 border rounded-md">
-          <input type="checkbox" id="gestante" checked={anamnesis.gestante} onChange={e => setAnamnesis({...anamnesis, gestante: e.target.checked})} disabled={readOnly} className="w-5 h-5 text-primary" />
-          <label htmlFor="gestante" className="font-medium cursor-pointer">Gestante</label>
+          <button onClick={close} className="rounded-md p-1.5 text-muted hover:bg-bg hover:text-ink"><X size={20} /></button>
         </div>
 
-        <div className="flex items-center gap-3 p-3 border rounded-md">
-          <input type="checkbox" id="roeUnha" checked={anamnesis.roeUnha} onChange={e => setAnamnesis({...anamnesis, roeUnha: e.target.checked})} disabled={readOnly} className="w-5 h-5 text-primary" />
-          <label htmlFor="roeUnha" className="font-medium cursor-pointer">Roe unhas (Onicofagia)</label>
+        <div className="flex gap-4 border-b border-[#E7EDF3] mb-4 overflow-x-auto flex-shrink-0">
+          <button type="button" onClick={() => setTab("info")} className={`whitespace-nowrap pb-2 font-medium border-b-2 transition-colors ${tab === "info" ? "border-primary text-primary" : "border-transparent text-muted hover:text-ink"}`}>Dados Pessoais</button>
+          <button type="button" onClick={() => setTab("anamnese")} className={`whitespace-nowrap pb-2 font-medium border-b-2 transition-colors ${tab === "anamnese" ? "border-primary text-primary" : "border-transparent text-muted hover:text-ink"}`}>Saúde (Anamnese)</button>
+          <button type="button" onClick={() => setTab("pacotes")} className={`whitespace-nowrap pb-2 font-medium border-b-2 transition-colors ${tab === "pacotes" ? "border-primary text-primary" : "border-transparent text-muted hover:text-ink"}`}>Pacotes e Combos</button>
         </div>
 
-        <div className="sm:col-span-2 pt-2">
-          <label className="field-label text-danger">Alergias conhecidas (Descreva)</label>
-          <input className="field-input border-rose-200 focus:border-rose-400" value={anamnesis.alergias} onChange={e => setAnamnesis({...anamnesis, alergias: e.target.value})} placeholder="Ex: Esmalte comum, látex, etc." disabled={readOnly} />
-        </div>
+        <form onSubmit={async (e) => {
+          e.preventDefault();
+          setSubmitting(true);
+          const finalNotes = JSON.stringify({ text: notes, anamnesis });
+          await save({ name, phone, birthDate, cep, street, number, complement, neighborhood, city, state, notes: finalNotes, email });
+          setSubmitting(false);
+        }} className="flex-1 min-h-0 flex flex-col overflow-hidden">
 
-        <div className="sm:col-span-2 border-t border-[#E7EDF3] pt-4 mt-2">
-          <label className="field-label">Observações Gerais (Texto livre)</label>
-          <textarea className="field-input h-24" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Preferências, formato de unha favorito..." disabled={readOnly} />
-        </div>
-      </div>
-    )}
-
-    {tab === "pacotes" && (
-      <div className="space-y-4">
-        {client?.id && !client.id.startsWith("demo-") ? (
-          <>
-            {!isAddingPackage && (
-              <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-lg flex justify-between items-center">
+          <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+            {tab === "info" && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div><label className="field-label">Nome Completo</label><input className="field-input" value={name} onChange={e => setName(e.target.value)} required disabled={readOnly} /></div>
+                <div><label className="field-label">WhatsApp</label><input className="field-input" value={phone} onChange={e => handlePhone(e.target.value)} placeholder="(11) 99999-9999" maxLength={15} required disabled={readOnly} /></div>
                 <div>
-                  <h4 className="font-semibold text-emerald-900">Vender Novo Pacote</h4>
-                  <p className="text-xs text-emerald-700">O valor entrará no financeiro como receita hoje.</p>
-                </div>
-                <button type="button" onClick={() => setIsAddingPackage(true)} className="btn-primary bg-emerald-600 hover:bg-emerald-700 border-emerald-600 text-xs py-1.5">
-                  + Adicionar Pacote
-                </button>
-              </div>
-            )}
-            
-            {isAddingPackage && (
-              <div className="border border-emerald-200 bg-white p-4 rounded-lg shadow-sm">
-                <h4 className="font-medium text-emerald-900 mb-3 text-sm">Dados do Novo Pacote</h4>
-                <div className="grid grid-cols-2 gap-3 mb-3">
-                  <div>
-                    <label className="field-label">Nome ou Serviço</label>
-                    <input className="field-input" value={newPkg.name} onChange={e => setNewPkg({...newPkg, name: e.target.value})} placeholder="Ex: 4 Manicures" />
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
+                    <label className="field-label">Data de Nascimento</label>
+                    <span className="field-label w-[7.75rem]">Idade</span>
                   </div>
-                  <div>
-                    <label className="field-label">Qtd. Sessões</label>
-                    <input type="number" className="field-input" value={newPkg.total} onChange={e => setNewPkg({...newPkg, total: Number(e.target.value)})} />
-                  </div>
-                  <div>
-                    <label className="field-label">Valor Cobrado (R$)</label>
-                    <input type="number" className="field-input" value={newPkg.price} onChange={e => setNewPkg({...newPkg, price: Number(e.target.value)})} />
-                  </div>
-                  <div>
-                    <label className="field-label">Pagamento</label>
-                    <select className="field-input" value={newPkg.method} onChange={e => setNewPkg({...newPkg, method: e.target.value})}>
-                      <option value="PIX">PIX</option><option value="Crédito">Crédito</option><option value="Débito">Débito</option><option value="Dinheiro">Dinheiro</option>
-                    </select>
+                  <div className="flex items-center gap-3">
+                    <input type="date" className="field-input min-w-0 flex-1" value={birthDate} onChange={e => setBirthDate(e.target.value)} disabled={readOnly} />
+                    <output className="w-[7.75rem] shrink-0 whitespace-nowrap text-xs font-medium text-muted" aria-live="polite">
+                      {clientAge || "—"}
+                    </output>
                   </div>
                 </div>
-                <div className="flex justify-end gap-2 mt-4 pt-3 border-t">
-                  <button type="button" onClick={() => setIsAddingPackage(false)} className="px-3 py-1.5 text-sm text-muted hover:text-ink">Cancelar</button>
-                  <button type="button" onClick={async (e) => {
-                    if (!newPkg.name) return alert("Digite o nome do pacote");
-                    const btn = e.target as HTMLButtonElement; btn.disabled = true; btn.innerText = "Processando...";
-                    try {
-                      await save({ name, phone, birthDate, cep, street, number, complement, neighborhood, city, state, notes: JSON.stringify({ text: notes, anamnesis }), email });
-                      const { sellPackage, getActivePackages } = await import("@/lib/actions/packages");
-                      const res = await sellPackage(client.id, newPkg.name, newPkg.total, newPkg.price, newPkg.method);
-                      if (res.success) {
-                        const pkgs = await getActivePackages(client.id);
-                        setPackages(pkgs);
-                        setIsAddingPackage(false);
-                        setNewPkg({ name: "", total: 4, price: 120, method: "PIX" });
-                      } else {
-                        alert("Erro ao vender pacote: " + res.error);
-                      }
-                    } catch(err: any) { alert("Erro: " + err.message); }
-                    btn.disabled = false; btn.innerText = "Confirmar Venda";
-                  }} className="btn-primary bg-emerald-600 border-emerald-600 hover:bg-emerald-700 text-sm py-1.5">Confirmar Venda</button>
+                <div><label className="field-label">E-mail</label><input type="email" className="field-input" value={email} onChange={e => setEmail(e.target.value)} placeholder="cliente@email.com" disabled={readOnly} /></div>
+                <div className="sm:col-span-2 border-t border-[#E7EDF3] pt-4 mt-2">
+                  <h3 className="text-sm font-semibold mb-3">Endereço</h3>
+                  <div className="grid gap-4 sm:grid-cols-6">
+                    <div className="sm:col-span-2"><label className="field-label">CEP {loadingCep && <span className="text-xs text-primary animate-pulse">(Buscando...)</span>}</label><input className="field-input" value={cep} onChange={e => handleCep(e.target.value)} disabled={readOnly} maxLength={9} placeholder="00000-000" /></div>
+                    <div className="sm:col-span-4"><label className="field-label">Rua</label><input className="field-input" value={street} onChange={e => setStreet(e.target.value)} disabled={readOnly} /></div>
+                    <div className="sm:col-span-2"><label className="field-label">Número</label><input id="address-number" className="field-input" value={number} onChange={e => setNumber(e.target.value)} disabled={readOnly} /></div>
+                    <div className="sm:col-span-4"><label className="field-label">Complemento</label><input className="field-input" value={complement} onChange={e => setComplement(e.target.value)} disabled={readOnly} /></div>
+                    <div className="sm:col-span-2"><label className="field-label">Bairro</label><input className="field-input" value={neighborhood} onChange={e => setNeighborhood(e.target.value)} disabled={readOnly} /></div>
+                    <div className="sm:col-span-3"><label className="field-label">Cidade</label><input className="field-input" value={city} onChange={e => setCity(e.target.value)} disabled={readOnly} /></div>
+                    <div className="sm:col-span-1"><label className="field-label">UF</label><input className="field-input" value={state} onChange={e => setState(e.target.value)} disabled={readOnly} maxLength={2} /></div>
+                  </div>
                 </div>
               </div>
             )}
 
-            <div className="mt-4">
-              <h3 className="font-semibold text-sm mb-3">Pacotes Ativos</h3>
-              {packages.length === 0 ? (
-                <p className="text-sm text-muted bg-bg p-4 rounded-md text-center">Nenhum pacote ativo no momento.</p>
-              ) : (
-                <div className="grid gap-3">
-                  {packages.map((p: any) => (
-                    <div key={p.id} className="border border-[#E7EDF3] p-4 rounded-lg bg-white relative">
-                      <div className="absolute top-4 right-4 bg-emerald-100 text-emerald-700 text-xs font-bold px-2 py-1 rounded-full">
-                        {p.remaining_sessions} / {p.total_sessions} restantes
+            {tab === "anamnese" && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="sm:col-span-2 bg-rose-50 border border-rose-100 p-3 rounded text-sm text-rose-800">
+                  <strong>Atenção:</strong> Respostas de saúde gerarão alertas visuais automáticos na tela da Agenda.
+                </div>
+
+                <div className="flex items-center gap-3 p-3 border rounded-md">
+                  <input type="checkbox" id="diabetes" checked={anamnesis.diabetes} onChange={e => setAnamnesis({...anamnesis, diabetes: e.target.checked})} disabled={readOnly} className="w-5 h-5 text-primary" />
+                  <label htmlFor="diabetes" className="font-medium cursor-pointer">Paciente Diabética</label>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 border rounded-md">
+                  <input type="checkbox" id="gestante" checked={anamnesis.gestante} onChange={e => setAnamnesis({...anamnesis, gestante: e.target.checked})} disabled={readOnly} className="w-5 h-5 text-primary" />
+                  <label htmlFor="gestante" className="font-medium cursor-pointer">Gestante</label>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 border rounded-md">
+                  <input type="checkbox" id="roeUnha" checked={anamnesis.roeUnha} onChange={e => setAnamnesis({...anamnesis, roeUnha: e.target.checked})} disabled={readOnly} className="w-5 h-5 text-primary" />
+                  <label htmlFor="roeUnha" className="font-medium cursor-pointer">Roe unhas (Onicofagia)</label>
+                </div>
+
+                <div className="sm:col-span-2 pt-2">
+                  <label className="field-label text-danger">Alergias conhecidas (Descreva)</label>
+                  <input className="field-input border-rose-200 focus:border-rose-400" value={anamnesis.alergias} onChange={e => setAnamnesis({...anamnesis, alergias: e.target.value})} placeholder="Ex: Esmalte comum, látex, etc." disabled={readOnly} />
+                </div>
+
+                <div className="sm:col-span-2 border-t border-[#E7EDF3] pt-4 mt-2">
+                  <label className="field-label">Observações Gerais (Texto livre)</label>
+                  <textarea className="field-input h-24" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Preferências, formato de unha favorito..." disabled={readOnly} />
+                </div>
+              </div>
+            )}
+
+            {tab === "pacotes" && (
+              <div className="space-y-4">
+                {client?.id && !client.id.startsWith("demo-") ? (
+                  <>
+                    {!isAddingPackage && (
+                      <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-lg flex justify-between items-center">
+                        <div>
+                          <h4 className="font-semibold text-emerald-900">Vender Novo Pacote</h4>
+                          <p className="text-xs text-emerald-700">O valor entrará no financeiro como receita hoje.</p>
+                        </div>
+                        <button type="button" onClick={() => setIsAddingPackage(true)} className="btn-primary bg-emerald-600 hover:bg-emerald-700 border-emerald-600 text-xs py-1.5">
+                          + Adicionar Pacote
+                        </button>
                       </div>
-                      
-                      {editingPkgId === p.id ? (
-                        <div className="space-y-3 pt-2">
-                          <input className="field-input text-sm font-semibold" value={editPkg.name} onChange={e => setEditPkg({...editPkg, name: e.target.value})} />
-                          <div className="grid grid-cols-2 gap-2">
-                            <label><span className="text-xs text-muted block mb-1">Total de Sessões</span><input type="number" className="field-input" value={editPkg.total} onChange={e => setEditPkg({...editPkg, total: Number(e.target.value)})} /></label>
-                            <label><span className="text-xs text-muted block mb-1">Sessões Restantes</span><input type="number" className="field-input" value={editPkg.used} onChange={e => setEditPkg({...editPkg, used: Number(e.target.value)})} /></label>
+                    )}
+
+                    {isAddingPackage && (
+                      <div className="border border-emerald-200 bg-white p-4 rounded-lg shadow-sm">
+                        <h4 className="font-medium text-emerald-900 mb-3 text-sm">Dados do Novo Pacote</h4>
+                        <div className="grid grid-cols-2 gap-3 mb-3">
+                          <div>
+                            <label className="field-label">Nome ou Serviço</label>
+                            <input className="field-input" value={newPkg.name} onChange={e => setNewPkg({...newPkg, name: e.target.value})} placeholder="Ex: 4 Manicures" />
                           </div>
-                          <div className="flex gap-3 justify-end pt-2">
-                            <button type="button" onClick={() => setEditingPkgId(null)} className="text-xs text-muted hover:text-ink">Cancelar</button>
-                            <button type="button" onClick={async () => {
-                              if (editPkg.used < 0 || editPkg.used > editPkg.total) {
-                                alert("O número de sessões restantes não pode ser negativo nem maior que o total.");
-                                return;
-                              }
-                              const { updatePackage, getActivePackages } = await import("@/lib/actions/packages");
-                              await updatePackage(p.id, editPkg.name, editPkg.total, editPkg.used);
-                              const pkgs = await getActivePackages(client.id);
-                              setPackages(pkgs);
-                              setEditingPkgId(null);
-                            }} className="text-xs text-primary font-medium hover:underline">Salvar Edição</button>
+                          <div>
+                            <label className="field-label">Qtd. Sessões</label>
+                            <input type="number" className="field-input" value={newPkg.total} onChange={e => setNewPkg({...newPkg, total: Number(e.target.value)})} />
+                          </div>
+                          <div>
+                            <label className="field-label">Valor Cobrado (R$)</label>
+                            <input type="number" className="field-input" value={newPkg.price} onChange={e => setNewPkg({...newPkg, price: Number(e.target.value)})} />
+                          </div>
+                          <div>
+                            <label className="field-label">Pagamento</label>
+                            <select className="field-input" value={newPkg.method} onChange={e => setNewPkg({...newPkg, method: e.target.value})}>
+                              <option value="PIX">PIX</option><option value="Crédito">Crédito</option><option value="Débito">Débito</option><option value="Dinheiro">Dinheiro</option>
+                            </select>
                           </div>
                         </div>
-                      ) : (
-                        <div>
-                          <h4 className="font-medium">{p.name}</h4>
-                          <p className="text-xs text-muted mt-1">Vendido por {money.format(p.price)}</p>
-                          <div className="mt-2 flex gap-2">
-                            <button type="button" onClick={() => { setEditPkg({ name: p.name, total: p.total_sessions, used: p.remaining_sessions, price: p.price }); setEditingPkgId(p.id); }} className="text-xs text-primary hover:underline">Editar</button>
-                            <button type="button" onClick={async () => { 
-                              if(confirm("Tem certeza que deseja apagar este pacote? O financeiro não será estornado automaticamente.")) {
-                                const { deletePackage, getActivePackages } = await import("@/lib/actions/packages");
-                                await deletePackage(p.id);
+                        <div className="flex justify-end gap-2 mt-4 pt-3 border-t">
+                          <button type="button" onClick={() => setIsAddingPackage(false)} className="px-3 py-1.5 text-sm text-muted hover:text-ink">Cancelar</button>
+                          <button type="button" onClick={async (e) => {
+                            if (!newPkg.name) return alert("Digite o nome do pacote");
+                            const btn = e.target as HTMLButtonElement; btn.disabled = true; btn.innerText = "Processando...";
+                            try {
+                              await save({ name, phone, birthDate, cep, street, number, complement, neighborhood, city, state, notes: JSON.stringify({ text: notes, anamnesis }), email });
+                              const { sellPackage, getActivePackages } = await import("@/lib/actions/packages");
+                              const res = await sellPackage(client.id, newPkg.name, newPkg.total, newPkg.price, newPkg.method);
+                              if (res.success) {
                                 const pkgs = await getActivePackages(client.id);
                                 setPackages(pkgs);
+                                setIsAddingPackage(false);
+                                setNewPkg({ name: "", total: 4, price: 120, method: "PIX" });
+                              } else {
+                                alert("Erro ao vender pacote: " + res.error);
                               }
-                            }} className="text-xs text-danger hover:underline">Excluir</button>
-                          </div>
+                            } catch(err: any) { alert("Erro: " + err.message); }
+                            btn.disabled = false; btn.innerText = "Confirmar Venda";
+                          }} className="btn-primary bg-emerald-600 border-emerald-600 hover:bg-emerald-700 text-sm py-1.5">Confirmar Venda</button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="mt-4">
+                      <h3 className="font-semibold text-sm mb-3">Pacotes Ativos</h3>
+                      {packages.length === 0 ? (
+                        <p className="text-sm text-muted bg-bg p-4 rounded-md text-center">Nenhum pacote ativo no momento.</p>
+                      ) : (
+                        <div className="grid gap-3">
+                          {packages.map((p: any) => (
+                            <div key={p.id} className="border border-[#E7EDF3] p-4 rounded-lg bg-white relative">
+                              <div className="absolute top-4 right-4 bg-emerald-100 text-emerald-700 text-xs font-bold px-2 py-1 rounded-full">
+                                {p.remaining_sessions} / {p.total_sessions} restantes
+                              </div>
+
+                              {editingPkgId === p.id ? (
+                                <div className="space-y-3 pt-2">
+                                  <input className="field-input text-sm font-semibold" value={editPkg.name} onChange={e => setEditPkg({...editPkg, name: e.target.value})} />
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <label><span className="text-xs text-muted block mb-1">Total de Sessões</span><input type="number" className="field-input" value={editPkg.total} onChange={e => setEditPkg({...editPkg, total: Number(e.target.value)})} /></label>
+                                    <label><span className="text-xs text-muted block mb-1">Sessões Restantes</span><input type="number" className="field-input" value={editPkg.used} onChange={e => setEditPkg({...editPkg, used: Number(e.target.value)})} /></label>
+                                  </div>
+                                  <div className="flex gap-3 justify-end pt-2">
+                                    <button type="button" onClick={() => setEditingPkgId(null)} className="text-xs text-muted hover:text-ink">Cancelar</button>
+                                    <button type="button" onClick={async () => {
+                                      if (editPkg.used < 0 || editPkg.used > editPkg.total) {
+                                        alert("O número de sessões restantes não pode ser negativo nem maior que o total.");
+                                        return;
+                                      }
+                                      const { updatePackage, getActivePackages } = await import("@/lib/actions/packages");
+                                      await updatePackage(p.id, editPkg.name, editPkg.total, editPkg.used);
+                                      const pkgs = await getActivePackages(client.id);
+                                      setPackages(pkgs);
+                                      setEditingPkgId(null);
+                                    }} className="text-xs text-primary font-medium hover:underline">Salvar Edição</button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div>
+                                  <h4 className="font-medium">{p.name}</h4>
+                                  <p className="text-xs text-muted mt-1">Vendido por {money.format(p.price)}</p>
+                                  <div className="mt-2 flex gap-2">
+                                    <button type="button" onClick={() => { setEditPkg({ name: p.name, total: p.total_sessions, used: p.remaining_sessions, price: p.price }); setEditingPkgId(p.id); }} className="text-xs text-primary hover:underline">Editar</button>
+                                    <button type="button" onClick={async () => {
+                                      if(confirm("Tem certeza que deseja apagar este pacote? O financeiro não será estornado automaticamente.")) {
+                                        const { deletePackage, getActivePackages } = await import("@/lib/actions/packages");
+                                        await deletePackage(p.id);
+                                        const pkgs = await getActivePackages(client.id);
+                                        setPackages(pkgs);
+                                      }
+                                    }} className="text-xs text-danger hover:underline">Excluir</button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ))}
                         </div>
                       )}
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </>
-        ) : (
-          <div className="bg-amber-50 text-amber-800 p-4 rounded-md text-sm border border-amber-200">
-            Você precisa salvar este cliente pela primeira vez antes de vender pacotes.
+                  </>
+                ) : (
+                  <div className="bg-amber-50 text-amber-800 p-4 rounded-md text-sm border border-amber-200">
+                    Você precisa salvar este cliente pela primeira vez antes de vender pacotes.
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-        )}
+
+          <div className="mt-4 flex-shrink-0 flex justify-end gap-3 border-t border-[#E7EDF3] pt-3">
+            <button type="button" onClick={close} className="btn-outline">Cancelar</button>
+            {!readOnly && <button disabled={submitting} type="submit" className="btn-primary">{submitting ? "Salvando..." : <><Check size={16} />Salvar</>}</button>}
+          </div>
+        </form>
       </div>
-    )}
-    
-<div className="mt-6 flex justify-end gap-3 border-t border-[#E7EDF3] pt-4"><button type="button" onClick={close} className="btn-outline">Cancelar</button>{!readOnly && <button disabled={submitting} type="submit" className="btn-primary">{submitting ? "Salvando..." : <><Check size={16} />Salvar</>}</button>}</div>
-  </form></div></div>;
+    </div>
+  );
 }
 function EntityModal({ state, close, save }: { state: EntityModalState; close: () => void; save: (name: string, detail: string) => void }) {
   const [name, setName] = useState(state.name); const [detail, setDetail] = useState(state.detail); const readOnly = state.mode === "view";
@@ -1148,7 +1159,7 @@ function SettingsView({ tenant, updateToast }: { tenant: any; updateToast: (t: s
 
   return (
     <div className="mx-auto max-w-4xl p-4 sm:p-6 space-y-6">
-      
+
       <div className="bg-white rounded-lg border shadow-sm p-6">
         <div className="flex items-center gap-3 mb-6 border-b pb-4">
           <div className="bg-primary/10 text-primary p-2 rounded-lg"><Settings size={20} /></div>
@@ -1169,7 +1180,7 @@ function SettingsView({ tenant, updateToast }: { tenant: any; updateToast: (t: s
             <input className="field-input" value={fullName} onChange={e => setFullName(e.target.value)} />
           </div>
         </div>
-        
+
         <div className="mt-6 flex justify-end">
           <button onClick={handleSaveOrg} disabled={savingOrg} className="btn-primary">
             {savingOrg ? "Salvando..." : "Salvar Dados do Salão"}
@@ -1617,7 +1628,7 @@ function FinishModal({ appointment, close, done }: { appointment: Appointment; c
             {packages.length > 0 && <option value="Pacote">Abater de Pacote</option>}
           </select>
         </label>
-        
+
         {method === "Pacote" && (
           <label className="mt-4 block">
             <span className="field-label">Escolha o Pacote</span>
@@ -1639,9 +1650,9 @@ function FinishModal({ appointment, close, done }: { appointment: Appointment; c
             <b>Caixa aberto</b>
           </div>
         </div>
-        <button disabled={submitting} onClick={async () => { 
-          setSubmitting(true); 
-          await done(method, appointment.price, method === "Pacote" ? selectedPkg : undefined); 
+        <button disabled={submitting} onClick={async () => {
+          setSubmitting(true);
+          await done(method, appointment.price, method === "Pacote" ? selectedPkg : undefined);
         }} className="btn-primary mt-5 w-full">
           <Check size={16} />{submitting ? "Processando..." : "Confirmar e concluir"}
         </button>
