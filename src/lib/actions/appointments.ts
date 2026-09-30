@@ -88,34 +88,43 @@ export async function getAppointments(): Promise<Appointment[]> {
     };
   });
 
-  // Also query active day blocks from professional_availability
-  const { data: availBlocks } = await supabase
-    .from("professional_availability")
-    .select("id, starts_at, ends_at, notes, professional:professionals(name)")
-    .eq("kind", "block");
+  // Also query active day blocks from professional_availability for this org
+  const { data: profile } = await supabase.from('profiles').select('organization_id').single();
+  const orgId = profile?.organization_id;
 
-  const mappedAvailBlocks: Appointment[] = (availBlocks || []).map((b: any) => {
-    const dStart = new Date(b.starts_at);
-    const dEnd = new Date(b.ends_at);
-    return {
-      id: `block-${b.id}`,
-      dateStr: dStart.toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }),
-      startsAtIso: b.starts_at,
-      time: dStart.toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" }),
-      end: dEnd.toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" }),
-      client: "Bloqueio de Agenda",
-      clientId: null,
-      phone: "",
-      clientNotes: "",
-      professional: b.professional?.name || "Desconhecida",
-      service: b.notes || "Bloqueio de Agenda (Dia Inteiro)",
-      status: "Agendado" as AppointmentStatus,
-      price: 0,
-      paid: 0,
-      source: "Interno" as const,
-      items: []
-    };
-  });
+  let mappedAvailBlocks: Appointment[] = [];
+  if (orgId) {
+    const { data: availBlocks } = await supabase
+      .from("professional_availability")
+      .select("id, starts_at, ends_at, notes, professional:professionals(name)")
+      .eq("organization_id", orgId)
+      .eq("kind", "block");
+
+    if (availBlocks) {
+      mappedAvailBlocks = availBlocks.map((b: any) => {
+        const dStart = new Date(b.starts_at);
+        const dEnd = new Date(b.ends_at);
+        return {
+          id: `block-${b.id}`,
+          dateStr: dStart.toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }),
+          startsAtIso: b.starts_at,
+          time: dStart.toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" }),
+          end: dEnd.toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" }),
+          client: "Bloqueio de Agenda",
+          clientId: null,
+          phone: "",
+          clientNotes: "",
+          professional: b.professional?.name || "Desconhecida",
+          service: b.notes || "Bloqueio de Agenda (Dia Inteiro)",
+          status: "Agendado" as AppointmentStatus,
+          price: 0,
+          paid: 0,
+          source: "Interno" as const,
+          items: []
+        };
+      });
+    }
+  }
 
   return [...mappedAppointments, ...mappedAvailBlocks];
 }
