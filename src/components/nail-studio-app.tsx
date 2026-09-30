@@ -28,7 +28,7 @@ import { createClientRecord, updateClientRecord, archiveClientRecord, type Clien
 import { createProfessionalRecord, updateProfessionalRecord, archiveProfessionalRecord, type ProfessionalItem } from "@/lib/actions/professionals";
 import { createSpecialtyRecord } from "@/lib/actions/specialties";
 import { createServiceRecord, type ServiceItem } from "@/lib/actions/services";
-import { createAppointmentRecord, cancelAppointmentRecord, updateAppointmentStatus, getAppointments } from "@/lib/actions/appointments";
+import { createAppointmentRecord, cancelAppointmentRecord, updateAppointmentStatus, getAppointments, toggleBlockDayRecord } from "@/lib/actions/appointments";
 import { finishAppointment } from "@/lib/actions/attendance";
 import { createExpense } from "@/lib/actions/finance";
 import { getProfessionalCommissions, payCommissions } from "@/lib/actions/commissions";
@@ -1369,7 +1369,19 @@ const [reportsData] = useState(() => initialReports); const [entityModal, setEnt
   const content = (() => {
     if (view === "dashboard") return <Dashboard stats={initialStats} go={setView} appointments={rows} clients={clientRows} tenant={tenant} onAttendance={(a) => { setActiveAppointment(a); setView("attendance"); }} />;
     if (view === "settings") return <SettingsView tenant={tenant} updateToast={(t) => { setToast(t); setTimeout(() => setToast(""), 3000); }} />;
-    if (view === "agenda") return <Agenda rows={rows} onNew={() => setBooking(true)} onAttendance={(a) => { setActiveAppointment(a); setView("attendance"); }} onAction={(mode, index) => openEntity("appointment", mode, index)} onStatusChange={async (a, statusUI) => {
+    if (view === "agenda") return <Agenda rows={rows} onNew={() => setBooking(true)} onAttendance={(a) => { setActiveAppointment(a); setView("attendance"); }} onAction={(mode, index) => openEntity("appointment", mode, index)} onToggleBlockDay={async (dateStr) => {
+      const res = await toggleBlockDayRecord(dateStr);
+      if (res.success) {
+        const fresh = await getAppointments();
+        if (fresh && fresh.length > 0) {
+          setRows(fresh);
+        }
+        const dateFormatted = dateStr.split("-").reverse().join("/");
+        notify(res.action === "blocked" ? `Agenda do dia ${dateFormatted} bloqueada para ausência.` : `Agenda do dia ${dateFormatted} desbloqueada.`);
+      } else {
+        alert("Erro ao alterar bloqueio de agenda: " + (res.error || "Erro desconhecido"));
+      }
+    }} onStatusChange={async (a, statusUI) => {
     if (statusUI === "Concluído") {
       // Intercept to open payment/checkout modal
       setActiveAppointment(a);

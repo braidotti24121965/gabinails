@@ -45,7 +45,7 @@ export async function getAppointments(): Promise<Appointment[]> {
     // Sum prices
     const price = row.items?.reduce((acc: number, item: any) => acc + Number(item.unit_price || 0), 0) || 0;
     const paid = row.payments?.reduce((acc: number, p: any) => acc + Number(p.amount || 0), 0) || 0;
-    
+
     // Service name (first service or generic)
     const serviceName = row.items?.map((i: any) => i.service?.name || i.description).filter(Boolean).join(" + ") || "Serviço";
 
@@ -192,7 +192,7 @@ export async function updateAppointmentRecord(appointmentId: string, data: {
 }) {
   const supabase = await createClient();
   if (!supabase) return { success: false, error: "No connection" };
-  
+
   const { data: profile } = await supabase.from('profiles').select('organization_id').single();
   if (!profile?.organization_id) return { success: false, error: "Organização não encontrada" };
 
@@ -219,7 +219,7 @@ export async function updateAppointmentRecord(appointmentId: string, data: {
 
   // Replace items
   await supabase.from("appointment_items").delete().eq("appointment_id", appointmentId);
-  
+
   const itemsToInsert = data.services.map(s => ({
     organization_id: profile.organization_id!,
     appointment_id: appointmentId,
@@ -241,7 +241,7 @@ export async function updateAppointmentRecord(appointmentId: string, data: {
 export async function addServiceToAppointment(appointmentId: string, professionalId: string, serviceId: string, price: number, durationMinutes: number) {
   const supabase = await createClient();
   if (!supabase) return { success: false, error: "No connection" };
-  
+
   const { data: profile } = await supabase.from('profiles').select('organization_id').single();
   if (!profile?.organization_id) return { success: false, error: "Organização não encontrada" };
 
@@ -268,4 +268,112 @@ export async function removeServiceFromAppointment(itemId: string) {
   await supabase.from("appointment_items").delete().eq("id", itemId);
   revalidatePath("/");
   return { success: true };
+}
+
+export async function toggleBlockDayRecord(dateStr: string) {
+  const supabase = await createClient();
+  if (!supabase) return { success: false, error: "Sem conexão com o banco" };
+
+  const { data: profile } = await supabase.from('profiles').select('organization_id').single();
+  if (!profile?.organization_id) return { success: false, error: "Organização não encontrada" };
+
+  const orgId = profile.organization_id;
+  const startOfDaySP = `${dateStr}T00:00:00-03:00`;
+  const endOfDaySP = `${dateStr}T23:59:59-03:00`;
+
+  // Find existing appointments for this org on this date
+  const { data: existingAppts } = await supabase
+    .from("appointments")
+    .select("id, status")
+    .eq("organization_id", orgId)
+    .gte("starts_at", new Date(startOfDaySP).toISOString())
+    .lte("starts_at", new Date(endOfDaySP).toISOString())
+    .neq("status", "cancelled");
+
+  // Check if any of these appointments has item description "Bloqueio de Agenda (Dia Inteiro)"
+  let blockedApptIds: string[] = [];
+  if (existingAppts && existingAppts.length > 0) {
+    const { data: items } = await supabase
+      .from("appointment_items")
+      .select("appointment_id")
+      .in("appointment_id", existingAppts.map(a => a.id))
+      .eq("description", "Bloqueio de Agenda (Dia Inteiro)");
+
+    if (items && items.length > 0) {
+      blockedApptIds = items.map(i => i.appointment_id);
+    }
+  }
+
+  // If already blocked -> UNBLOCK
+  if (blockedApptIds.length > 0) {
+    const { error } = await supabase
+      .from("appointments")
+      .update({ status: "cancelled" })
+      .in("id", blockedApptIds);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    revalidatePath("/");
+    return { success: true, action: "unblocked" as const };
+  }
+
+  // Otherwise -> BLOCK
+  const { data: profs } = await supabase
+    .from("professionals")
+    .select("id")
+    .eq("organization_id", orgId)
+    .eq("active", true);
+
+  if (!profs || profs.length === 0) {
+    return { success: false, error: "Nenhum profissional ativo encontrado." };
+  }
+
+  const { data: firstClient } = await supabase
+    .from("clients")
+    .select("id")
+    .eq("organization_id", orgId)
+    .limit(1)
+    .maybeSingle();
+
+  const startsAt = new Date(`${dateStr}T08:00:00-03:00`).toISOString();
+  const endsAt = new Date(`${dateStr}T19:00:00-03:00`).toISOString();
+
+  for (const prof of profs) {
+    const { data: appt, error: apptErr } = await supabase
+      .from("appointments")
+      .insert([{
+        organization_id: orgId,
+        client_id: firstClient?.id || null,
+        professional_id: prof.id,
+        starts_at: startsAt,
+        ends_at: endsAt,
+        status: "scheduled",
+        source: "internal"
+      }])
+      .select("id")
+      .single();
+
+    if (apptErr) {
+      console.error("Error creating block appointment:", apptErr);
+      continue;
+    }
+
+    if (appt?.id) {
+      await supabase.from("appointment_items").insert([{
+        organization_id: orgId,
+        appointment_id: appt.id,
+        service_id: null,
+        professional_id: prof.id,
+        description: "Bloqueio de Agenda (Dia Inteiro)",
+        duration_minutes: 660,
+        unit_price: 0,
+        commission_type: "percentage",
+        commission_value: 0
+      }]);
+    }
+  }
+
+  revalidatePath("/");
+  return { success: true, action: "blocked" as const };
 }
