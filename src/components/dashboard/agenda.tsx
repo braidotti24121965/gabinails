@@ -28,6 +28,7 @@ export function Agenda({
   const [serviceFilter, setServiceFilter] = useState("Todos os serviços");
   const [statusFilter, setStatusFilter] = useState("Todos os status");
   const [blocking, setBlocking] = useState(false);
+  const [showBlockModal, setShowBlockModal] = useState(false);
 
   const uniqueProfs = Array.from(new Set(rows.map(r => r.professional))).filter(Boolean);
   const uniqueStatus = ["Aguardando sinal", "Agendado", "Confirmado", "Cliente chegou", "Em atendimento", "Concluído"];
@@ -40,21 +41,9 @@ export function Agenda({
       (r.service?.includes("Bloqueio de Agenda") || r.service?.includes("Bloqueio"))
   );
 
-  const handleToggleBlock = async () => {
+  const handleOpenBlockModal = () => {
     if (!onToggleBlockDay) return;
-    const dateFormatted = selectedDate.split("-").reverse().join("/");
-    const msg = isDayBlocked
-      ? `Deseja DESBLOQUEAR a agenda do dia ${dateFormatted}?`
-      : `Deseja BLOQUEAR toda a agenda do dia ${dateFormatted}? Nenhuma cliente conseguirá agendar horários online nesta data.`;
-
-    if (!window.confirm(msg)) return;
-
-    setBlocking(true);
-    try {
-      await onToggleBlockDay(selectedDate);
-    } finally {
-      setBlocking(false);
-    }
+    setShowBlockModal(true);
   };
 
   const getMedicalAlert = (notes: string) => {
@@ -150,7 +139,7 @@ export function Agenda({
           {onToggleBlockDay && (
             <button
               type="button"
-              onClick={handleToggleBlock}
+              onClick={handleOpenBlockModal}
               disabled={blocking}
               className={`btn-outline flex items-center gap-1.5 text-xs py-2 px-3 transition-colors ${
                 isDayBlocked
@@ -187,13 +176,63 @@ export function Agenda({
           {onToggleBlockDay && (
             <button
               type="button"
-              onClick={handleToggleBlock}
+              onClick={handleOpenBlockModal}
               disabled={blocking}
               className="btn-outline text-xs py-1.5 px-3 bg-white border-amber-300 text-amber-900 hover:bg-amber-100 shrink-0"
             >
               Desbloquear Dia
             </button>
           )}
+        </div>
+      )}
+
+      {showBlockModal && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+          <button type="button" onClick={() => setShowBlockModal(false)} className="fixed inset-0 bg-navy-dark/40" />
+          <div className="relative w-full max-w-md rounded-xl bg-white p-6 shadow-2xl z-10 text-left">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100 text-amber-900 mb-4">
+              {isDayBlocked ? <Unlock size={24} /> : <Lock size={24} />}
+            </div>
+            <h3 className="text-lg font-bold text-ink">
+              {isDayBlocked ? "Desbloquear Agenda do Dia" : "Bloquear Agenda do Dia"}
+            </h3>
+            <p className="mt-2 text-sm text-muted">
+              {isDayBlocked
+                ? `Deseja desbloquear os horários do dia ${selectedDate.split("-").reverse().join("/")}? Os agendamentos online das clientes voltarão a ficar disponíveis.`
+                : `Deseja bloquear toda a agenda do dia ${selectedDate.split("-").reverse().join("/")}? Nenhuma cliente conseguirá agendar horários online nesta data.`}
+            </p>
+
+            <div className="mt-6 flex justify-end gap-3 border-t border-[#E7EDF3] pt-4">
+              <button
+                type="button"
+                onClick={() => setShowBlockModal(false)}
+                className="btn-outline"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={blocking}
+                onClick={async () => {
+                  if (!onToggleBlockDay) return;
+                  setBlocking(true);
+                  try {
+                    await onToggleBlockDay(selectedDate);
+                    setShowBlockModal(false);
+                  } finally {
+                    setBlocking(false);
+                  }
+                }}
+                className={`btn-primary ${
+                  isDayBlocked
+                    ? "bg-amber-600 hover:bg-amber-700 border-amber-600 text-white"
+                    : "bg-rose-600 hover:bg-rose-700 border-rose-600 text-white"
+                }`}
+              >
+                {blocking ? "Processando..." : isDayBlocked ? "Confirmar Desbloqueio" : "Confirmar Bloqueio"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
