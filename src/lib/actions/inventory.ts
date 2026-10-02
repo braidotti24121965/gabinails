@@ -10,35 +10,69 @@ export async function getInventory() {
   const { data: profile } = await supabase.from('profiles').select('organization_id').single();
   if (!profile?.organization_id) return [];
 
-  // Fetch products
-  const { data: products, error: pErr } = await supabase
-    .from("products")
-    .select("*")
-    .eq("organization_id", profile.organization_id)
-    .eq("active", true);
+  const nowISO = new Date().toISOString();
+
+  // Fetch products, movements, and future demand inputs in parallel
+  const [
+    { data: products, error: pErr },
+    { data: movements },
+    { data: futureAppts }
+  ] = await Promise.all([
+    supabase
+      .from("products")
+      .select("*")
+      .eq("organization_id", profile.organization_id)
+      .eq("active", true),
+    supabase
+      .from("stock_movements")
+      .select("product_id, movement_type, quantity")
+      .eq("organization_id", profile.organization_id),
+    supabase
+      .from("appointments")
+      .select("id, status, starts_at, items:appointment_items(service_id)")
+      .in("status", ["pending", "awaiting_deposit", "scheduled", "confirmed"])
+      .gte("starts_at", nowISO)
+  ]);
 
   if (pErr || !products) return [];
 
-  // Fetch stock movements
-  const { data: movements, error: mErr } = await supabase
-    .from("stock_movements")
-    .select("product_id, movement_type, quantity")
-    .eq("organization_id", profile.organization_id);
+  // Coleta os service_ids de todos os agendamentos futuros
+  const futureServiceIds: string[] = [];
+  futureAppts?.forEach((a: any) => {
+    a.items?.forEach((i: any) => {
+      if (i.service_id) futureServiceIds.push(i.service_id);
+    });
+  });
 
-  if (mErr) console.error("Movements error", mErr);
+  // Busca insumos vinculados aos serviços dos agendamentos futuros
+  let consumables: any[] = [];
+  if (futureServiceIds.length > 0) {
+    const { data: consData } = await supabase
+      .from("service_consumables")
+      .select("product_id, estimated_quantity, service_id")
+      .in("service_id", futureServiceIds);
+    consumables = consData || [];
+  }
 
-  // Calculate current stock
+  // Calcula o saldo atual e a demanda futura (forecast) de cada produto
   const inventory = products.map((p: any) => {
     let stock = 0;
-    const prodMovements = movements?.filter(m => m.product_id === p.id) || [];
+    const prodMovements = movements?.filter((m: any) => m.product_id === p.id) || [];
     
-    prodMovements.forEach(m => {
+    prodMovements.forEach((m: any) => {
       const q = Number(m.quantity);
       if (['purchase', 'positive_adjustment', 'return'].includes(m.movement_type)) {
         stock += q;
       } else if (['consumption', 'loss', 'negative_adjustment'].includes(m.movement_type)) {
         stock -= q;
       }
+    });
+
+    let forecast = 0;
+    const prodConsumables = consumables.filter((c: any) => c.product_id === p.id);
+    prodConsumables.forEach((c: any) => {
+      const occurrences = futureServiceIds.filter(sId => sId === c.service_id).length;
+      forecast += Number(c.estimated_quantity) * occurrences;
     });
 
     return {
@@ -49,7 +83,7 @@ export async function getInventory() {
       minimum: Number(p.minimum_stock),
       ideal: Number(p.ideal_stock),
       cost: Number(p.unit_cost),
-      forecast: 0 // Mock for now
+      forecast
     };
   });
 
