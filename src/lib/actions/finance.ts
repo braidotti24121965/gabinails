@@ -27,7 +27,7 @@ export async function getFinance(period?: string) {
   const fromISO = fromDate.toISOString();
   const toISO = toDate.toISOString();
   
-  // Regime de Caixa: usar paid_at
+  // Regime de Caixa + Competência para Atendimentos Concluídos
   const [
     { data: payments },
     { data: expenses },
@@ -43,15 +43,14 @@ export async function getFinance(period?: string) {
       .gte('paid_at', fromISO).lte('paid_at', toISO)
       .order('paid_at', { ascending: false }),
     supabase.from('commissions').select('id, amount, status, paid_at, created_at, professional:professionals(name)')
-      .eq('status', 'paid')
-      .gte('paid_at', fromISO).lte('paid_at', toISO)
+      .gte('created_at', fromISO).lte('created_at', toISO)
       .order('created_at', { ascending: false }),
     supabase.from('stock_movements').select('quantity, created_at, products(unit_cost)')
       .eq('movement_type', 'consumption')
       .gte('created_at', fromISO).lte('created_at', toISO),
-    supabase.from('appointments').select('id, status, actual_end_at, created_at')
+    supabase.from('appointments').select('id, status, starts_at, actual_end_at, created_at, payments(amount, status, kind), appointment_items(unit_price, quantity, discount, surcharge)')
       .eq('status', 'completed')
-      .gte('actual_end_at', fromISO).lte('actual_end_at', toISO)
+      .gte('starts_at', fromISO).lte('starts_at', toISO)
   ]);
 
   const rows: any[] = [];
@@ -94,6 +93,17 @@ export async function getFinance(period?: string) {
         value: displayValue,
         rawDate: d.toISOString()
       });
+    });
+  }
+
+  // Soma receita de serviços em atendimentos concluídos sem registro equivalente em payments
+  if (appointments) {
+    appointments.forEach((a: any) => {
+      const itemsTotal = (a.appointment_items || []).reduce((s: number, i: any) => s + (Number(i.unit_price) * Number(i.quantity || 1)) - Number(i.discount || 0) + Number(i.surcharge || 0), 0);
+      const pmtsTotal = (a.payments || []).filter((p: any) => p.status === 'paid' && ['deposit', 'payment', 'credit'].includes(p.kind)).reduce((s: number, p: any) => s + Number(p.amount), 0);
+      if (itemsTotal > pmtsTotal) {
+        revenue += (itemsTotal - pmtsTotal);
+      }
     });
   }
 
