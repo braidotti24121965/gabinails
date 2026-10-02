@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Plus, TrendingUp, CircleDollarSign, CreditCard, BarChart3, CalendarClock } from "lucide-react";
+import { Plus, TrendingUp, CircleDollarSign, CreditCard, BarChart3, CalendarClock, Calendar } from "lucide-react";
 import { Badge, SectionTitle, RowActions, Metric } from "../shared";
 import { money } from "@/lib/demo-data";
 
@@ -42,14 +42,55 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
     }
   };
 
+  const getPeriodDetailLabel = () => {
+    switch (period) {
+      case "today": return "Do dia de hoje";
+      case "month": return "Mês atual";
+      case "last_month": return "Mês anterior";
+      case "30days": return "Últimos 30 dias";
+      case "all": return "Todo o período";
+      default: return "Período selecionado";
+    }
+  };
+
   return (
     <main className="page-content space-y-6">
+      {/* Seletor de Período */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#E7EDF3] bg-white p-3.5 shadow-xs">
+        <div className="flex items-center gap-2">
+          <Calendar className="text-primary" size={18} />
+          <span className="text-xs font-semibold text-navy-dark uppercase tracking-wider">Filtrar Período:</span>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {[
+            { id: "today", label: "Hoje" },
+            { id: "month", label: "Este Mês" },
+            { id: "last_month", label: "Mês Anterior" },
+            { id: "30days", label: "Últimos 30 dias" },
+            { id: "all", label: "Todo o histórico" },
+          ].map(p => (
+            <button
+              key={p.id}
+              onClick={() => setPeriod(p.id)}
+              disabled={loading}
+              className={`rounded-md px-3.5 py-1.5 text-xs font-medium transition ${
+                period === p.id
+                  ? "bg-primary text-white shadow-xs"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              } disabled:opacity-50`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Cards de métricas — 5 colunas */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <Metric label="Faturamento Bruto" value={stats ? money.format(financeStats.revenue) : "R$ 0,00"} detail="Entrada total" icon={TrendingUp} />
-        <Metric label="Despesas Fixas" value={stats ? money.format(financeStats.expenses) : "R$ 0,00"} detail="Contas do mês" icon={CreditCard} tone="warning" />
-        <Metric label="Comissões" value={stats ? money.format(financeStats.commissions) : "R$ 0,00"} detail="A repassar" icon={CircleDollarSign} tone="warning" />
-        <Metric label="Lucro Líquido" value={stats ? money.format(financeStats.balance) : "R$ 0,00"} detail="No seu bolso" icon={BarChart3} tone="success" />
+      <div className={`grid gap-4 sm:grid-cols-2 xl:grid-cols-5 transition-opacity ${loading ? "opacity-60" : "opacity-100"}`}>
+        <Metric label="Faturamento Bruto" value={financeStats ? money.format(financeStats.revenue) : "R$ 0,00"} detail={getPeriodDetailLabel()} icon={TrendingUp} />
+        <Metric label="Despesas Fixas" value={financeStats ? money.format(financeStats.expenses) : "R$ 0,00"} detail={getPeriodDetailLabel()} icon={CreditCard} tone="warning" />
+        <Metric label="Comissões" value={financeStats ? money.format(financeStats.commissions) : "R$ 0,00"} detail="A repassar no período" icon={CircleDollarSign} tone="warning" />
+        <Metric label="Lucro Líquido" value={financeStats ? money.format(financeStats.balance) : "R$ 0,00"} detail="No seu bolso no período" icon={BarChart3} tone="success" />
 
         {/* Card de Faturamento Futuro */}
         <div className="card flex flex-col justify-between gap-3 border-l-4 border-l-violet-400">
@@ -85,32 +126,32 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
       <div className="grid gap-6 lg:grid-cols-3">
         {/* DRE (Demonstrativo de Resultado) */}
         <section className="card lg:col-span-1 border-primary/20">
-          <SectionTitle title="DRE Simplificado" subtitle="De onde vem o Lucro Líquido?" />
+          <SectionTitle title="DRE Simplificado" subtitle={`Período: ${getPeriodDetailLabel()}`} />
           
           <div className="mt-5 space-y-4 font-medium text-sm">
             <div className="flex justify-between text-success">
               <span>(+) Faturamento Bruto</span>
-              <span>{stats ? money.format(financeStats.revenue) : "R$ 0,00"}</span>
+              <span>{financeStats ? money.format(financeStats.revenue) : "R$ 0,00"}</span>
             </div>
             
             <div className="border-t border-[#E7EDF3] pt-4 flex justify-between text-danger">
               <span>(-) Custo de Produtos</span>
-              <span>{stats ? money.format(financeStats.consumptionCost || 0) : "R$ 0,00"}</span>
+              <span>{financeStats ? money.format(financeStats.consumptionCost || 0) : "R$ 0,00"}</span>
             </div>
             
             <div className="flex justify-between text-danger">
               <span>(-) Comissões da Equipe</span>
-              <span>{stats ? money.format(financeStats.commissions) : "R$ 0,00"}</span>
+              <span>{financeStats ? money.format(financeStats.commissions) : "R$ 0,00"}</span>
             </div>
             
             <div className="flex justify-between text-danger pb-4 border-b border-[#E7EDF3]">
               <span>(-) Despesas Gerais/Fixas</span>
-              <span>{stats ? money.format(financeStats.expenses) : "R$ 0,00"}</span>
+              <span>{financeStats ? money.format(financeStats.expenses) : "R$ 0,00"}</span>
             </div>
             
             <div className="flex justify-between text-lg font-bold text-navy-dark pt-2">
               <span>(=) Lucro Líquido Real</span>
-              <span className={financeStats?.balance >= 0 ? "text-success" : "text-danger"}>{stats ? money.format(financeStats.balance) : "R$ 0,00"}</span>
+              <span className={financeStats?.balance >= 0 ? "text-success" : "text-danger"}>{financeStats ? money.format(financeStats.balance) : "R$ 0,00"}</span>
             </div>
           </div>
           
@@ -140,7 +181,7 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
 
         {/* Movimentos recentes */}
         <section className="card lg:col-span-2">
-          <SectionTitle title="Movimentos recentes" action={<button onClick={onNew} className="btn-primary"><Plus size={15} />Novo lançamento</button>} />
+          <SectionTitle title="Movimentos do Período" action={<button onClick={onNew} className="btn-primary"><Plus size={15} />Novo lançamento</button>} />
           <div className="overflow-x-auto mt-4">
             <table className="data-table">
               <thead>
@@ -156,7 +197,7 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
               </thead>
               <tbody>
                 {financeData.length === 0 && (
-                  <tr><td colSpan={7} className="text-center py-4 text-muted">Nenhum movimento registrado.</td></tr>
+                  <tr><td colSpan={7} className="text-center py-4 text-muted">Nenhum movimento registrado neste período.</td></tr>
                 )}
                 {financeData.map((item, index) => (
                   <tr key={`${item.date}-${item.name}-${index}`}>

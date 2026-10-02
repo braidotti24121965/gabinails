@@ -19,8 +19,15 @@ export async function getFinance(period?: string) {
   } else if (period === 'month') {
     fromDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
     toDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  } else if (period === 'last_month') {
+    fromDate = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0);
+    toDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+  } else if (period === '30days') {
+    fromDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    toDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
   } else {
     // all time
+    fromDate = new Date(0);
     toDate = new Date(now.getFullYear() + 10, 0, 1);
   }
 
