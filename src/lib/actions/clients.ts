@@ -16,6 +16,8 @@ export interface ClientItem {
   spent: number;
   status: string;
   whitelist: boolean;
+  blacklist: boolean;
+  autoPromoted?: boolean;
   tag: string;
   activePackages?: number;
   packageCredits?: number;
@@ -55,6 +57,11 @@ export async function getClients(): Promise<ClientItem[]> {
       ),
       client_deposit_whitelist (
         client_id,
+        removed_at,
+        auto_promoted
+      ),
+      client_blacklist (
+        client_id,
         removed_at
       ),
       packages (
@@ -76,6 +83,17 @@ export async function getClients(): Promise<ClientItem[]> {
     const isWhitelisted = Boolean(
       whitelistEntry && !whitelistEntry.removed_at
     );
+    const isAutoPromoted = Boolean(whitelistEntry?.auto_promoted);
+
+    // Blacklist é ativa se existe registro e removed_at é nulo
+    const blacklistEntry = Array.isArray(item.client_blacklist)
+      ? item.client_blacklist[0]
+      : item.client_blacklist;
+    const isBlacklisted = Boolean(
+      blacklistEntry && !blacklistEntry.removed_at
+    );
+
+    const tag = isBlacklisted ? "Bloqueada" : isWhitelisted ? "VIP" : "Cadastrada";
 
     return {
       id: item.id,
@@ -110,7 +128,9 @@ export async function getClients(): Promise<ClientItem[]> {
       spent: item.appointments?.reduce((acc, a) => acc + (a.payments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0), 0) || 0,
       status: item.status === "archived" ? "Inativa" : "Ativa",
       whitelist: isWhitelisted,
-      tag: isWhitelisted ? "VIP" : "Cadastrada",
+      blacklist: isBlacklisted,
+      autoPromoted: isAutoPromoted,
+      tag,
       activePackages: item.packages?.filter(p => p.status === 'active' && p.remaining_sessions > 0).length || 0,
       packageCredits: item.packages?.filter(p => p.status === 'active').reduce((acc, p) => acc + (p.remaining_sessions || 0), 0) || 0,
     };
@@ -144,6 +164,82 @@ export async function checkClientWhitelist(phoneNormalized: string): Promise<boo
     .maybeSingle();
 
   return Boolean(whitelist);
+}
+
+/** Adiciona ou remove uma cliente da White List (isenção de sinal). */
+export async function toggleClientWhitelist(
+  clientId: string,
+  add: boolean,
+  reason?: string
+): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured() || clientId.startsWith("demo-")) {
+    return { success: true };
+  }
+
+  const supabase = await createClient();
+  if (!supabase) return { success: false, error: "Supabase não conectado" };
+
+  const { error } = await supabase.rpc("set_client_whitelist", {
+    p_client_id: clientId,
+    p_add: add,
+    p_reason: reason ?? null,
+  });
+
+  if (error) return { success: false, error: error.message };
+
+  revalidatePath("/");
+  return { success: true };
+}
+
+/** Adiciona ou remove uma cliente da Black List (clientes problemáticas). */
+export async function toggleClientBlacklist(
+  clientId: string,
+  add: boolean,
+  reason?: string
+): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured() || clientId.startsWith("demo-")) {
+    return { success: true };
+  }
+
+  const supabase = await createClient();
+  if (!supabase) return { success: false, error: "Supabase não conectado" };
+
+  const { error } = await supabase.rpc("set_client_blacklist", {
+    p_client_id: clientId,
+    p_add: add,
+    p_reason: reason ?? null,
+  });
+
+  if (error) return { success: false, error: error.message };
+
+  revalidatePath("/");
+  return { success: true };
+}
+
+/**
+ * Executa a promoção automática: clientes com >= minVisits visitas concluídas
+ * entram automaticamente na White List (desde que não tenham sido removidas manualmente
+ * e não estejam na Black List).
+ * Retorna quantas clientes foram promovidas.
+ */
+export async function runAutoPromoteWhitelist(
+  minVisits: number = 3
+): Promise<{ success: boolean; promoted: number; error?: string }> {
+  if (!isSupabaseConfigured()) {
+    return { success: true, promoted: 0 };
+  }
+
+  const supabase = await createClient();
+  if (!supabase) return { success: false, promoted: 0, error: "Supabase não conectado" };
+
+  const { data, error } = await supabase.rpc("auto_promote_whitelist", {
+    p_min_visits: minVisits,
+  });
+
+  if (error) return { success: false, promoted: 0, error: error.message };
+
+  if (data && data > 0) revalidatePath("/");
+  return { success: true, promoted: data ?? 0 };
 }
 
 export async function createClientRecord(client: { name: string; phone: string; notes?: string; birthDate?: string; cep?: string; street?: string; number?: string; complement?: string; neighborhood?: string; city?: string; state?: string }) {

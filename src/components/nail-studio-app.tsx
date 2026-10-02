@@ -32,7 +32,7 @@ import { createAppointmentRecord, cancelAppointmentRecord, updateAppointmentStat
 import { finishAppointment } from "@/lib/actions/attendance";
 import { createExpense } from "@/lib/actions/finance";
 import { getProfessionalCommissions, payCommissions } from "@/lib/actions/commissions";
-import { getClientDetails, uploadClientPhoto, deleteClientPhoto, getClients } from "@/lib/actions/clients";
+import { getClientDetails, uploadClientPhoto, deleteClientPhoto, getClients, toggleClientWhitelist, toggleClientBlacklist, runAutoPromoteWhitelist } from "@/lib/actions/clients";
 import { OnlineBooking } from "./online-booking";
 import { getRemindersForTomorrow } from "@/lib/actions/automations";
 import { createProduct, updateProduct, addStockMovement, getInventory } from "@/lib/actions/inventory";
@@ -1249,6 +1249,19 @@ export function NailStudioApp({ tenant = { profileName: "Gabi", orgName: "Gabi L
     }
   }, [view]);
 
+  // Auto-promoção: ao abrir a tela de clientes, promove automaticamente
+  // quem tem >= 3 visitas e ainda não está na whitelist
+  useEffect(() => {
+    if (view === "clients") {
+      runAutoPromoteWhitelist(3).then(res => {
+        if (res.success && res.promoted > 0) {
+          // Recarregar a lista para refletir as promoções
+          getClients().then(fresh => setClientRows(fresh));
+        }
+      });
+    }
+  }, [view]);
+
   const [clientRows, setClientRows] = useState(() => [...initialClients]); const [serviceRows, setServiceRows] = useState(() => [...initialServices]);
   const [professionalRows, setProfessionalRows] = useState(() => [...initialProfessionals]); const [productRows, setProductRows] = useState<any[]>(initialInventory);
   const initialTemplates = [{ name: "Lembrete 24h", count: "18 agendadas", tone: "success" }, { name: "Sinal pendente", count: "3 aguardando", tone: "warning" }, { name: "Manutenção vencida", count: "7 oportunidades", tone: "danger" }, { name: "Aniversário", count: "2 nesta semana", tone: "primary" }];
@@ -1421,7 +1434,61 @@ const [reportsData] = useState(() => initialReports); const [entityModal, setEnt
     }
   }}
   onCancel={(index, id) => confirmAction("Cancelar este agendamento? O histórico será preservado.", () => { cancelAppointmentRecord(id).then(res => { if(res.success) { setRows(current => current.map((item, i) => i === index ? { ...item, status: "Cancelado" } : item)); notify("Agendamento cancelado e horário liberado."); } else alert(("error" in res ? res.error : "Erro desconhecido")); }) })} />;
-    if (view === "clients") return <Clients data={clientRows} onNew={() => openEntity("client", "create")} onAction={(mode, index) => { if (mode === "view") { setViewingClient(clientRows[index]); } else { openEntity("client", mode, index); } }} onArchive={index => confirmAction("Arquivar esta cliente? O histórico será preservado.", async () => { const item = clientRows[index]; if (item.id) await archiveClientRecord(item.id); setClientRows(current => current.map((c, i) => i === index ? { ...c, status: "Inativa" } : c)); notify("Cliente arquivada; histórico preservado."); })} onRestore={async (index) => { const item = clientRows[index]; if (item.id) await updateClientRecord(item.id, { ...item, status: "active" } as any); setClientRows(current => current.map((c, i) => i === index ? { ...c, status: "Ativa" } : c)); notify("Cliente reativada."); }} />;
+    if (view === "clients") return <Clients
+      data={clientRows}
+      onNew={() => openEntity("client", "create")}
+      onAction={(mode, index) => {
+        if (mode === "view") { setViewingClient(clientRows[index]); }
+        else { openEntity("client", mode, index); }
+      }}
+      onArchive={index => confirmAction("Arquivar esta cliente? O histórico será preservado.", async () => {
+        const item = clientRows[index];
+        if (item.id) await archiveClientRecord(item.id);
+        setClientRows(current => current.map((c, i) => i === index ? { ...c, status: "Inativa" } : c));
+        notify("Cliente arquivada; histórico preservado.");
+      })}
+      onRestore={async (index) => {
+        const item = clientRows[index];
+        if (item.id) await updateClientRecord(item.id, { ...item, status: "active" } as any);
+        setClientRows(current => current.map((c, i) => i === index ? { ...c, status: "Ativa" } : c));
+        notify("Cliente reativada.");
+      }}
+      onToggleWhitelist={async (index, add) => {
+        const item = clientRows[index];
+        // Optimistic update
+        setClientRows(current => current.map((c, i) => i === index
+          ? { ...c, whitelist: add, blacklist: add ? false : c.blacklist, autoPromoted: false, tag: add ? "VIP" : "Cadastrada" }
+          : c
+        ));
+        if (item.id) {
+          const res = await toggleClientWhitelist(item.id, add);
+          if (!res.success) {
+            // Reverter
+            setClientRows(current => current.map((c, i) => i === index ? { ...c, whitelist: !add } : c));
+            notify("Erro ao atualizar White List: " + (res.error || ""));
+          } else {
+            notify(add ? `${item.name} adicionada à White List ⭐` : `${item.name} removida da White List`);
+          }
+        }
+      }}
+      onToggleBlacklist={async (index, add) => {
+        const item = clientRows[index];
+        // Optimistic update
+        setClientRows(current => current.map((c, i) => i === index
+          ? { ...c, blacklist: add, whitelist: add ? false : c.whitelist, tag: add ? "Bloqueada" : "Cadastrada" }
+          : c
+        ));
+        if (item.id) {
+          const res = await toggleClientBlacklist(item.id, add);
+          if (!res.success) {
+            setClientRows(current => current.map((c, i) => i === index ? { ...c, blacklist: !add } : c));
+            notify("Erro ao atualizar Black List: " + (res.error || ""));
+          } else {
+            notify(add ? `${item.name} adicionada à Black List 🚫` : `${item.name} removida da Black List`);
+          }
+        }
+      }}
+    />;
     if (view === "services") return <Services data={serviceRows} inventory={productRows} onNew={() => openEntity("service", "create")} onAction={(mode, index) => openEntity("service", mode, index)} onDelete={index => confirmAction("Excluir este serviço?", async () => { const item = serviceRows[index]; if (item.id && !item.id.startsWith("demo-")) { await deleteServiceRecord(item.id); } setServiceRows(current => current.filter((_, i) => i !== index)); notify("Serviço removido."); })} onConsumables={(index) => openEntity("service_consumables" as any, "edit", index)} />;
     if (view === "professionals") return <Professionals data={professionalRows} onNew={() => openEntity("professional", "create")} onAction={(mode, index) => openEntity("professional", mode, index)} onDelete={index => confirmAction("Arquivar esta profissional? Agendamentos anteriores serão preservados.", async () => { const item = professionalRows[index]; if (item.id) await archiveProfessionalRecord(item.id); setProfessionalRows(current => current.filter((_, i) => i !== index)); notify("Profissional arquivada."); })} />;
     if (view === "attendance") return (
