@@ -36,11 +36,11 @@ export async function getFinance(period?: string) {
     { data: appointments }
   ] = await Promise.all([
     supabase.from('payments').select('id, amount, method, status, paid_at, kind, client:clients(name)')
-      .gte('paid_at', fromISO).lte('paid_at', toISO).lte('paid_at', toISO)
+      .gte('paid_at', fromISO).lte('paid_at', toISO)
       .order('paid_at', { ascending: false }),
     supabase.from('expenses').select('id, amount, description, status, paid_at, due_date')
       .eq('status', 'paid')
-      .gte('paid_at', fromISO)
+      .gte('paid_at', fromISO).lte('paid_at', toISO)
       .order('paid_at', { ascending: false }),
     supabase.from('commissions').select('id, amount, status, paid_at, created_at, professional:professionals(name)')
       .eq('status', 'paid')
@@ -71,18 +71,27 @@ export async function getFinance(period?: string) {
 
   if (payments) {
     payments.forEach((p: any) => {
-      if (p.status === 'paid') {
+      // Receita: entrada positiva (deposit, payment, credit)
+      // Estorno/chargeback: subtrai da receita
+      const isIncome = ['deposit', 'payment', 'credit'].includes(p.kind);
+      const isRefund  = ['refund', 'chargeback'].includes(p.kind);
+
+      if (p.status === 'paid' && isIncome) {
         revenue += Number(p.amount);
+      } else if ((p.status === 'paid' || p.status === 'refunded') && isRefund) {
+        revenue -= Number(p.amount);
       }
+
       const d = new Date(p.paid_at || p.created_at || Date.now());
+      const displayValue = isRefund ? -Number(p.amount) : Number(p.amount);
       rows.push({
         id: p.id,
         date: d.toLocaleDateString("pt-BR"),
-        name: (p.kind === 'deposit' ? 'Sinal: ' : 'Recebimento: ') + (p.client?.name || "Desconhecido"),
-        type: p.kind === 'deposit' ? 'Sinal' : 'Receita',
+        name: (p.kind === 'deposit' ? 'Sinal: ' : p.kind === 'refund' ? 'Estorno: ' : 'Recebimento: ') + (p.client?.name || "Desconhecido"),
+        type: p.kind === 'deposit' ? 'Sinal' : p.kind === 'refund' ? 'Estorno' : 'Receita',
         method: p.method === 'pix' ? 'PIX' : p.method === 'credit' ? 'Crédito' : p.method === 'debit' ? 'Débito' : p.method === 'cash' ? 'Dinheiro' : 'Outro',
         status: p.status === 'paid' ? 'Pago' : p.status === 'refunded' ? 'Estornado' : p.status,
-        value: Number(p.amount),
+        value: displayValue,
         rawDate: d.toISOString()
       });
     });
@@ -140,6 +149,63 @@ export async function getFinance(period?: string) {
     },
     data: rows
   };
+}
+
+/**
+ * Retorna o total de receita futura: soma dos valores dos serviços
+ * de agendamentos ainda não concluídos com data futura.
+ * Também retorna a data do último agendamento na agenda.
+ */
+export async function getFutureRevenue(): Promise<{
+  total: number;
+  lastDate: string | null;
+  count: number;
+}> {
+  const supabase = await createClient();
+  if (!supabase) return { total: 0, lastDate: null, count: 0 };
+
+  const nowISO = new Date().toISOString();
+
+  // Agendamentos futuros ativos (não concluídos, não cancelados)
+  const { data: futureAppts } = await supabase
+    .from('appointments')
+    .select(`
+      id,
+      starts_at,
+      discount,
+      appointment_items (
+        unit_price,
+        quantity,
+        discount,
+        surcharge
+      )
+    `)
+    .in('status', ['pending', 'awaiting_deposit', 'scheduled', 'confirmed'])
+    .gte('starts_at', nowISO)
+    .order('starts_at', { ascending: false });
+
+  if (!futureAppts || futureAppts.length === 0) {
+    return { total: 0, lastDate: null, count: 0 };
+  }
+
+  let total = 0;
+  futureAppts.forEach((appt: any) => {
+    const apptDiscount = Number(appt.discount || 0);
+    const itemsTotal = (appt.appointment_items || []).reduce((sum: number, item: any) => {
+      return sum + (Number(item.unit_price) * Number(item.quantity || 1))
+        - Number(item.discount || 0)
+        + Number(item.surcharge || 0);
+    }, 0);
+    total += Math.max(0, itemsTotal - apptDiscount);
+  });
+
+  // O último agendamento futuro (maior data)
+  const lastAppt = futureAppts[0]; // já ordenado desc
+  const lastDate = lastAppt
+    ? new Date(lastAppt.starts_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    : null;
+
+  return { total, lastDate, count: futureAppts.length };
 }
 
 export async function reversePayment(paymentId: string) {

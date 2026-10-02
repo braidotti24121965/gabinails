@@ -1,14 +1,14 @@
-import React from "react";
-import { Plus, TrendingUp, CircleDollarSign, CreditCard, BarChart3, Download, PieChart } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Plus, TrendingUp, CircleDollarSign, CreditCard, BarChart3, CalendarClock } from "lucide-react";
 import { Badge, SectionTitle, RowActions, Metric } from "../shared";
 import { money } from "@/lib/demo-data";
 
-import { useState, useEffect } from "react";
 export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any[]; stats?: any; onNew: () => void; onAction: (mode: "view" | "edit", index: number) => void; onReverse: (index: number) => void }) { 
   const [period, setPeriod] = useState("month");
   const [financeData, setFinanceData] = useState(data);
   const [financeStats, setFinanceStats] = useState(stats);
   const [loading, setLoading] = useState(false);
+  const [futureRevenue, setFutureRevenue] = useState<{ total: number; lastDate: string | null; count: number } | null>(null);
 
   const loadData = React.useCallback(async () => {
     setLoading(true);
@@ -19,8 +19,14 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
     setLoading(false);
   }, [period]);
 
+  // Carrega faturamento futuro (independente do período selecionado)
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    import("@/lib/actions/finance").then(({ getFutureRevenue }) => {
+      getFutureRevenue().then(setFutureRevenue);
+    });
+  }, []);
+
+  useEffect(() => {
     loadData();
   }, [loadData]);
 
@@ -38,11 +44,42 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
 
   return (
     <main className="page-content space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {/* Cards de métricas — 5 colunas */}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <Metric label="Faturamento Bruto" value={stats ? money.format(financeStats.revenue) : "R$ 0,00"} detail="Entrada total" icon={TrendingUp} />
         <Metric label="Despesas Fixas" value={stats ? money.format(financeStats.expenses) : "R$ 0,00"} detail="Contas do mês" icon={CreditCard} tone="warning" />
         <Metric label="Comissões" value={stats ? money.format(financeStats.commissions) : "R$ 0,00"} detail="A repassar" icon={CircleDollarSign} tone="warning" />
         <Metric label="Lucro Líquido" value={stats ? money.format(financeStats.balance) : "R$ 0,00"} detail="No seu bolso" icon={BarChart3} tone="success" />
+
+        {/* Card de Faturamento Futuro */}
+        <div className="card flex flex-col justify-between gap-3 border-l-4 border-l-violet-400">
+          <div className="flex items-start justify-between">
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-muted">Faturamento Futuro</p>
+              <p className="mt-1 text-2xl font-bold text-ink">
+                {futureRevenue ? money.format(futureRevenue.total) : "—"}
+              </p>
+              <p className="mt-1 text-xs text-muted">
+                {futureRevenue && futureRevenue.count > 0
+                  ? `${futureRevenue.count} agendamento${futureRevenue.count > 1 ? "s" : ""} a receber`
+                  : "Nenhum agendamento futuro"}
+              </p>
+            </div>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-600">
+              <CalendarClock size={17} />
+            </div>
+          </div>
+          {futureRevenue?.lastDate && (
+            <div className="rounded-md bg-violet-50 px-2.5 py-1.5 text-[11px] text-violet-700">
+              <span className="font-medium">Último agendamento:</span> {futureRevenue.lastDate}
+            </div>
+          )}
+          {(!futureRevenue || !futureRevenue.lastDate) && (
+            <div className="rounded-md bg-slate-50 px-2.5 py-1.5 text-[11px] text-slate-500">
+              Sem agendamentos futuros
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -87,6 +124,18 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
               <p className="text-xs text-red-700 text-center">Atenção: O saldo está negativo neste período.</p>
             )}
           </div>
+
+          {/* Previsão futura no DRE */}
+          {futureRevenue && futureRevenue.total > 0 && (
+            <div className="mt-4 rounded-md border border-violet-200 bg-violet-50 p-3">
+              <p className="text-xs font-semibold text-violet-800 mb-0.5">Previsão a receber</p>
+              <p className="text-base font-bold text-violet-700">{money.format(futureRevenue.total)}</p>
+              <p className="text-[10px] text-violet-600 mt-0.5">
+                {futureRevenue.count} agendamento{futureRevenue.count > 1 ? "s" : ""} confirmado{futureRevenue.count > 1 ? "s" : ""}
+                {futureRevenue.lastDate ? ` · até ${futureRevenue.lastDate}` : ""}
+              </p>
+            </div>
+          )}
         </section>
 
         {/* Movimentos recentes */}
@@ -125,7 +174,7 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
                       </Badge>
                     </td>
                     <td className={`font-medium whitespace-nowrap ${item.value >= 0 ? "text-primary" : "text-danger"}`}>
-                      {money.format(item.value)}
+                      {money.format(Math.abs(item.value))}{item.value < 0 ? " (−)" : ""}
                     </td>
                     <td>
                       <RowActions onView={() => onAction("view", index)} onEdit={() => onAction("edit", index)} onDelete={() => handleReverse(item.id, index)} deleteLabel="Estornar" />
