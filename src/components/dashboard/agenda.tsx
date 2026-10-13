@@ -372,26 +372,21 @@ export function Agenda({
                     <p className="font-medium">{money.format(a.price)}</p>
                     <p className="text-[10px] text-muted">{a.paid ? `${money.format(a.paid)} recebido` : "Pagamento pendente"}</p>
                   </div>
-                  <div className="hidden sm:block">
-                    <select
-                      value={a.status}
-                      disabled={a.status === "Concluído" || a.service?.includes("Bloqueio")}
-                      onClick={(e) => e.stopPropagation()}
-                      onChange={(e) => onStatusChange(a, e.target.value)}
-                      className="field-input !py-1 !text-xs !h-8 w-32 disabled:opacity-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                    >
-                      <option value="Aguardando sinal">Aguardando sinal</option>
-                      <option value="Agendado">Agendado</option>
-                      <option value="Confirmado">Confirmado</option>
-                      <option value="Cliente chegou">Cliente chegou</option>
-                      <option value="Em atendimento">Em atendimento</option>
-                      <option value="Concluído">Concluído</option>
-                    </select>
-                  </div>
                 </button>
-                <button onClick={() => onAction("view", rows.indexOf(a))} className="text-sm font-medium text-primary hover:underline">
-                  Comissões
-                </button>
+                <select
+                  aria-label={`Status do atendimento de ${a.client}`}
+                  value={a.status}
+                  disabled={a.status === "Concluído" || a.service?.includes("Bloqueio")}
+                  onChange={(e) => onStatusChange(a, e.target.value)}
+                  className="field-input h-8 w-[126px] shrink-0 !py-1 !text-xs disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-50 sm:w-32"
+                >
+                  <option value="Aguardando sinal">Aguardando sinal</option>
+                  <option value="Agendado">Agendado</option>
+                  <option value="Confirmado">Confirmado</option>
+                  <option value="Cliente chegou">Cliente chegou</option>
+                  <option value="Em atendimento">Em atendimento</option>
+                  <option value="Concluído">Concluído</option>
+                </select>
                 <RowActions
                   onView={() => onAction("edit", rows.indexOf(a))}
                   onEdit={() => onAction("edit", rows.indexOf(a))}
