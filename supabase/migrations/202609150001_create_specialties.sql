@@ -21,6 +21,5 @@ create policy "Specialties are updatable by users in the same organization"
   on public.specialties for update
   using (organization_id = (select private.current_organization_id()));
 
--- Insert some default specialties for the user's organization
-insert into public.specialties (organization_id, name)
-select '11111111-1111-4111-8111-111111111111'::uuid, unnest(ARRAY['Manicure', 'Pedicure', 'Spa dos Pés', 'Alongamento em Gel', 'Esmaltação em Gel', 'Nail Art']);
+-- Do not seed a hard-coded organization here. Organizations are created during
+-- onboarding, and their specialties must be created for the real tenant ID.
