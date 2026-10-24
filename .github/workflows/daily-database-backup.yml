@@ -47,7 +47,6 @@ jobs:
         run: |
           backup_name="gabi-nails-$(date -u +%Y-%m-%dT%H-%M-%SZ)"
           mkdir "$backup_name"
-          supabase db dump --db-url "$DATABASE_URL" --role-only --file "$backup_name/roles.sql"
           supabase db dump --db-url "$DATABASE_URL" --file "$backup_name/schema.sql"
           supabase db dump --db-url "$DATABASE_URL" --data-only --use-copy --file "$backup_name/data.sql"
           tar --create --gzip --file "$backup_name.tar.gz" "$backup_name"

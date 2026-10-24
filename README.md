@@ -67,7 +67,7 @@ Acesse em `http://localhost:3000`.
 
 ## ☁️ Backup diário fora do Supabase
 
-O repositório contém a rotina `.github/workflows/daily-database-backup.yml`. Ela roda todos os dias às **03:15 (horário de São Paulo)** e cria uma cópia de papéis, estrutura e dados pelo exportador oficial do Supabase. O arquivo é protegido com criptografia AES-256 e guardado na pasta [Backup Gabi Nails](https://drive.google.com/drive/folders/1pCxLz0rv8oA1VQSGIbkRRlnSgB1hu6Ub). As cópias com mais de 30 dias são removidas automaticamente.
+O repositório contém a rotina `.github/workflows/daily-database-backup.yml`. Ela roda todos os dias às **03:15 (horário de São Paulo)** e cria uma cópia da estrutura e dos dados do salão pelo exportador oficial do Supabase. O arquivo é protegido com criptografia AES-256 e guardado na pasta [Backup Gabi Nails](https://drive.google.com/drive/folders/1pCxLz0rv8oA1VQSGIbkRRlnSgB1hu6Ub). As cópias com mais de 30 dias são removidas automaticamente.
 
 Antes da primeira execução, cadastre estes quatro segredos no repositório GitHub, em **Settings → Secrets and variables → Actions**:
 
