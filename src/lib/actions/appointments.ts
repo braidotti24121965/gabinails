@@ -4,6 +4,19 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import type { Appointment, AppointmentStatus } from "@/lib/demo-data"; // We will map DB to this for now to not break the UI
 
+async function getAuthenticatedOrganizationId(supabase: any) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("organization_id")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  return profile?.organization_id || null;
+}
+
 export async function getAppointments(): Promise<Appointment[]> {
   const supabase = await createClient();
   if (!supabase) return [];
@@ -89,8 +102,7 @@ export async function getAppointments(): Promise<Appointment[]> {
   });
 
   // Also query active day blocks from professional_availability for this org
-  const { data: profile } = await supabase.from('profiles').select('organization_id').single();
-  const orgId = profile?.organization_id;
+  const orgId = await getAuthenticatedOrganizationId(supabase);
 
   let mappedAvailBlocks: Appointment[] = [];
   if (orgId) {
@@ -141,8 +153,8 @@ export async function createAppointmentRecord(data: {
   const supabase = await createClient();
   if (!supabase) return { success: false, error: "No connection" };
 
-  const { data: profile } = await supabase.from('profiles').select('organization_id').single();
-  if (!profile?.organization_id) return { success: false, error: "Organização não encontrada" };
+  const organizationId = await getAuthenticatedOrganizationId(supabase);
+  if (!organizationId) return { success: false, error: "Organização não encontrada" };
 
   // Calculate timestamps
   const startsAt = new Date(`${data.dateStr}T${data.timeStr}:00-03:00`).toISOString();
@@ -152,7 +164,7 @@ export async function createAppointmentRecord(data: {
   const { data: appointment, error: appError } = await supabase
     .from("appointments")
     .insert([{
-      organization_id: profile.organization_id,
+      organization_id: organizationId,
       client_id: data.clientId,
       professional_id: data.professionalId,
       starts_at: startsAt,
@@ -173,7 +185,7 @@ export async function createAppointmentRecord(data: {
 
   // Insert appointment item (service)
   const itemsToInsert = data.services.map((s: any) => ({
-      organization_id: profile.organization_id!,
+      organization_id: organizationId,
       appointment_id: appointment.id,
       service_id: s.id,
       professional_id: data.professionalId,
@@ -239,8 +251,8 @@ export async function updateAppointmentRecord(appointmentId: string, data: {
   const supabase = await createClient();
   if (!supabase) return { success: false, error: "No connection" };
 
-  const { data: profile } = await supabase.from('profiles').select('organization_id').single();
-  if (!profile?.organization_id) return { success: false, error: "Organização não encontrada" };
+  const organizationId = await getAuthenticatedOrganizationId(supabase);
+  if (!organizationId) return { success: false, error: "Organização não encontrada" };
 
   const startsAt = new Date(`${data.dateStr}T${data.timeStr}:00-03:00`).toISOString();
   const endsAt = new Date(new Date(startsAt).getTime() + data.durationMinutes * 60000).toISOString();
@@ -267,7 +279,7 @@ export async function updateAppointmentRecord(appointmentId: string, data: {
   await supabase.from("appointment_items").delete().eq("appointment_id", appointmentId);
 
   const itemsToInsert = data.services.map(s => ({
-    organization_id: profile.organization_id!,
+    organization_id: organizationId,
     appointment_id: appointmentId,
     service_id: s.id,
     professional_id: data.professionalId,
@@ -288,11 +300,11 @@ export async function addServiceToAppointment(appointmentId: string, professiona
   const supabase = await createClient();
   if (!supabase) return { success: false, error: "No connection" };
 
-  const { data: profile } = await supabase.from('profiles').select('organization_id').single();
-  if (!profile?.organization_id) return { success: false, error: "Organização não encontrada" };
+  const organizationId = await getAuthenticatedOrganizationId(supabase);
+  if (!organizationId) return { success: false, error: "Organização não encontrada" };
 
   const { data, error } = await supabase.from("appointment_items").insert([{
-    organization_id: profile.organization_id,
+    organization_id: organizationId,
     appointment_id: appointmentId,
     service_id: serviceId,
     professional_id: professionalId,
@@ -320,10 +332,8 @@ export async function toggleBlockDayRecord(dateStr: string) {
   const supabase = await createClient();
   if (!supabase) return { success: false, error: "Sem conexão com o banco" };
 
-  const { data: profile } = await supabase.from('profiles').select('organization_id').single();
-  if (!profile?.organization_id) return { success: false, error: "Organização não encontrada" };
-
-  const orgId = profile.organization_id;
+  const orgId = await getAuthenticatedOrganizationId(supabase);
+  if (!orgId) return { success: false, error: "Organização não encontrada" };
   const startOfDaySP = `${dateStr}T00:00:00-03:00`;
   const endOfDaySP = `${dateStr}T23:59:59-03:00`;
 
