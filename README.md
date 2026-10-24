@@ -67,13 +67,13 @@ Acesse em `http://localhost:3000`.
 
 ## ☁️ Backup diário fora do Supabase
 
-O repositório contém a rotina `.github/workflows/daily-database-backup.yml`. Ela roda todos os dias às **03:15 (horário de São Paulo)** e cria uma cópia completa do banco no formato PostgreSQL, protegida com criptografia AES-256, na pasta [Backup Gabi Nails](https://drive.google.com/drive/folders/1pCxLz0rv8oA1VQSGIbkRRlnSgB1hu6Ub). As cópias com mais de 30 dias são removidas automaticamente.
+O repositório contém a rotina `.github/workflows/daily-database-backup.yml`. Ela roda todos os dias às **03:15 (horário de São Paulo)** e cria uma cópia de papéis, estrutura e dados pelo exportador oficial do Supabase. O arquivo é protegido com criptografia AES-256 e guardado na pasta [Backup Gabi Nails](https://drive.google.com/drive/folders/1pCxLz0rv8oA1VQSGIbkRRlnSgB1hu6Ub). As cópias com mais de 30 dias são removidas automaticamente.
 
 Antes da primeira execução, cadastre estes quatro segredos no repositório GitHub, em **Settings → Secrets and variables → Actions**:
 
 | Segredo | Conteúdo |
 | --- | --- |
-| `SUPABASE_DB_URL` | Connection string direta do banco, disponível no painel do Supabase em **Connect**. |
+| `SUPABASE_DB_URL` | Connection string do **Session pooler**, disponível no painel do Supabase em **Connect**. |
 | `RCLONE_CONFIG_GDRIVE` | Configuração completa de um remoto `gdrive` do rclone, autenticado na conta `braidotti1965@gmail.com`. |
 | `BACKUP_ENCRYPTION_PASSPHRASE` | Senha longa, exclusiva e guardada em local seguro; ela será necessária para restaurar uma cópia. |
 | `GOOGLE_DRIVE_FOLDER_ID` | `1pCxLz0rv8oA1VQSGIbkRRlnSgB1hu6Ub` |

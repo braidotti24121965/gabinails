@@ -20,9 +20,12 @@ jobs:
 
     steps:
       - name: Instalar ferramentas de backup
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes postgresql-client rclone
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Instalar envio para o Drive
+        run: sudo apt-get update && sudo apt-get install --yes rclone
 
       - name: Validar configurações privadas
         env:
@@ -42,13 +45,17 @@ jobs:
           DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
           BACKUP_KEY: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
         run: |
-          backup_name="gabi-nails-$(date -u +%Y-%m-%dT%H-%M-%SZ).dump"
-          pg_dump "$DATABASE_URL" --format=custom --no-owner --no-privileges --file "$backup_name"
+          backup_name="gabi-nails-$(date -u +%Y-%m-%dT%H-%M-%SZ)"
+          mkdir "$backup_name"
+          supabase db dump --db-url "$DATABASE_URL" --role-only --file "$backup_name/roles.sql"
+          supabase db dump --db-url "$DATABASE_URL" --file "$backup_name/schema.sql"
+          supabase db dump --db-url "$DATABASE_URL" --data-only --use-copy --file "$backup_name/data.sql"
+          tar --create --gzip --file "$backup_name.tar.gz" "$backup_name"
           gpg --batch --yes --symmetric --cipher-algo AES256 \
             --passphrase "$BACKUP_KEY" \
-            --output "$backup_name.gpg" "$backup_name"
-          rm "$backup_name"
-          echo "file=$backup_name.gpg" >> "$GITHUB_OUTPUT"
+            --output "$backup_name.tar.gz.gpg" "$backup_name.tar.gz"
+          rm --recursive "$backup_name" "$backup_name.tar.gz"
+          echo "file=$backup_name.tar.gz.gpg" >> "$GITHUB_OUTPUT"
 
       - name: Enviar ao Google Drive
         env:
@@ -73,4 +80,4 @@ jobs:
             --config "$config_file" \
             --drive-root-folder-id "$DRIVE_FOLDER_ID" \
             --min-age 30d \
-            --include 'gabi-nails-*.dump.gpg'
+            --include 'gabi-nails-*.tar.gz.gpg'
