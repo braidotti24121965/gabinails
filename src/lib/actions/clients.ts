@@ -366,8 +366,12 @@ export async function getClientDetails(clientId: string): Promise<ClientDetailsR
     totalSpent += paid;
     return {
       id: a.id,
-      date: new Date(a.starts_at).toLocaleDateString("pt-BR"),
-      time: new Date(a.starts_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+      date: new Date(a.starts_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" }),
+      time: new Date(a.starts_at).toLocaleTimeString("pt-BR", {
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "America/Sao_Paulo"
+      }),
       status: a.status === 'completed' ? 'Concluído' : a.status === 'cancelled' ? 'Cancelado' : 'Agendado',
       professional: a.professional?.name || "Gabi",
       services: a.items?.map((i: any) => i.service?.name).join(" + ") || "Serviço",
