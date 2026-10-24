@@ -1,0 +1,76 @@
+name: Backup semanal do sistema
+
+on:
+  schedule:
+    # 04:15 em São Paulo (UTC-3), aos domingos.
+    - cron: "15 7 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gabi-nails-weekly-project-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Obter versão publicada do sistema
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+
+      - name: Instalar envio para o Drive
+        run: sudo apt-get update && sudo apt-get install --yes rclone
+
+      - name: Validar configurações privadas
+        env:
+          RCLONE_CONFIG: ${{ secrets.RCLONE_CONFIG_GDRIVE }}
+          BACKUP_KEY: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
+          DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
+        run: |
+          test -n "$RCLONE_CONFIG"
+          test -n "$BACKUP_KEY"
+          test -n "$DRIVE_FOLDER_ID"
+
+      - name: Gerar e proteger cópia do sistema
+        id: backup
+        env:
+          BACKUP_KEY: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
+        run: |
+          backup_name="gabi-nails-sistema-$(date -u +%Y-%m-%dT%H-%M-%SZ)"
+          git archive --format=tar.gz --prefix="gabi-ludwig-nails/" --output="$backup_name.tar.gz" HEAD
+          gpg --batch --yes --symmetric --cipher-algo AES256 \
+            --passphrase "$BACKUP_KEY" \
+            --output "$backup_name.tar.gz.gpg" "$backup_name.tar.gz"
+          rm "$backup_name.tar.gz"
+          echo "file=$backup_name.tar.gz.gpg" >> "$GITHUB_OUTPUT"
+
+      - name: Enviar ao Google Drive
+        env:
+          RCLONE_CONFIG: ${{ secrets.RCLONE_CONFIG_GDRIVE }}
+          DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
+        run: |
+          config_file="$RUNNER_TEMP/rclone.conf"
+          printf '%s' "$RCLONE_CONFIG" > "$config_file"
+          rclone copy "${{ steps.backup.outputs.file }}" "gdrive:" \
+            --config "$config_file" \
+            --drive-root-folder-id "$DRIVE_FOLDER_ID" \
+            --checksum
+
+      - name: Manter as últimas 12 semanas
+        env:
+          RCLONE_CONFIG: ${{ secrets.RCLONE_CONFIG_GDRIVE }}
+          DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
+        run: |
+          config_file="$RUNNER_TEMP/rclone.conf"
+          printf '%s' "$RCLONE_CONFIG" > "$config_file"
+          rclone delete "gdrive:" \
+            --config "$config_file" \
+            --drive-root-folder-id "$DRIVE_FOLDER_ID" \
+            --min-age 84d \
+            --include 'gabi-nails-sistema-*.tar.gz.gpg'

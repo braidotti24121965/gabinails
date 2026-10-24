@@ -79,3 +79,7 @@ Antes da primeira execução, cadastre estes quatro segredos no repositório Git
 | `GOOGLE_DRIVE_FOLDER_ID` | `1pCxLz0rv8oA1VQSGIbkRRlnSgB1hu6Ub` |
 
 Após cadastrar os segredos, use **Actions → Backup diário do banco → Run workflow** para executar a primeira cópia manualmente e conferir se o arquivo aparece no Drive. Nenhuma chave é gravada no código ou exibida nos logs.
+
+## 💻 Backup semanal do sistema
+
+O fluxo `.github/workflows/weekly-project-backup.yml` roda aos **domingos às 04:15 (horário de São Paulo)**. Ele cria uma cópia criptografada de todos os arquivos versionados do sistema: código, telas, migrations, configuração de publicação e documentação. Arquivos privados, como senhas e chaves, ficam fora da cópia. As últimas 12 semanas são mantidas na mesma pasta do Drive.
