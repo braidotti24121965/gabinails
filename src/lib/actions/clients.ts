@@ -300,6 +300,7 @@ export type ClientHistoryItem = {
   status: string;
   professional: string;
   services: string;
+  price: number;
   paid: number;
 };
 
@@ -347,7 +348,7 @@ export async function getClientDetails(clientId: string): Promise<ClientDetailsR
       starts_at,
       status,
       professional:professionals(name),
-      items:appointment_items(service:services(name)),
+      items:appointment_items(service:services(name), unit_price, quantity, discount, surcharge),
       payments(amount)
     `)
     .eq("client_id", clientId)
@@ -355,6 +356,12 @@ export async function getClientDetails(clientId: string): Promise<ClientDetailsR
 
   let totalSpent = 0;
   const history: ClientHistoryItem[] = (appts || []).map((a: any) => {
+    const price = a.items?.reduce((sum: number, item: any) => (
+      sum
+      + (Number(item.unit_price || 0) * Number(item.quantity || 1))
+      - Number(item.discount || 0)
+      + Number(item.surcharge || 0)
+    ), 0) || 0;
     const paid = a.payments?.reduce((sum: number, p: any) => sum + Number(p.amount), 0) || 0;
     totalSpent += paid;
     return {
@@ -364,6 +371,7 @@ export async function getClientDetails(clientId: string): Promise<ClientDetailsR
       status: a.status === 'completed' ? 'Concluído' : a.status === 'cancelled' ? 'Cancelado' : 'Agendado',
       professional: a.professional?.name || "Gabi",
       services: a.items?.map((i: any) => i.service?.name).join(" + ") || "Serviço",
+      price,
       paid
     };
   });

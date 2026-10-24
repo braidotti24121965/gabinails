@@ -336,7 +336,7 @@ function ClientDetailsModal({ client, close }: { client: any; close: () => void 
 
             <div className="grid gap-4 sm:grid-cols-3">
               <Metric label="Visitas totais" value={(data?.stats?.visits || 0).toString()} detail="Soma de atendimentos concluídos" icon={Calendar} />
-              <Metric label="Total investido" value={money.format(data?.stats?.spent || 0)} detail="Soma de recebimentos da cliente" icon={CircleDollarSign} />
+              <Metric label="Total recebido" value={money.format(data?.stats?.spent || 0)} detail="Soma dos pagamentos registrados" icon={CircleDollarSign} />
               <Metric label="Cliente desde" value={data?.stats?.memberSince || "-"} detail="Data do cadastro" icon={Check} />
             </div>
 
@@ -356,7 +356,10 @@ function ClientDetailsModal({ client, close }: { client: any; close: () => void 
                         </div>
                         <div className="text-right">
                           <Badge tone={h.status === 'Concluído' ? 'success' : h.status === 'Cancelado' ? 'danger' : 'warning'}>{h.status}</Badge>
-                          <p className="text-xs font-semibold mt-1 text-navy-dark">{money.format(h.paid)}</p>
+                          <p className="text-xs font-semibold mt-1 text-navy-dark">Valor: {money.format(h.price)}</p>
+                          <p className="text-[11px] text-muted mt-0.5">
+                            {h.paid > 0 ? `Recebido: ${money.format(h.paid)}` : "Pagamento pendente"}
+                          </p>
                         </div>
                       </div>
                     ))
