@@ -1,8 +1,8 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { createCatalogExpense, getExpenseTemplates, saveExpenseTemplate, updateExpenseRecord } from "@/lib/actions/finance";
+import { createCatalogExpense, getExpenseTemplates, saveExpenseTemplate, updateExpenseRecord, saveRecurringExpense } from "@/lib/actions/finance";
 
-type Template = { id: string; name: string; category: string; default_amount: number | null; active: boolean };
+type Template = { id: string; name: string; category: string; default_amount: number | null; active: boolean; recurring_monthly?: boolean; recurring_day?: number | null };
 type Expense = { id: string; name: string; value: number; dueDate?: string; templateId?: string; status: string };
 const defaultCategories = ["Estrutura", "Contas de consumo", "Administração", "Equipe", "Operação", "Marketing", "Serviços", "Geral"];
 const today = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
@@ -19,6 +19,8 @@ export function ExpenseManager({ close, saved, expense }: { close: () => void; s
   const [newCategory, setNewCategory] = useState("");
   const [defaultAmount, setDefaultAmount] = useState("");
   const [active, setActive] = useState(true);
+  const [recurring, setRecurring] = useState(false);
+  const [recurringDay, setRecurringDay] = useState(1);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const refresh = useCallback(async () => {
@@ -28,7 +30,7 @@ export function ExpenseManager({ close, saved, expense }: { close: () => void; s
   useEffect(() => { void refresh(); }, [refresh]);
   const editTemplate = (t: Template | "new") => {
     setEditing(t); setName(t === "new" ? "" : t.name); setCategory(t === "new" ? "" : t.category); setNewCategory("");
-    setDefaultAmount(t === "new" ? "" : String(t.default_amount ?? "")); setActive(t === "new" ? true : t.active); setError("");
+    setDefaultAmount(t === "new" ? "" : String(t.default_amount ?? "")); setActive(t === "new" ? true : t.active); setRecurring(t === "new" ? false : !!t.recurring_monthly); setRecurringDay(t === "new" ? 1 : t.recurring_day || 1); setError("");
   };
   const saveTemplate = async () => {
     const finalCategory = category === "__new__" ? newCategory.trim().replace(/\\s+/g, " ") : category;
@@ -37,10 +39,21 @@ export function ExpenseManager({ close, saved, expense }: { close: () => void; s
     const existing = categories.find(c => c.toLocaleLowerCase("pt-BR") === finalCategory.toLocaleLowerCase("pt-BR"));
     const normalizedCategory = existing || finalCategory;
     const parsed = defaultAmount.trim() ? Number(defaultAmount.replace(",", ".")) : null;
+    if (recurring && (!Number.isFinite(Number(defaultAmount)) || Number(defaultAmount) <= 0)) { setError("Informe um valor padrão positivo para a recorrência."); return; }
     setBusy(true); setError("");
     const res = await saveExpenseTemplate({ id: editing && editing !== "new" ? editing.id : undefined, name, category: normalizedCategory, defaultAmount: parsed, active });
     setBusy(false);
     if (!res.success) { setError(res.error || "Erro ao salvar."); return; }
+    if (recurring) {
+      const updated = await getExpenseTemplates();
+      const template = (updated.data as Template[]).find(t => t.name.toLocaleLowerCase("pt-BR") === name.trim().toLocaleLowerCase("pt-BR"));
+      if (!template) { setError("Cadastro salvo, mas não foi possível localizar a recorrência."); await refresh(); return; }
+      const recurrence = await saveRecurringExpense({templateId: template.id, enabled: true, day: recurringDay, amount: Number(defaultAmount.replace(",", "."))});
+      if (!recurrence.success) { setError("Cadastro salvo, mas recorrência não ativada: " + recurrence.error); await refresh(); return; }
+    } else if (editing !== "new" && editing?.recurring_monthly) {
+      const recurrence = await saveRecurringExpense({templateId: editing.id, enabled: false, day: recurringDay, amount: 0});
+      if (!recurrence.success) { setError(recurrence.error || "Erro ao desativar recorrência"); return; }
+    }
     await refresh();
     setEditing(null);
   };
@@ -77,6 +90,8 @@ export function ExpenseManager({ close, saved, expense }: { close: () => void; s
             <label className="block text-sm">Categoria<select className="field-input mt-1" value={category} onChange={e => { setCategory(e.target.value); setError(""); }}><option value="">Selecione uma categoria</option>{categories.map(c => <option key={c} value={c}>{c}</option>)}<option value="__new__">+ Cadastrar nova categoria</option></select></label>
             {category === "__new__" && <label className="block text-sm">Nome da nova categoria<input className="field-input mt-1" maxLength={80} autoFocus placeholder="Digite o nome da categoria" value={newCategory} onChange={e => setNewCategory(e.target.value)} /><span className="mt-1 block text-xs text-slate-500">A categoria ficará disponível nos próximos cadastros após salvar esta despesa.</span></label>}
             <label className="block text-sm">Valor padrão (opcional)<input type="number" min="0.01" step="0.01" className="field-input mt-1" value={defaultAmount} onChange={e => setDefaultAmount(e.target.value)} /></label>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={recurring} onChange={e => setRecurring(e.target.checked)} />Repetir automaticamente todo mês</label>
+            {recurring && <label className="block text-sm">Dia do vencimento (1 a 31)<input type="number" min={1} max={31} className="field-input mt-1" value={recurringDay} onChange={e => setRecurringDay(Number(e.target.value))} /><span className="mt-1 block text-xs text-slate-500">Gera até 12 meses de vencimentos pendentes. Meses curtos usam o último dia.</span></label>}
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={active} onChange={e => setActive(e.target.checked)} />Ativa para novos lançamentos</label>
             <div className="flex gap-2">
               <button type="button" className="btn-primary" disabled={busy} onClick={saveTemplate}>Salvar cadastro</button>
