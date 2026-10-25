@@ -13,6 +13,7 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
   const [loading, setLoading] = useState(false);
   const [payables, setPayables] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
+  const [categoryMonth, setCategoryMonth] = useState(() => new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }).slice(0, 7));
   const [financeError, setFinanceError] = useState("");
   const [futureRevenue, setFutureRevenue] = useState<{ total: number; lastDate: string | null; count: number } | null>(null);
 
@@ -25,10 +26,11 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
     const { getPayablesAndCategories } = await import("@/lib/actions/finance");
     const summary = await getPayablesAndCategories(period);
     setPayables(summary.payables || []);
-    setCategories(summary.categories || []);
+    const categorySummary = await getPayablesAndCategories(`month:${categoryMonth}`);
+    setCategories(categorySummary.categories || []);
     setFinanceError(summary.error || "");
     setLoading(false);
-  }, [period]);
+  }, [period, categoryMonth]);
 
   // Carrega faturamento futuro (independente do período selecionado)
   useEffect(() => {
@@ -171,7 +173,12 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
           </div>
         </section>
         <section className="card">
-          <SectionTitle title="Despesas por categoria" subtitle={getPeriodDetailLabel()} />
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <SectionTitle title="Despesas por categoria" subtitle="Selecione o mês para consultar despesas pagas e pendentes" />
+            <label className="text-sm font-medium text-slate-700">Mês de referência
+              <input type="month" aria-label="Mês de despesas por categoria" className="field-input mt-1 block" value={categoryMonth} onChange={e => setCategoryMonth(e.target.value)} />
+            </label>
+          </div>
           <div className="mt-4 space-y-3">
             {categories.length === 0 && <p className="text-sm text-muted">Nenhuma despesa no período.</p>}
             {categories.map(c => {
