@@ -210,7 +210,7 @@ export async function getFinance(period?: string) {
  * de agendamentos ainda não concluídos com data futura.
  * Também retorna a data do último agendamento na agenda.
  */
-export async function getFutureRevenue(): Promise<{
+export async function getFutureRevenue(period: string = "month"): Promise<{
   total: number;
   lastDate: string | null;
   count: number;
@@ -222,9 +222,16 @@ export async function getFutureRevenue(): Promise<{
   if (!orgId) return { total: 0, lastDate: null, count: 0 };
 
   const nowISO = new Date().toISOString();
+  const today = new Date();
+  let periodEnd: string | null = null;
+  if (period === 'today') periodEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).toISOString();
+  else if (period === 'month') periodEnd = new Date(today.getFullYear(), today.getMonth() + 1, 1).toISOString();
+  else if (period === 'last_month') periodEnd = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
+  else if (period === '30days') periodEnd = new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString();
+  else if (/^month:\\d{4}-\\d{2}$/.test(period)) { const [y,m] = period.slice(6).split('-').map(Number); periodEnd = new Date(y,m,1).toISOString(); }
 
   // Agendamentos futuros ativos (não concluídos, não cancelados)
-  const { data: futureAppts } = await supabase
+  let futureQuery = supabase
     .from('appointments')
     .select(`
       id,
@@ -239,8 +246,9 @@ export async function getFutureRevenue(): Promise<{
     `)
     .eq('organization_id', orgId)
     .in('status', ['pending', 'awaiting_deposit', 'scheduled', 'confirmed'])
-    .gte('starts_at', nowISO)
-    .order('starts_at', { ascending: false });
+    .gte('starts_at', nowISO);
+  if (periodEnd) futureQuery = futureQuery.lt('starts_at', periodEnd);
+  const { data: futureAppts } = await futureQuery.order('starts_at', { ascending: false });
 
   if (!futureAppts || futureAppts.length === 0) {
     return { total: 0, lastDate: null, count: 0 };
@@ -433,7 +441,7 @@ export async function getPayablesAndCategories(period?: string) {
   const inSeven = new Date(today + "T12:00:00Z");
   inSeven.setUTCDate(inSeven.getUTCDate() + 7);
   const seven = inSeven.toISOString().slice(0, 10);
-  const payables = (data || []).filter(x => x.status === "pending").map(x => ({
+  const payables = (data || []).filter(x => x.status === "pending" && (period === "all" || (() => { const d = x.due_date; if (period === "today") return d === today; if (period === "month") return d.startsWith(today.slice(0,7)); if (period === "last_month") { const dt = new Date(today+"T12:00:00Z"); dt.setUTCMonth(dt.getUTCMonth()-1); return d.startsWith(dt.toISOString().slice(0,7)); } if (period === "30days") { const dt = new Date(today+"T12:00:00Z"); dt.setUTCDate(dt.getUTCDate()-30); return d >= dt.toISOString().slice(0,10) && d <= today; } if (period?.startsWith("month:")) return d.startsWith(period.slice(6)); return true; })())).map(x => ({
     ...x, alert: x.due_date < today ? "overdue" : x.due_date <= seven ? "soon" : "future"
   }));
   const now = new Date();
