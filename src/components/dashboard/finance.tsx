@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Plus, TrendingUp, CircleDollarSign, CreditCard, BarChart3, CalendarClock, Calendar, PackageOpen } from "lucide-react";
+import { Plus, TrendingUp, CircleDollarSign, CreditCard, BarChart3, CalendarClock, Calendar, PackageOpen, Search, X } from "lucide-react";
 import { Badge, SectionTitle, RowActions, Metric } from "../shared";
 import { money } from "@/lib/demo-data";
 import { ExpenseManager } from "./expense-manager";
 
 export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any[]; stats?: any; onNew: () => void; onAction: (mode: "view" | "edit", index: number) => void; onReverse: (index: number) => void }) { 
   const [period, setPeriod] = useState("month");
+  const [movementSearch, setMovementSearch] = useState("");
   const [expenseDialog, setExpenseDialog] = useState<any | "new" | null>(null);
   const [financeData, setFinanceData] = useState(data);
   const [financeStats, setFinanceStats] = useState(stats);
@@ -54,6 +55,12 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
       default: return "Período selecionado";
     }
   };
+
+  const normalizedSearch = movementSearch.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
+  const filteredMovements = normalizedSearch
+    ? financeData.filter(item => [item.name, item.type, item.status, item.method, item.date, String(Math.abs(item.value))]
+        .some(value => String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").includes(normalizedSearch)))
+    : financeData;
 
   return (
     <main className="page-content space-y-6">
@@ -198,6 +205,21 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
         {/* Movimentos recentes */}
         <section className="card lg:col-span-2">
           <SectionTitle title="Movimentos do Período" action={<button onClick={() => setExpenseDialog("new")} className="btn-primary"><Plus size={15} />Novo lançamento</button>} />
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <label className="relative block w-full max-w-md">
+              <span className="sr-only">Buscar movimentos por descrição, tipo, status ou data</span>
+              <Search size={17} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="search"
+                value={movementSearch}
+                onChange={e => setMovementSearch(e.target.value)}
+                placeholder="Buscar descrição, tipo, status ou data..."
+                className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-10 pr-10 text-sm text-slate-900 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+              />
+              {movementSearch && <button type="button" aria-label="Limpar busca" onClick={() => setMovementSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-900"><X size={16} /></button>}
+            </label>
+            <span className="text-xs text-muted" aria-live="polite">{filteredMovements.length} de {financeData.length} movimentos no período</span>
+          </div>
           <div className="overflow-x-auto mt-4">
             <table className="data-table">
               <thead>
@@ -212,10 +234,10 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
                 </tr>
               </thead>
               <tbody>
-                {financeData.length === 0 && (
-                  <tr><td colSpan={7} className="text-center py-4 text-muted">Nenhum movimento registrado neste período.</td></tr>
+                {filteredMovements.length === 0 && (
+                  <tr><td colSpan={7} className="text-center py-4 text-muted">{movementSearch.trim() ? "Nenhum movimento encontrado para esta busca no período selecionado." : "Nenhum movimento registrado neste período."}</td></tr>
                 )}
-                {financeData.map((item, index) => (
+                {filteredMovements.map((item) => {\n                  const index = financeData.indexOf(item);\n                  return (
                   <tr key={`${item.date}-${item.name}-${index}`}>
                     <td className="whitespace-nowrap">{item.date}</td>
                     <td>
@@ -237,7 +259,7 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
                       {item.type === "Despesa" ? <button type="button" className="btn-outline" onClick={() => setExpenseDialog(item)}>Editar despesa</button> : <RowActions onView={() => onAction("view", index)} onEdit={() => onAction("edit", index)} onDelete={() => handleReverse(item.id, index)} deleteLabel="Estornar" />}
                     </td>
                   </tr>
-                ))}
+                  );\n                })}
               </tbody>
             </table>
           </div>
