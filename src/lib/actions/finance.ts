@@ -27,7 +27,11 @@ export async function getFinance(period?: string) {
   let toDate = new Date();
   
   const now = new Date();
-  if (period === 'today') {
+  if (period?.startsWith('month:') && /^month:\d{4}-\d{2}$/.test(period)) {
+    const [year, month] = period.slice(6).split('-').map(Number);
+    fromDate = new Date(year, month - 1, 1, 0, 0, 0);
+    toDate = new Date(year, month, 0, 23, 59, 59, 999);
+  } else if (period === 'today') {
     fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
     toDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
   } else if (period === 'month') {
@@ -306,7 +310,7 @@ export async function getExpenseTemplates() {
   const orgId = await getAuthenticatedOrganizationId(supabase);
   if (!orgId) return { data: [], error: "Organização não encontrada" };
   const { data, error } = await supabase.from("expense_templates")
-    .select("id, name, category, default_amount, active")
+    .select("id, name, category, default_amount, active, recurring_monthly, recurring_day")
     .eq("organization_id", orgId).order("name");
   return { data: data || [], error: error?.message };
 }
@@ -369,6 +373,131 @@ export async function updateExpenseRecord(input: { id: string; amount: number; d
     .eq("organization_id", orgId).select("id").maybeSingle();
   if (error) return { success: false, error: error.message };
   if (!data) return { success: false, error: "Lançamento não encontrado." };
+  revalidatePath("/");
+  return { success: true };
+}
+
+
+function isoDate(year: number, month: number, day: number) {
+  const maxDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  return `${year}-${String(month + 1).padStart(2, "0")}-${String(Math.min(day, maxDay)).padStart(2, "0")}`;
+}
+
+/** Gera uma janela de 12 meses, idempotente, somente para modelos ativos e configurados. */
+export async function ensureRecurringExpenses() {
+  const supabase = await createClient();
+  if (!supabase) return { success: false, error: "Banco indisponível" };
+  const orgId = await getAuthenticatedOrganizationId(supabase);
+  if (!orgId) return { success: false, error: "Organização não encontrada" };
+  const { data: templates, error } = await supabase.from("expense_templates")
+    .select("id,name,category,default_amount,recurring_day")
+    .eq("organization_id", orgId).eq("active", true).eq("recurring_monthly", true);
+  if (error) return { success: false, error: error.message };
+  const now = new Date();
+  const { data: existing, error: existingError } = await supabase.from("expenses")
+    .select("expense_template_id,due_date").eq("organization_id", orgId);
+  if (existingError) return { success: false, error: existingError.message };
+  const existingKeys = new Set((existing || []).map(x => `${x.expense_template_id}|${x.due_date}`));
+  const rows: Record<string, unknown>[] = [];
+  for (const t of templates || []) {
+    if (!t.recurring_day || Number(t.default_amount) <= 0) continue;
+    for (let offset = 0; offset < 12; offset++) {
+      const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + offset, 1));
+      const due = isoDate(d.getUTCFullYear(), d.getUTCMonth(), t.recurring_day);
+      if (existingKeys.has(`${t.id}|${due}`)) continue;
+      rows.push({ organization_id: orgId, recurring_template_id: t.id, expense_template_id: t.id,
+        description: t.name, category: t.category, amount: t.default_amount,
+        due_date: due, competence_date: due, status: "pending" });
+    }
+  }
+  // Um índice único protege contra duplicações em chamadas simultâneas.
+  if (rows.length) {
+    const { error: insertError } = await supabase.from("expenses")
+      .upsert(rows, { onConflict: "organization_id,recurring_template_id,due_date", ignoreDuplicates: true });
+    if (insertError) return { success: false, error: insertError.message };
+  }
+  revalidatePath("/");
+  return { success: true, generatedWindow: rows.length };
+}
+
+export async function getPayablesAndCategories(period?: string) {
+  const supabase = await createClient();
+  if (!supabase) return { payables: [], categories: [], error: "Banco indisponível" };
+  const orgId = await getAuthenticatedOrganizationId(supabase);
+  if (!orgId) return { payables: [], categories: [], error: "Organização não encontrada" };
+  const { data, error } = await supabase.from("expenses")
+    .select("id,description,category,amount,due_date,paid_at,status")
+    .eq("organization_id", orgId).order("due_date", { ascending: true });
+  if (error) return { payables: [], categories: [], error: error.message };
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+  const inSeven = new Date(today + "T12:00:00Z");
+  inSeven.setUTCDate(inSeven.getUTCDate() + 7);
+  const seven = inSeven.toISOString().slice(0, 10);
+  const payables = (data || []).filter(x => x.status === "pending").map(x => ({
+    ...x, alert: x.due_date < today ? "overdue" : x.due_date <= seven ? "soon" : "future"
+  }));
+  const now = new Date();
+  const periodDate = (d: string) => {
+    if (period === "all") return true;
+    const date = d.slice(0, 10);
+    if (period?.startsWith("month:") && /^month:\d{4}-\d{2}$/.test(period)) return date.startsWith(period.slice(6));
+    if (period === "today") return date === today;
+    if (period === "last_month") {
+      const start = isoDate(now.getFullYear(), now.getMonth() - 1, 1);
+      const end = isoDate(now.getFullYear(), now.getMonth(), 1);
+      return date >= start && date < end;
+    }
+    if (period === "30days") {
+      const start = new Date(today + "T12:00:00Z"); start.setUTCDate(start.getUTCDate() - 30);
+      return date >= start.toISOString().slice(0, 10) && date <= today;
+    }
+    const prefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2,"0")}`;
+    return date.startsWith(prefix);
+  };
+  const map = new Map<string, {category: string; paid: number; pending: number; expenses: {id:string; description:string; amount:number; status:string; due_date:string}[]}>();
+  for (const e of data || []) {
+    const effectiveDate = e.status === "paid" ? e.paid_at || e.due_date : e.due_date;
+    if (!periodDate(effectiveDate)) continue;
+    const key = e.category || "Geral";
+    const current = map.get(key) || { category: key, paid: 0, pending: 0, expenses: [] as {id:string; description:string; amount:number; status:string; due_date:string}[] };
+    if (e.status === "paid") current.paid += Number(e.amount);
+    if (e.status === "pending") current.pending += Number(e.amount);
+    current.expenses.push({id:e.id,description:e.description || "Despesa sem descrição",amount:Number(e.amount),status:e.status,due_date:e.due_date});
+    map.set(key, current);
+  }
+  return { payables, categories: Array.from(map.values()).sort((a,b) => (b.paid+b.pending)-(a.paid+a.pending)) };
+}
+
+export async function markExpensePaid(id: string) {
+  const supabase = await createClient();
+  if (!supabase) return { success: false, error: "Banco indisponível" };
+  const orgId = await getAuthenticatedOrganizationId(supabase);
+  if (!orgId) return { success: false, error: "Organização não encontrada" };
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+  const { data, error } = await supabase.from("expenses")
+    .update({ status: "paid", paid_at: today }).eq("id", id)
+    .eq("organization_id", orgId).eq("status", "pending").select("id").maybeSingle();
+  if (error) return { success: false, error: error.message };
+  if (!data) return { success: false, error: "Despesa já paga ou não encontrada" };
+  revalidatePath("/");
+  return { success: true };
+}
+
+export async function saveRecurringExpense(input: {templateId: string; enabled: boolean; day: number; amount: number}) {
+  const supabase = await createClient();
+  if (!supabase) return { success: false, error: "Banco indisponível" };
+  const orgId = await getAuthenticatedOrganizationId(supabase);
+  if (!orgId) return { success: false, error: "Organização não encontrada" };
+  if (!Number.isInteger(input.day) || input.day < 1 || input.day > 31 ||
+    (input.enabled && (!Number.isFinite(input.amount) || input.amount <= 0)))
+    return { success: false, error: "Dia ou valor mensal inválido" };
+  const { data, error } = await supabase.from("expense_templates")
+    .update({ recurring_monthly: input.enabled, recurring_day: input.enabled ? input.day : null,
+      ...(input.enabled ? {default_amount: input.amount} : {}) })
+    .eq("id", input.templateId).eq("organization_id", orgId).select("id").maybeSingle();
+  if (error) return { success: false, error: error.message };
+  if (!data) return { success: false, error: "Cadastro não encontrado" };
+  if (input.enabled) return ensureRecurringExpenses();
   revalidatePath("/");
   return { success: true };
 }
