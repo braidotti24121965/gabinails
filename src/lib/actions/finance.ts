@@ -51,7 +51,8 @@ export async function getFinance(period?: string) {
   // Regime de Caixa + Competência para Atendimentos Concluídos
   const [
     { data: payments },
-    { data: expenses },
+    { data: paidExpenses },
+    { data: pendingExpenses },
     { data: commissions },
     { data: consumptions },
     { data: appointments }
@@ -65,6 +66,11 @@ export async function getFinance(period?: string) {
       .eq('status', 'paid')
       .gte('paid_at', fromISO).lte('paid_at', toISO)
       .order('paid_at', { ascending: false }),
+    supabase.from('expenses').select('id, amount, description, status, paid_at, due_date, expense_template_id')
+      .eq('organization_id', orgId)
+      .eq('status', 'pending')
+      .gte('due_date', fromDate.toLocaleDateString('en-CA')).lte('due_date', toDate.toLocaleDateString('en-CA'))
+      .order('due_date', { ascending: false }),
     supabase.from('commissions').select('id, amount, status, paid_at, created_at, professional:professionals(name)')
       .eq('organization_id', orgId)
       .gte('created_at', fromISO).lte('created_at', toISO)
@@ -133,7 +139,8 @@ export async function getFinance(period?: string) {
     });
   }
 
-  if (expenses) {
+  const expenses = [...(paidExpenses || []), ...(pendingExpenses || [])];
+  if (expenses.length) {
     expenses.forEach((e: any) => {
       if (e.status === 'paid') {
         expensesTotal += Number(e.amount);
