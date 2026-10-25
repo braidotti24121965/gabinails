@@ -435,8 +435,8 @@ export async function getPayablesAndCategories(period?: string) {
   const now = new Date();
   const periodDate = (d: string) => {
     if (period === "all") return true;
-    if (period?.startsWith("month:") && /^month:\d{4}-\d{2}$/.test(period)) return date.startsWith(period.slice(6));
     const date = d.slice(0, 10);
+    if (period?.startsWith("month:") && /^month:\d{4}-\d{2}$/.test(period)) return date.startsWith(period.slice(6));
     if (period === "today") return date === today;
     if (period === "last_month") {
       const start = isoDate(now.getFullYear(), now.getMonth() - 1, 1);
