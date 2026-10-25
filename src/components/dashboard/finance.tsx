@@ -7,7 +7,7 @@ import { ExpenseManager } from "./expense-manager";
 export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any[]; stats?: any; onNew: () => void; onAction: (mode: "view" | "edit", index: number) => void; onReverse: (index: number) => void }) { 
   const [period, setPeriod] = useState("month");
   const [movementSearch, setMovementSearch] = useState("");
-  const [movementDate, setMovementDate] = useState("");
+  const [movementDate, setMovementDate] = useState(() => new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }).slice(0, 7));
   const [movementType, setMovementType] = useState("");
   const [showMovements, setShowMovements] = useState(false);
   const [movementResults, setMovementResults] = useState<any[]>([]);
@@ -278,10 +278,10 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
               {movementSearch && <button type="button" aria-label="Limpar busca" onClick={() => setMovementSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-900"><X size={16} /></button>}
             </label>
             <div className="flex flex-wrap items-end gap-2">
-              <label className="text-xs text-muted">Mês de referência<input type="month" className="field-input mt-1 block" value={movementDate} onChange={e => { setMovementDate(e.target.value); setShowMovements(false); }} /></label>
+              <label className="text-sm font-medium text-slate-700">Mês de referência<input type="month" aria-label="Mês dos movimentos do período" className="field-input mt-1 block" value={movementDate} onChange={e => { setMovementDate(e.target.value); setShowMovements(false); }} /></label>
               <label className="text-xs text-muted">Tipo<select className="field-input mt-1 block" value={movementType} onChange={e => { setMovementType(e.target.value); setShowMovements(false); }}><option value="">Todos</option><option value="Receita">Receita</option><option value="Despesa">Despesa</option></select></label>
               <button type="button" className="btn-primary" onClick={async () => { setMovementLoading(true); setShowMovements(false); const { getFinance } = await import("@/lib/actions/finance"); const result = await getFinance(movementDate ? `month:${movementDate}` : period); setMovementResults(result.data || []); setShowMovements(true); setMovementLoading(false); }} disabled={movementLoading}>{movementLoading ? "Consultando..." : "Consultar"}</button>
-              <button type="button" className="btn-outline" onClick={() => { setShowMovements(false); setMovementDate(""); setMovementType(""); setMovementSearch(""); }}>Limpar</button>
+              <button type="button" className="btn-outline" onClick={() => { setShowMovements(false); setMovementDate(new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }).slice(0, 7)); setMovementType(""); setMovementSearch(""); }}>Limpar</button>
             </div>
             {showMovements && <span className="text-xs text-muted" aria-live="polite">{filteredMovements.length} movimentos encontrados</span>}
           </div>
