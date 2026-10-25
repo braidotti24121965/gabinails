@@ -237,7 +237,9 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
                 {filteredMovements.length === 0 && (
                   <tr><td colSpan={7} className="text-center py-4 text-muted">{movementSearch.trim() ? "Nenhum movimento encontrado para esta busca no período selecionado." : "Nenhum movimento registrado neste período."}</td></tr>
                 )}
-                {filteredMovements.map((item) => {\n                  const index = financeData.indexOf(item);\n                  return (
+                {filteredMovements.map((item) => {
+                  const index = financeData.indexOf(item);
+                  return (
                   <tr key={`${item.date}-${item.name}-${index}`}>
                     <td className="whitespace-nowrap">{item.date}</td>
                     <td>
@@ -259,7 +261,8 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
                       {item.type === "Despesa" ? <button type="button" className="btn-outline" onClick={() => setExpenseDialog(item)}>Editar despesa</button> : <RowActions onView={() => onAction("view", index)} onEdit={() => onAction("edit", index)} onDelete={() => handleReverse(item.id, index)} deleteLabel="Estornar" />}
                     </td>
                   </tr>
-                  );\n                })}
+                  );
+                })}
               </tbody>
             </table>
           </div>
