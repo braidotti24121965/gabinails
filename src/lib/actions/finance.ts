@@ -88,6 +88,7 @@ export async function getFinance(period?: string) {
   const rows: any[] = [];
   let revenue = 0;
   let expensesTotal = 0;
+  let pendingExpensesTotal = 0;
   let commTotal = 0;
   let consumptionCost = 0;
   const concludedAppointments = appointments?.length || 0;
@@ -144,6 +145,8 @@ export async function getFinance(period?: string) {
     expenses.forEach((e: any) => {
       if (e.status === 'paid') {
         expensesTotal += Number(e.amount);
+      } else if (e.status === 'pending') {
+        pendingExpensesTotal += Number(e.amount);
       }
       const d = new Date(e.paid_at || e.due_date || Date.now());
       rows.push({
@@ -187,6 +190,8 @@ export async function getFinance(period?: string) {
     stats: {
       revenue,
       expenses: expensesTotal,
+      pendingExpenses: pendingExpensesTotal,
+      totalRegisteredExpenses: expensesTotal + pendingExpensesTotal,
       commissions: commTotal,
       balance,
       consumptionCost,
