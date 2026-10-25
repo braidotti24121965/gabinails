@@ -306,7 +306,7 @@ export async function getExpenseTemplates() {
   const orgId = await getAuthenticatedOrganizationId(supabase);
   if (!orgId) return { data: [], error: "Organização não encontrada" };
   const { data, error } = await supabase.from("expense_templates")
-    .select("id, name, category, default_amount, active")
+    .select("id, name, category, default_amount, active, recurring_monthly, recurring_day")
     .eq("organization_id", orgId).order("name");
   return { data: data || [], error: error?.message };
 }
