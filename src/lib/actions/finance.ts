@@ -455,7 +455,7 @@ export async function getPayablesAndCategories(period?: string) {
     const effectiveDate = e.status === "paid" ? e.paid_at || e.due_date : e.due_date;
     if (!periodDate(effectiveDate)) continue;
     const key = e.category || "Geral";
-    const current = map.get(key) || { category: key, paid: 0, pending: 0, expenses: [] };
+    const current = map.get(key) || { category: key, paid: 0, pending: 0, expenses: [] as {id:string; description:string; amount:number; status:string; due_date:string}[] };
     if (e.status === "paid") current.paid += Number(e.amount);
     if (e.status === "pending") current.pending += Number(e.amount);
     current.expenses.push({id:e.id,description:e.description || "Despesa sem descrição",amount:Number(e.amount),status:e.status,due_date:e.due_date});
