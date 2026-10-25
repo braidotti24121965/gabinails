@@ -76,7 +76,7 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
     const rawDate = String(item.date ?? "");
     const dateParts = rawDate.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
     const isoDate = dateParts ? `${dateParts[3]}-${dateParts[2]}-${dateParts[1]}` : rawDate.slice(0, 10);
-    return matchesSearch && (!movementDate || isoDate === movementDate) && (!movementType || item.type === movementType);
+    return matchesSearch && (!movementDate || isoDate.startsWith(movementDate)) && (!movementType || item.type === movementType);
   }) : [];
 
 
@@ -276,7 +276,7 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
               {movementSearch && <button type="button" aria-label="Limpar busca" onClick={() => setMovementSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-900"><X size={16} /></button>}
             </label>
             <div className="flex flex-wrap items-end gap-2">
-              <label className="text-xs text-muted">Data<input type="date" className="field-input mt-1 block" value={movementDate} onChange={e => { setMovementDate(e.target.value); setShowMovements(false); }} /></label>
+              <label className="text-xs text-muted">Mês de referência<input type="month" className="field-input mt-1 block" value={movementDate} onChange={e => { setMovementDate(e.target.value); setShowMovements(false); }} /></label>
               <label className="text-xs text-muted">Tipo<select className="field-input mt-1 block" value={movementType} onChange={e => { setMovementType(e.target.value); setShowMovements(false); }}><option value="">Todos</option><option value="Receita">Receita</option><option value="Despesa">Despesa</option></select></label>
               <button type="button" className="btn-primary" onClick={() => setShowMovements(true)}>Consultar</button>
               <button type="button" className="btn-outline" onClick={() => { setShowMovements(false); setMovementDate(""); setMovementType(""); setMovementSearch(""); }}>Limpar</button>
