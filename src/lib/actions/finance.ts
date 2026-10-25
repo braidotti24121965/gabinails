@@ -285,3 +285,76 @@ export async function createExpense(description: string, amount: number) {
   revalidatePath("/");
   return { success: true };
 }
+
+export async function getExpenseTemplates() {
+  const supabase = await createClient();
+  if (!supabase) return { data: [], error: "Banco indisponível" };
+  const orgId = await getAuthenticatedOrganizationId(supabase);
+  if (!orgId) return { data: [], error: "Organização não encontrada" };
+  const { data, error } = await supabase.from("expense_templates")
+    .select("id, name, category, default_amount, active")
+    .eq("organization_id", orgId).order("name");
+  return { data: data || [], error: error?.message };
+}
+
+export async function saveExpenseTemplate(input: { id?: string; name: string; category?: string; defaultAmount?: number | null; active?: boolean }) {
+  const supabase = await createClient();
+  if (!supabase) return { success: false, error: "Banco indisponível" };
+  const orgId = await getAuthenticatedOrganizationId(supabase);
+  if (!orgId) return { success: false, error: "Organização não encontrada" };
+  const name = input.name.trim().replace(/\\s+/g, " ");
+  if (!name || name.length > 120) return { success: false, error: "Informe uma descrição de até 120 caracteres." };
+  if (input.defaultAmount != null && (!Number.isFinite(input.defaultAmount) || input.defaultAmount <= 0)) return { success: false, error: "Valor padrão inválido" };
+  const payload = { name, category: (input.category || "Geral").trim() || "Geral", default_amount: input.defaultAmount ?? null, active: input.active ?? true };
+  const query = input.id
+    ? supabase.from("expense_templates").update(payload).eq("id", input.id).eq("organization_id", orgId)
+    : supabase.from("expense_templates").insert({ ...payload, organization_id: orgId });
+  const { error } = await query;
+  if (error) return { success: false, error: error.code === "23505" ? "Já existe uma despesa com esse nome." : error.message };
+  revalidatePath("/");
+  return { success: true };
+}
+
+export async function createCatalogExpense(input: { templateId: string; amount: number; dueDate: string; paid: boolean }) {
+  const supabase = await createClient();
+  if (!supabase) return { success: false, error: "Banco indisponível" };
+  const orgId = await getAuthenticatedOrganizationId(supabase);
+  if (!orgId) return { success: false, error: "Organização não encontrada" };
+  if (!Number.isFinite(input.amount) || input.amount <= 0 || !/^\\d{4}-\\d{2}-\\d{2}$/.test(input.dueDate)) return { success: false, error: "Valor ou data inválidos" };
+  const { data: template, error: templateError } = await supabase.from("expense_templates")
+    .select("id, name, category").eq("organization_id", orgId).eq("id", input.templateId).eq("active", true).single();
+  if (templateError || !template) return { success: false, error: "Despesa cadastrada não encontrada." };
+  const { error } = await supabase.from("expenses").insert({
+    organization_id: orgId, expense_template_id: template.id, description: template.name,
+    category: template.category, competence_date: input.dueDate, due_date: input.dueDate,
+    amount: input.amount, status: input.paid ? "paid" : "pending",
+    paid_at: input.paid ? new Date().toISOString() : null
+  });
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/");
+  return { success: true };
+}
+
+export async function updateExpenseRecord(input: { id: string; amount: number; dueDate: string; paid: boolean; templateId?: string }) {
+  const supabase = await createClient();
+  if (!supabase) return { success: false, error: "Banco indisponível" };
+  const orgId = await getAuthenticatedOrganizationId(supabase);
+  if (!orgId) return { success: false, error: "Organização não encontrada" };
+  if (!Number.isFinite(input.amount) || input.amount <= 0 || !/^\\d{4}-\\d{2}-\\d{2}$/.test(input.dueDate)) return { success: false, error: "Valor ou data inválidos" };
+  const payload: Record<string, unknown> = {
+    amount: input.amount, due_date: input.dueDate, competence_date: input.dueDate,
+    status: input.paid ? "paid" : "pending", paid_at: input.paid ? new Date().toISOString() : null
+  };
+  if (input.templateId) {
+    const { data: t } = await supabase.from("expense_templates").select("id, name, category")
+      .eq("organization_id", orgId).eq("id", input.templateId).eq("active", true).single();
+    if (!t) return { success: false, error: "Despesa cadastrada não encontrada." };
+    Object.assign(payload, { expense_template_id: t.id, description: t.name, category: t.category });
+  }
+  const { data, error } = await supabase.from("expenses").update(payload).eq("id", input.id)
+    .eq("organization_id", orgId).select("id").maybeSingle();
+  if (error) return { success: false, error: error.message };
+  if (!data) return { success: false, error: "Lançamento não encontrado." };
+  revalidatePath("/");
+  return { success: true };
+}
