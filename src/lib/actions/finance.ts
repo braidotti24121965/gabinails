@@ -60,7 +60,7 @@ export async function getFinance(period?: string) {
       .eq('organization_id', orgId)
       .gte('paid_at', fromISO).lte('paid_at', toISO)
       .order('paid_at', { ascending: false }),
-    supabase.from('expenses').select('id, amount, description, status, paid_at, due_date')
+    supabase.from('expenses').select('id, amount, description, status, paid_at, due_date, expense_template_id')
       .eq('organization_id', orgId)
       .eq('status', 'paid')
       .gte('paid_at', fromISO).lte('paid_at', toISO)
@@ -143,6 +143,8 @@ export async function getFinance(period?: string) {
         id: e.id,
         date: d.toLocaleDateString("pt-BR"),
         name: e.description,
+        dueDate: e.due_date,
+        templateId: e.expense_template_id,
         type: 'Despesa',
         method: '—',
         status: e.status === 'paid' ? 'Pago' : e.status === 'pending' ? 'Pendente' : e.status,
