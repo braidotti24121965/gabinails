@@ -2,12 +2,26 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
+async function getAuthenticatedOrganizationId(supabase: any) {
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return null;
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("organization_id")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profileError) return null;
+  return profile?.organization_id || null;
+}
+
 export async function getFinance(period?: string) {
   const supabase = await createClient();
   if (!supabase) return { stats: null, data: [] };
 
-  const { data: profile } = await supabase.from('profiles').select('organization_id').single();
-  if (!profile?.organization_id) return { stats: null, data: [] };
+  const orgId = await getAuthenticatedOrganizationId(supabase);
+  if (!orgId) return { stats: null, data: [] };
 
   let fromDate = new Date(0);
   let toDate = new Date();
@@ -43,19 +57,24 @@ export async function getFinance(period?: string) {
     { data: appointments }
   ] = await Promise.all([
     supabase.from('payments').select('id, amount, method, status, paid_at, kind, client:clients(name)')
+      .eq('organization_id', orgId)
       .gte('paid_at', fromISO).lte('paid_at', toISO)
       .order('paid_at', { ascending: false }),
     supabase.from('expenses').select('id, amount, description, status, paid_at, due_date')
+      .eq('organization_id', orgId)
       .eq('status', 'paid')
       .gte('paid_at', fromISO).lte('paid_at', toISO)
       .order('paid_at', { ascending: false }),
     supabase.from('commissions').select('id, amount, status, paid_at, created_at, professional:professionals(name)')
+      .eq('organization_id', orgId)
       .gte('created_at', fromISO).lte('created_at', toISO)
       .order('created_at', { ascending: false }),
     supabase.from('stock_movements').select('quantity, created_at, products(unit_cost)')
+      .eq('organization_id', orgId)
       .eq('movement_type', 'consumption')
       .gte('created_at', fromISO).lte('created_at', toISO),
     supabase.from('appointments').select('id, status, starts_at, actual_end_at, created_at, payments(amount, status, kind), appointment_items(unit_price, quantity, discount, surcharge)')
+      .eq('organization_id', orgId)
       .eq('status', 'completed')
       .gte('starts_at', fromISO).lte('starts_at', toISO)
   ]);
@@ -181,6 +200,9 @@ export async function getFutureRevenue(): Promise<{
   const supabase = await createClient();
   if (!supabase) return { total: 0, lastDate: null, count: 0 };
 
+  const orgId = await getAuthenticatedOrganizationId(supabase);
+  if (!orgId) return { total: 0, lastDate: null, count: 0 };
+
   const nowISO = new Date().toISOString();
 
   // Agendamentos futuros ativos (não concluídos, não cancelados)
@@ -197,6 +219,7 @@ export async function getFutureRevenue(): Promise<{
         surcharge
       )
     `)
+    .eq('organization_id', orgId)
     .in('status', ['pending', 'awaiting_deposit', 'scheduled', 'confirmed'])
     .gte('starts_at', nowISO)
     .order('starts_at', { ascending: false });
@@ -228,7 +251,13 @@ export async function getFutureRevenue(): Promise<{
 export async function reversePayment(paymentId: string) {
   const supabase = await createClient();
   if (!supabase) return { success: false };
-  const { error } = await supabase.from('payments').update({ status: 'refunded' }).eq('id', paymentId);
+  const orgId = await getAuthenticatedOrganizationId(supabase);
+  if (!orgId) return { success: false, error: "Organização não encontrada" };
+  const { error } = await supabase
+    .from('payments')
+    .update({ status: 'refunded' })
+    .eq('id', paymentId)
+    .eq('organization_id', orgId);
   if (error) return { success: false, error: error.message };
   revalidatePath("/");
   return { success: true };
@@ -238,11 +267,11 @@ export async function createExpense(description: string, amount: number) {
   const supabase = await createClient();
   if (!supabase) return { success: false };
 
-  const { data: profile } = await supabase.from('profiles').select('organization_id').single();
-  if (!profile?.organization_id) return { success: false };
+  const orgId = await getAuthenticatedOrganizationId(supabase);
+  if (!orgId) return { success: false, error: "Organização não encontrada" };
 
   const { error } = await supabase.from('expenses').insert([{
-    organization_id: profile.organization_id,
+    organization_id: orgId,
     description,
     category: 'Geral',
     competence_date: new Date().toISOString().split('T')[0],
