@@ -27,7 +27,11 @@ export async function getFinance(period?: string) {
   let toDate = new Date();
   
   const now = new Date();
-  if (period === 'today') {
+  if (period?.startsWith('month:') && /^month:\d{4}-\d{2}$/.test(period)) {
+    const [year, month] = period.slice(6).split('-').map(Number);
+    fromDate = new Date(year, month - 1, 1, 0, 0, 0);
+    toDate = new Date(year, month, 0, 23, 59, 59, 999);
+  } else if (period === 'today') {
     fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
     toDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
   } else if (period === 'month') {
