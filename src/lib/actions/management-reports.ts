@@ -5,7 +5,10 @@ export async function getManagementReports(month: string) {
   if (!/^\d{4}-\d{2}$/.test(month)) return { error: "Mês inválido" };
   const db = await createClient();
   if (!db) return { error: "Banco indisponível" };
-  const { data: profile } = await db.from("profiles").select("organization_id").single();
+  const { data: { user }, error: authError } = await db.auth.getUser();
+  if (authError || !user) return { error: "Sessão expirada. Entre novamente no sistema." };
+  const { data: profile, error: profileError } = await db.from("profiles").select("organization_id").eq("id", user.id).maybeSingle();
+  if (profileError) return { error: "Não foi possível consultar o perfil da sessão." };
   if (!profile?.organization_id) return { error: "Organização não encontrada" };
   const org = profile.organization_id;
   const [year, m] = month.split("-").map(Number);
