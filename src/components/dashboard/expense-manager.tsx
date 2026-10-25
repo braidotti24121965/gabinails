@@ -4,10 +4,12 @@ import { createCatalogExpense, getExpenseTemplates, saveExpenseTemplate, updateE
 
 type Template = { id: string; name: string; category: string; default_amount: number | null; active: boolean };
 type Expense = { id: string; name: string; value: number; dueDate?: string; templateId?: string; status: string };
+const defaultCategories = ["Estrutura", "Contas de consumo", "Administração", "Equipe", "Operação", "Marketing", "Serviços", "Geral"];
 const today = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
 export function ExpenseManager({ close, saved, expense }: { close: () => void; saved: () => void; expense?: Expense }) {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [selected, setSelected] = useState(expense?.templateId || "");
+  const categories = Array.from(new Set([...defaultCategories, ...templates.map(t => t.category).filter(Boolean)])).sort((a, b) => a.localeCompare(b, "pt-BR"));
   const [amount, setAmount] = useState(expense ? String(Math.abs(expense.value)) : "");
   const [date, setDate] = useState(expense?.dueDate || today());
   const [paid, setPaid] = useState(expense?.status === "Pago" || !expense);
@@ -24,10 +26,11 @@ export function ExpenseManager({ close, saved, expense }: { close: () => void; s
   }, []);
   useEffect(() => { void refresh(); }, [refresh]);
   const editTemplate = (t: Template | "new") => {
-    setEditing(t); setName(t === "new" ? "" : t.name); setCategory(t === "new" ? "Geral" : t.category);
+    setEditing(t); setName(t === "new" ? "" : t.name); setCategory(t === "new" ? "" : t.category);
     setDefaultAmount(t === "new" ? "" : String(t.default_amount ?? "")); setActive(t === "new" ? true : t.active); setError("");
   };
   const saveTemplate = async () => {
+    if (!category) { setError("Selecione uma categoria."); return; }
     const parsed = defaultAmount.trim() ? Number(defaultAmount.replace(",", ".")) : null;
     setBusy(true); setError("");
     const res = await saveExpenseTemplate({ id: editing && editing !== "new" ? editing.id : undefined, name, category, defaultAmount: parsed, active });
@@ -66,7 +69,7 @@ export function ExpenseManager({ close, saved, expense }: { close: () => void; s
           <div className="mt-5 space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
             <h3 className="font-semibold">{editing === "new" ? "Cadastrar despesa fixa" : "Editar despesa cadastrada"}</h3>
             <label className="block text-sm">Descrição<input className="field-input mt-1" maxLength={120} value={name} onChange={e => setName(e.target.value)} /></label>
-            <label className="block text-sm">Categoria<input className="field-input mt-1" value={category} onChange={e => setCategory(e.target.value)} /></label>
+            <label className="block text-sm">Categoria<select className="field-input mt-1" value={category} onChange={e => setCategory(e.target.value)}><option value="">Selecione uma categoria</option>{categories.map(c => <option key={c} value={c}>{c}</option>)}</select></label>
             <label className="block text-sm">Valor padrão (opcional)<input type="number" min="0.01" step="0.01" className="field-input mt-1" value={defaultAmount} onChange={e => setDefaultAmount(e.target.value)} /></label>
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={active} onChange={e => setActive(e.target.checked)} />Ativa para novos lançamentos</label>
             <div className="flex gap-2">
