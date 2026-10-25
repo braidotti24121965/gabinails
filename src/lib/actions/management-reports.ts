@@ -28,7 +28,7 @@ export async function getManagementReports(month: string) {
   const group = (rows: any[], getKey: (r:any)=>string, getValue:(r:any)=>number) => {
     const map = new Map<string,{name:string,count:number,total:number}>();
     for(const row of rows) { const key=getKey(row)||"Não informado"; const item=map.get(key)||{name:key,count:0,total:0}; item.count++; item.total+=getValue(row); map.set(key,item); }
-    return [...map.values()].sort((a,b)=>b.total-a.total);
+    return Array.from(map.values()).sort((a,b)=>b.total-a.total);
   };
   const appointmentValue = (a:any) => a.status==="completed" ? (a.appointment_items||[]).reduce((n:number,i:any)=>n+Number(i.unit_price||0)*Number(i.quantity||1)-Number(i.discount||0)+Number(i.surcharge||0),0) : 0;
   const revenue = paid.reduce((n,p)=>n+(p.status==="paid" ? (["refund","chargeback"].includes(p.kind)?-1:1)*Number(p.amount||0):0),0);
