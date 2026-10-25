@@ -2,9 +2,11 @@ import React, { useState, useEffect } from "react";
 import { Plus, TrendingUp, CircleDollarSign, CreditCard, BarChart3, CalendarClock, Calendar, PackageOpen } from "lucide-react";
 import { Badge, SectionTitle, RowActions, Metric } from "../shared";
 import { money } from "@/lib/demo-data";
+import { ExpenseManager } from "./expense-manager";
 
 export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any[]; stats?: any; onNew: () => void; onAction: (mode: "view" | "edit", index: number) => void; onReverse: (index: number) => void }) { 
   const [period, setPeriod] = useState("month");
+  const [expenseDialog, setExpenseDialog] = useState<any | "new" | null>(null);
   const [financeData, setFinanceData] = useState(data);
   const [financeStats, setFinanceStats] = useState(stats);
   const [loading, setLoading] = useState(false);
@@ -182,7 +184,7 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
 
         {/* Movimentos recentes */}
         <section className="card lg:col-span-2">
-          <SectionTitle title="Movimentos do Período" action={<button onClick={onNew} className="btn-primary"><Plus size={15} />Novo lançamento</button>} />
+          <SectionTitle title="Movimentos do Período" action={<button onClick={() => setExpenseDialog("new")} className="btn-primary"><Plus size={15} />Novo lançamento</button>} />
           <div className="overflow-x-auto mt-4">
             <table className="data-table">
               <thead>
@@ -204,7 +206,7 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
                   <tr key={`${item.date}-${item.name}-${index}`}>
                     <td className="whitespace-nowrap">{item.date}</td>
                     <td>
-                      <button onClick={() => onAction("view", index)} className="font-medium hover:text-primary text-left">
+                      <button onClick={() => item.type === "Despesa" ? setExpenseDialog(item) : onAction("view", index)} className="font-medium hover:text-primary text-left">
                         {item.name}
                       </button>
                     </td>
@@ -219,7 +221,7 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
                       {money.format(Math.abs(item.value))}{item.value < 0 ? " (−)" : ""}
                     </td>
                     <td>
-                      <RowActions onView={() => onAction("view", index)} onEdit={() => onAction("edit", index)} onDelete={() => handleReverse(item.id, index)} deleteLabel="Estornar" />
+                      {item.type === "Despesa" ? <button type="button" className="btn-outline" onClick={() => setExpenseDialog(item)}>Editar despesa</button> : <RowActions onView={() => onAction("view", index)} onEdit={() => onAction("edit", index)} onDelete={() => handleReverse(item.id, index)} deleteLabel="Estornar" />}
                     </td>
                   </tr>
                 ))}
@@ -228,7 +230,7 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
           </div>
         </section>
       </div>
-
+      {expenseDialog && <ExpenseManager expense={expenseDialog === "new" ? undefined : expenseDialog} close={() => setExpenseDialog(null)} saved={() => void loadData()} />}
     </main>
   );
 }
