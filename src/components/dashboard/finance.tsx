@@ -66,7 +66,7 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
       case "last_month": return "Mês anterior";
       case "30days": return "Últimos 30 dias";
       case "all": return "Todo o período";
-      default: return "Período selecionado";
+      default: return period.startsWith("month:") ? `Mês ${period.slice(6, 7+6)}` : "Período selecionado";
     }
   };
 
@@ -110,6 +110,9 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
               {p.label}
             </button>
           ))}
+          <label className="flex items-center gap-2 text-xs font-medium text-slate-700">Mês específico
+            <input type="month" aria-label="Selecionar mês para todos os quadros" className="field-input" value={period.startsWith("month:") ? period.slice(6) : ""} onChange={e => { if (e.target.value) { setPeriod(`month:${e.target.value}`); setShowMovements(false); setMovementResults([]); } }} />
+          </label>
         </div>
       </div>
 
