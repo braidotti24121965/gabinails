@@ -49,10 +49,10 @@ export function ExpenseManager({ close, saved, expense }: { close: () => void; s
       const template = (updated.data as Template[]).find(t => t.name.toLocaleLowerCase("pt-BR") === name.trim().toLocaleLowerCase("pt-BR"));
       if (!template) { setError("Cadastro salvo, mas não foi possível localizar a recorrência."); await refresh(); return; }
       const recurrence = await saveRecurringExpense({templateId: template.id, enabled: true, day: recurringDay, amount: Number(defaultAmount.replace(",", "."))});
-      if (!recurrence.success) { setError("Cadastro salvo, mas recorrência não ativada: " + recurrence.error); await refresh(); return; }
+      if (!recurrence.success) { setError("Cadastro salvo, mas recorrência não ativada: " + ("error" in recurrence ? recurrence.error : "Erro desconhecido")); await refresh(); return; }
     } else if (editing !== "new" && editing?.recurring_monthly) {
       const recurrence = await saveRecurringExpense({templateId: editing.id, enabled: false, day: recurringDay, amount: 0});
-      if (!recurrence.success) { setError(recurrence.error || "Erro ao desativar recorrência"); return; }
+      if (!recurrence.success) { setError(("error" in recurrence ? recurrence.error : "Erro ao desativar recorrência")); return; }
     }
     await refresh();
     setEditing(null);
