@@ -450,14 +450,15 @@ export async function getPayablesAndCategories(period?: string) {
     const prefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2,"0")}`;
     return date.startsWith(prefix);
   };
-  const map = new Map<string, {category: string; paid: number; pending: number}>();
+  const map = new Map<string, {category: string; paid: number; pending: number; expenses: {id:string; description:string; amount:number; status:string; due_date:string}[]}>();
   for (const e of data || []) {
     const effectiveDate = e.status === "paid" ? e.paid_at || e.due_date : e.due_date;
     if (!periodDate(effectiveDate)) continue;
     const key = e.category || "Geral";
-    const current = map.get(key) || { category: key, paid: 0, pending: 0 };
+    const current = map.get(key) || { category: key, paid: 0, pending: 0, expenses: [] };
     if (e.status === "paid") current.paid += Number(e.amount);
     if (e.status === "pending") current.pending += Number(e.amount);
+    current.expenses.push({id:e.id,description:e.description || "Despesa sem descrição",amount:Number(e.amount),status:e.status,due_date:e.due_date});
     map.set(key, current);
   }
   return { payables, categories: Array.from(map.values()).sort((a,b) => (b.paid+b.pending)-(a.paid+a.pending)) };
