@@ -29,7 +29,7 @@ export function Automations({ go, tenant }: { go: (v: View) => void, tenant?: an
   }, [loadData, tenant?.orgName]);
 
   const openWhatsApp = async (phone: string, message: string, list: "reminders" | "overdue", index: number, clientId: string, appointmentId?: string) => {
-    if (process.env.NEXT_PUBLIC_GABI_HOMOLOGATION === "true") {
+    if (true) { // Branch homolog: bloqueio permanente de envio
       alert("Homologação: WhatsApp desabilitado; nenhum envio foi registrado.");
       return;
     }
