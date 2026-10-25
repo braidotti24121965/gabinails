@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Plus, TrendingUp, CircleDollarSign, CreditCard, BarChart3, CalendarClock, Calendar } from "lucide-react";
+import { Plus, TrendingUp, CircleDollarSign, CreditCard, BarChart3, CalendarClock, Calendar, PackageOpen } from "lucide-react";
 import { Badge, SectionTitle, RowActions, Metric } from "../shared";
 import { money } from "@/lib/demo-data";
 
@@ -85,10 +85,11 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
         </div>
       </div>
 
-      {/* Cards de métricas — 5 colunas */}
-      <div className={`grid gap-4 sm:grid-cols-2 xl:grid-cols-5 transition-opacity ${loading ? "opacity-60" : "opacity-100"}`}>
+      {/* Cards de métricas */}
+      <div className={`grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 transition-opacity ${loading ? "opacity-60" : "opacity-100"}`}>
         <Metric label="Faturamento Bruto" value={financeStats ? money.format(financeStats.revenue) : "R$ 0,00"} detail={getPeriodDetailLabel()} icon={TrendingUp} />
         <Metric label="Despesas Fixas" value={financeStats ? money.format(financeStats.expenses) : "R$ 0,00"} detail={getPeriodDetailLabel()} icon={CreditCard} tone="warning" />
+        <Metric label="Custo de Produtos" value={financeStats ? money.format(financeStats.consumptionCost || 0) : "R$ 0,00"} detail="Consumo no período" icon={PackageOpen} tone="warning" />
         <Metric label="Comissões" value={financeStats ? money.format(financeStats.commissions) : "R$ 0,00"} detail="A repassar no período" icon={CircleDollarSign} tone="warning" />
         <Metric label="Lucro Líquido" value={financeStats ? money.format(financeStats.balance) : "R$ 0,00"} detail="No seu bolso no período" icon={BarChart3} tone="success" />
 

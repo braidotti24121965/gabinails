@@ -3,12 +3,26 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
+async function getAuthenticatedOrganizationId(supabase: any) {
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return null;
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("organization_id")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profileError) return null;
+  return profile?.organization_id || null;
+}
+
 export async function getInventory() {
   const supabase = await createClient();
   if (!supabase) return [];
 
-  const { data: profile } = await supabase.from('profiles').select('organization_id').single();
-  if (!profile?.organization_id) return [];
+  const orgId = await getAuthenticatedOrganizationId(supabase);
+  if (!orgId) return [];
 
   const nowISO = new Date().toISOString();
 
@@ -21,15 +35,16 @@ export async function getInventory() {
     supabase
       .from("products")
       .select("*")
-      .eq("organization_id", profile.organization_id)
+      .eq("organization_id", orgId)
       .eq("active", true),
     supabase
       .from("stock_movements")
       .select("product_id, movement_type, quantity")
-      .eq("organization_id", profile.organization_id),
+      .eq("organization_id", orgId),
     supabase
       .from("appointments")
       .select("id, status, starts_at, items:appointment_items(service_id)")
+      .eq("organization_id", orgId)
       .in("status", ["pending", "awaiting_deposit", "scheduled", "confirmed"])
       .gte("starts_at", nowISO)
   ]);
@@ -94,11 +109,11 @@ export async function addStockMovement(productId: string, type: string, quantity
   const supabase = await createClient();
   if (!supabase) return { success: false, error: "No connection" };
 
-  const { data: profile } = await supabase.from('profiles').select('organization_id').single();
-  if (!profile?.organization_id) return { success: false, error: "Org not found" };
+  const orgId = await getAuthenticatedOrganizationId(supabase);
+  if (!orgId) return { success: false, error: "Organização não encontrada" };
 
   const { error } = await supabase.from("stock_movements").insert([{
-    organization_id: profile.organization_id,
+    organization_id: orgId,
     product_id: productId,
     movement_type: type, // 'purchase', 'consumption', etc
     quantity: Math.abs(quantity),
@@ -114,8 +129,8 @@ export async function createProduct(data: { name: string; unit: string; minimum:
   const supabase = await createClient();
   if (!supabase) return { success: false, error: "Sem conexão com o banco de dados." };
 
-  const { data: profile } = await supabase.from('profiles').select('organization_id').single();
-  if (!profile?.organization_id) return { success: false, error: "Organização não encontrada." };
+  const orgId = await getAuthenticatedOrganizationId(supabase);
+  if (!orgId) return { success: false, error: "Organização não encontrada." };
 
   const name = data.name.trim();
   if (!name || !data.unit || !Number.isFinite(data.minimum) || !Number.isFinite(data.ideal) || !Number.isFinite(data.cost) || data.minimum < 0 || data.ideal < 0 || data.cost < 0 || (data.stock !== undefined && (!Number.isFinite(data.stock) || data.stock < 0))) {
@@ -123,7 +138,7 @@ export async function createProduct(data: { name: string; unit: string; minimum:
   }
 
   const { data: product, error } = await supabase.from("products").insert([{
-    organization_id: profile.organization_id,
+    organization_id: orgId,
     name,
     base_unit: data.unit, // Using the correct column name from schema
     minimum_stock: data.minimum,
@@ -139,7 +154,7 @@ export async function createProduct(data: { name: string; unit: string; minimum:
   
   if (data.stock && data.stock > 0) {
     const { error: stockError } = await supabase.from("stock_movements").insert([{
-      organization_id: profile.organization_id,
+      organization_id: orgId,
       product_id: product.id,
       movement_type: "positive_adjustment",
       quantity: data.stock,
@@ -156,20 +171,23 @@ export async function updateProduct(id: string, data: { name: string; unit: stri
   const supabase = await createClient();
   if (!supabase) return { success: false };
 
+  const orgId = await getAuthenticatedOrganizationId(supabase);
+  if (!orgId) return { success: false, error: "Organização não encontrada" };
+
   const { error } = await supabase.from("products").update({
     name: data.name,
     base_unit: data.unit,
     minimum_stock: data.minimum,
     ideal_stock: data.ideal,
     unit_cost: data.cost
-  }).eq("id", id);
+  }).eq("id", id).eq("organization_id", orgId);
 
   if (error) return { success: false, error: error.message };
   
   if (data.stock !== undefined && data.currentStock !== undefined && data.stock !== data.currentStock) {
     const diff = data.stock - data.currentStock;
     await supabase.from("stock_movements").insert([{
-      organization_id: (await supabase.from('profiles').select('organization_id').single()).data?.organization_id,
+      organization_id: orgId,
       product_id: id,
       movement_type: diff > 0 ? "positive_adjustment" : "negative_adjustment",
       quantity: Math.abs(diff),
