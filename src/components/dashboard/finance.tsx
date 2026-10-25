@@ -10,6 +10,8 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
   const [movementDate, setMovementDate] = useState("");
   const [movementType, setMovementType] = useState("");
   const [showMovements, setShowMovements] = useState(false);
+  const [movementResults, setMovementResults] = useState<any[]>([]);
+  const [movementLoading, setMovementLoading] = useState(false);
   const [expenseDialog, setExpenseDialog] = useState<any | "new" | null>(null);
   const [financeData, setFinanceData] = useState(data);
   const [financeStats, setFinanceStats] = useState(stats);
@@ -70,7 +72,7 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
   };
 
   const normalizedSearch = movementSearch.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
-  const filteredMovements = showMovements ? financeData.filter(item => {
+  const filteredMovements = showMovements ? movementResults.filter(item => {
     const matchesSearch = !normalizedSearch || [item.name, item.type, item.status, item.method, item.date, String(Math.abs(item.value))]
       .some(value => String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").includes(normalizedSearch));
     const rawDate = String(item.date ?? "");
@@ -278,7 +280,7 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
             <div className="flex flex-wrap items-end gap-2">
               <label className="text-xs text-muted">Mês de referência<input type="month" className="field-input mt-1 block" value={movementDate} onChange={e => { setMovementDate(e.target.value); setShowMovements(false); }} /></label>
               <label className="text-xs text-muted">Tipo<select className="field-input mt-1 block" value={movementType} onChange={e => { setMovementType(e.target.value); setShowMovements(false); }}><option value="">Todos</option><option value="Receita">Receita</option><option value="Despesa">Despesa</option></select></label>
-              <button type="button" className="btn-primary" onClick={() => setShowMovements(true)}>Consultar</button>
+              <button type="button" className="btn-primary" onClick={async () => { setMovementLoading(true); setShowMovements(false); const { getFinance } = await import("@/lib/actions/finance"); const result = await getFinance(movementDate ? `month:${movementDate}` : period); setMovementResults(result.data || []); setShowMovements(true); setMovementLoading(false); }} disabled={movementLoading}>{movementLoading ? "Consultando..." : "Consultar"}</button>
               <button type="button" className="btn-outline" onClick={() => { setShowMovements(false); setMovementDate(""); setMovementType(""); setMovementSearch(""); }}>Limpar</button>
             </div>
             {showMovements && <span className="text-xs text-muted" aria-live="polite">{filteredMovements.length} movimentos encontrados</span>}
@@ -301,7 +303,7 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
                   <tr><td colSpan={7} className="text-center py-4 text-muted">{!showMovements ? "Selecione os filtros e clique em Consultar para visualizar os movimentos." : "Nenhum movimento encontrado para os filtros selecionados."}</td></tr>
                 )}
                 {filteredMovements.map((item) => {
-                  const index = financeData.indexOf(item);
+                  const index = movementResults.indexOf(item);
                   return (
                   <tr key={`${item.date}-${item.name}-${index}`}>
                     <td className="whitespace-nowrap">{item.date}</td>
