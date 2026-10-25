@@ -390,12 +390,17 @@ export async function ensureRecurringExpenses() {
     .eq("organization_id", orgId).eq("active", true).eq("recurring_monthly", true);
   if (error) return { success: false, error: error.message };
   const now = new Date();
+  const { data: existing, error: existingError } = await supabase.from("expenses")
+    .select("expense_template_id,due_date").eq("organization_id", orgId);
+  if (existingError) return { success: false, error: existingError.message };
+  const existingKeys = new Set((existing || []).map(x => `${x.expense_template_id}|${x.due_date}`));
   const rows: Record<string, unknown>[] = [];
   for (const t of templates || []) {
     if (!t.recurring_day || Number(t.default_amount) <= 0) continue;
     for (let offset = 0; offset < 12; offset++) {
       const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + offset, 1));
       const due = isoDate(d.getUTCFullYear(), d.getUTCMonth(), t.recurring_day);
+      if (existingKeys.has(`${t.id}|${due}`)) continue;
       rows.push({ organization_id: orgId, recurring_template_id: t.id, expense_template_id: t.id,
         description: t.name, category: t.category, amount: t.default_amount,
         due_date: due, competence_date: due, status: "pending" });
