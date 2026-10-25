@@ -29,6 +29,10 @@ export function Automations({ go, tenant }: { go: (v: View) => void, tenant?: an
   }, [loadData, tenant?.orgName]);
 
   const openWhatsApp = async (phone: string, message: string, list: "reminders" | "overdue", index: number, clientId: string, appointmentId?: string) => {
+    if (process.env.NEXT_PUBLIC_GABI_HOMOLOGATION === "true") {
+      alert("Homologação: WhatsApp desabilitado; nenhum envio foi registrado.");
+      return;
+    }
     const { markMessageSent } = await import("@/lib/actions/automations");
     const res = await markMessageSent(clientId, list, appointmentId);
     if (!res.success) {
