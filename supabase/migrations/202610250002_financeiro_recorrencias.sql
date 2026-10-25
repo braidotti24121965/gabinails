@@ -6,7 +6,6 @@ alter table public.expense_templates
 alter table public.expenses
  add column if not exists recurring_template_id uuid references public.expense_templates(id) on delete set null;
 create unique index if not exists expenses_recurring_unique_month
- on public.expenses(organization_id,recurring_template_id,due_date)
- where recurring_template_id is not null;
+ on public.expenses(organization_id,recurring_template_id,due_date);
 create index if not exists expenses_pending_due_idx on public.expenses(organization_id,due_date) where status='pending';
 create index if not exists expenses_category_idx on public.expenses(organization_id,category);
