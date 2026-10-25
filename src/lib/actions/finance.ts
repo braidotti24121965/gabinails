@@ -322,7 +322,7 @@ export async function createCatalogExpense(input: { templateId: string; amount: 
   if (!supabase) return { success: false, error: "Banco indisponível" };
   const orgId = await getAuthenticatedOrganizationId(supabase);
   if (!orgId) return { success: false, error: "Organização não encontrada" };
-  if (!Number.isFinite(input.amount) || input.amount <= 0 || !/^\\d{4}-\\d{2}-\\d{2}$/.test(input.dueDate)) return { success: false, error: "Valor ou data inválidos" };
+  if (!Number.isFinite(input.amount) || input.amount <= 0 || !/^\d{4}-\d{2}-\d{2}$/.test(input.dueDate)) return { success: false, error: "Valor ou data inválidos" };
   const { data: template, error: templateError } = await supabase.from("expense_templates")
     .select("id, name, category").eq("organization_id", orgId).eq("id", input.templateId).eq("active", true).single();
   if (templateError || !template) return { success: false, error: "Despesa cadastrada não encontrada." };
@@ -342,7 +342,7 @@ export async function updateExpenseRecord(input: { id: string; amount: number; d
   if (!supabase) return { success: false, error: "Banco indisponível" };
   const orgId = await getAuthenticatedOrganizationId(supabase);
   if (!orgId) return { success: false, error: "Organização não encontrada" };
-  if (!Number.isFinite(input.amount) || input.amount <= 0 || !/^\\d{4}-\\d{2}-\\d{2}$/.test(input.dueDate)) return { success: false, error: "Valor ou data inválidos" };
+  if (!Number.isFinite(input.amount) || input.amount <= 0 || !/^\d{4}-\d{2}-\d{2}$/.test(input.dueDate)) return { success: false, error: "Valor ou data inválidos" };
   const payload: Record<string, unknown> = {
     amount: input.amount, due_date: input.dueDate, competence_date: input.dueDate,
     status: input.paid ? "paid" : "pending", paid_at: input.paid ? new Date().toISOString() : null
