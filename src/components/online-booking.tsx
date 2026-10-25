@@ -387,11 +387,11 @@ export function OnlineBooking({
 
               {!isWhitelistedState && (
                 <a 
-                  href={process.env.NEXT_PUBLIC_GABI_HOMOLOGATION === "true" ? undefined : `https://wa.me/5511971730783?text=Olá! Fiz o agendamento de ${selectedService.name} para o dia ${selectedDate} às ${selectedTime}. Segue o comprovante do sinal de ${money.format(selectedService.price / 2)}:`}
+                  href={true /* branch homolog: WhatsApp bloqueado */ ? undefined : `https://wa.me/5511971730783?text=Olá! Fiz o agendamento de ${selectedService.name} para o dia ${selectedDate} às ${selectedTime}. Segue o comprovante do sinal de ${money.format(selectedService.price / 2)}:`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  onClick={process.env.NEXT_PUBLIC_GABI_HOMOLOGATION === "true" ? (event) => { event.preventDefault(); alert("Homologação: envio de comprovante desabilitado."); } : undefined}
-                  aria-disabled={process.env.NEXT_PUBLIC_GABI_HOMOLOGATION === "true"}
+                  onClick={true /* branch homolog: WhatsApp bloqueado */ ? (event) => { event.preventDefault(); alert("Homologação: envio de comprovante desabilitado."); } : undefined}
+                  aria-disabled={true /* branch homolog: WhatsApp bloqueado */}
                   className="btn-primary mt-5 w-full bg-emerald-600 hover:bg-emerald-700"
                 >
                   Enviar Comprovante pelo WhatsApp
