@@ -4,3 +4,8 @@ node_modules
 !.env.example
 *.tsbuildinfo
 recovery-codes*.txt
+
+# Backups e arquivos locais
+backups/
+.DS_Store
+**/.DS_Store
