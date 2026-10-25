@@ -90,7 +90,20 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
       {/* Cards de métricas */}
       <div className={`grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 transition-opacity ${loading ? "opacity-60" : "opacity-100"}`}>
         <Metric label="Faturamento Bruto" value={financeStats ? money.format(financeStats.revenue) : "R$ 0,00"} detail={getPeriodDetailLabel()} icon={TrendingUp} />
-        <Metric label="Despesas Fixas" value={financeStats ? money.format(financeStats.expenses) : "R$ 0,00"} detail={getPeriodDetailLabel()} icon={CreditCard} tone="warning" />
+        <div className="card flex flex-col gap-2" aria-label="Despesas Fixas">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-muted">Despesas Fixas</p>
+              <p className="mt-1 text-2xl font-bold text-ink">{money.format(financeStats?.totalRegisteredExpenses ?? financeStats?.expenses ?? 0)}</p>
+              <p className="mt-1 text-xs text-muted">{getPeriodDetailLabel()}</p>
+            </div>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600"><CreditCard size={17} /></div>
+          </div>
+          <div className="mt-auto space-y-1 border-t border-slate-100 pt-2 text-xs">
+            <div className="flex justify-between gap-2"><span className="text-muted">Pagas</span><span className="font-semibold text-ink">{money.format(financeStats?.expenses ?? 0)}</span></div>
+            <div className="flex justify-between gap-2"><span className="text-muted">Pendentes</span><span className="font-semibold text-amber-700">{money.format(financeStats?.pendingExpenses ?? 0)}</span></div>
+          </div>
+        </div>
         <Metric label="Custo de Produtos" value={financeStats ? money.format(financeStats.consumptionCost || 0) : "R$ 0,00"} detail="Consumo no período" icon={PackageOpen} tone="warning" />
         <Metric label="Comissões" value={financeStats ? money.format(financeStats.commissions) : "R$ 0,00"} detail="A repassar no período" icon={CircleDollarSign} tone="warning" />
         <Metric label="Lucro Líquido" value={financeStats ? money.format(financeStats.balance) : "R$ 0,00"} detail="No seu bolso no período" icon={BarChart3} tone="success" />
