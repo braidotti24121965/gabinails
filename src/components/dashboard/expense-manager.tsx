@@ -15,7 +15,8 @@ export function ExpenseManager({ close, saved, expense }: { close: () => void; s
   const [paid, setPaid] = useState(expense?.status === "Pago" || !expense);
   const [editing, setEditing] = useState<Template | "new" | null>(null);
   const [name, setName] = useState("");
-  const [category, setCategory] = useState("Geral");
+  const [category, setCategory] = useState("");
+  const [newCategory, setNewCategory] = useState("");
   const [defaultAmount, setDefaultAmount] = useState("");
   const [active, setActive] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -26,14 +27,18 @@ export function ExpenseManager({ close, saved, expense }: { close: () => void; s
   }, []);
   useEffect(() => { void refresh(); }, [refresh]);
   const editTemplate = (t: Template | "new") => {
-    setEditing(t); setName(t === "new" ? "" : t.name); setCategory(t === "new" ? "" : t.category);
+    setEditing(t); setName(t === "new" ? "" : t.name); setCategory(t === "new" ? "" : t.category); setNewCategory("");
     setDefaultAmount(t === "new" ? "" : String(t.default_amount ?? "")); setActive(t === "new" ? true : t.active); setError("");
   };
   const saveTemplate = async () => {
-    if (!category) { setError("Selecione uma categoria."); return; }
+    const finalCategory = category === "__new__" ? newCategory.trim().replace(/\\s+/g, " ") : category;
+    if (!finalCategory) { setError("Selecione ou cadastre uma categoria."); return; }
+    if (finalCategory.length > 80) { setError("A categoria deve ter até 80 caracteres."); return; }
+    const existing = categories.find(c => c.toLocaleLowerCase("pt-BR") === finalCategory.toLocaleLowerCase("pt-BR"));
+    const normalizedCategory = existing || finalCategory;
     const parsed = defaultAmount.trim() ? Number(defaultAmount.replace(",", ".")) : null;
     setBusy(true); setError("");
-    const res = await saveExpenseTemplate({ id: editing && editing !== "new" ? editing.id : undefined, name, category, defaultAmount: parsed, active });
+    const res = await saveExpenseTemplate({ id: editing && editing !== "new" ? editing.id : undefined, name, category: normalizedCategory, defaultAmount: parsed, active });
     setBusy(false);
     if (!res.success) { setError(res.error || "Erro ao salvar."); return; }
     await refresh();
@@ -69,7 +74,8 @@ export function ExpenseManager({ close, saved, expense }: { close: () => void; s
           <div className="mt-5 space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
             <h3 className="font-semibold">{editing === "new" ? "Cadastrar despesa fixa" : "Editar despesa cadastrada"}</h3>
             <label className="block text-sm">Descrição<input className="field-input mt-1" maxLength={120} value={name} onChange={e => setName(e.target.value)} /></label>
-            <label className="block text-sm">Categoria<select className="field-input mt-1" value={category} onChange={e => setCategory(e.target.value)}><option value="">Selecione uma categoria</option>{categories.map(c => <option key={c} value={c}>{c}</option>)}</select></label>
+            <label className="block text-sm">Categoria<select className="field-input mt-1" value={category} onChange={e => { setCategory(e.target.value); setError(""); }}><option value="">Selecione uma categoria</option>{categories.map(c => <option key={c} value={c}>{c}</option>)}<option value="__new__">+ Cadastrar nova categoria</option></select></label>
+            {category === "__new__" && <label className="block text-sm">Nome da nova categoria<input className="field-input mt-1" maxLength={80} autoFocus placeholder="Digite o nome da categoria" value={newCategory} onChange={e => setNewCategory(e.target.value)} /><span className="mt-1 block text-xs text-slate-500">A categoria ficará disponível nos próximos cadastros após salvar esta despesa.</span></label>}
             <label className="block text-sm">Valor padrão (opcional)<input type="number" min="0.01" step="0.01" className="field-input mt-1" value={defaultAmount} onChange={e => setDefaultAmount(e.target.value)} /></label>
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={active} onChange={e => setActive(e.target.checked)} />Ativa para novos lançamentos</label>
             <div className="flex gap-2">
