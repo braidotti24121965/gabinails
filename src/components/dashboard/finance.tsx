@@ -7,6 +7,9 @@ import { ExpenseManager } from "./expense-manager";
 export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any[]; stats?: any; onNew: () => void; onAction: (mode: "view" | "edit", index: number) => void; onReverse: (index: number) => void }) { 
   const [period, setPeriod] = useState("month");
   const [movementSearch, setMovementSearch] = useState("");
+  const [movementDate, setMovementDate] = useState("");
+  const [movementType, setMovementType] = useState("");
+  const [showMovements, setShowMovements] = useState(false);
   const [expenseDialog, setExpenseDialog] = useState<any | "new" | null>(null);
   const [financeData, setFinanceData] = useState(data);
   const [financeStats, setFinanceStats] = useState(stats);
@@ -67,10 +70,15 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
   };
 
   const normalizedSearch = movementSearch.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
-  const filteredMovements = normalizedSearch
-    ? financeData.filter(item => [item.name, item.type, item.status, item.method, item.date, String(Math.abs(item.value))]
-        .some(value => String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").includes(normalizedSearch)))
-    : financeData;
+  const filteredMovements = showMovements ? financeData.filter(item => {
+    const matchesSearch = !normalizedSearch || [item.name, item.type, item.status, item.method, item.date, String(Math.abs(item.value))]
+      .some(value => String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").includes(normalizedSearch));
+    const rawDate = String(item.date ?? "");
+    const dateParts = rawDate.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    const isoDate = dateParts ? `${dateParts[3]}-${dateParts[2]}-${dateParts[1]}` : rawDate.slice(0, 10);
+    return matchesSearch && (!movementDate || isoDate === movementDate) && (!movementType || item.type === movementType);
+  }) : [];
+
 
   return (
     <main className="page-content space-y-6">
@@ -267,7 +275,13 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
               />
               {movementSearch && <button type="button" aria-label="Limpar busca" onClick={() => setMovementSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-900"><X size={16} /></button>}
             </label>
-            <span className="text-xs text-muted" aria-live="polite">{filteredMovements.length} de {financeData.length} movimentos no período</span>
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="text-xs text-muted">Data<input type="date" className="field-input mt-1 block" value={movementDate} onChange={e => { setMovementDate(e.target.value); setShowMovements(false); }} /></label>
+              <label className="text-xs text-muted">Tipo<select className="field-input mt-1 block" value={movementType} onChange={e => { setMovementType(e.target.value); setShowMovements(false); }}><option value="">Todos</option><option value="Receita">Receita</option><option value="Despesa">Despesa</option></select></label>
+              <button type="button" className="btn-primary" onClick={() => setShowMovements(true)}>Consultar</button>
+              <button type="button" className="btn-outline" onClick={() => { setShowMovements(false); setMovementDate(""); setMovementType(""); setMovementSearch(""); }}>Limpar</button>
+            </div>
+            {showMovements && <span className="text-xs text-muted" aria-live="polite">{filteredMovements.length} movimentos encontrados</span>}
           </div>
           <div className="overflow-x-auto mt-4">
             <table className="data-table">
@@ -284,7 +298,7 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
               </thead>
               <tbody>
                 {filteredMovements.length === 0 && (
-                  <tr><td colSpan={7} className="text-center py-4 text-muted">{movementSearch.trim() ? "Nenhum movimento encontrado para esta busca no período selecionado." : "Nenhum movimento registrado neste período."}</td></tr>
+                  <tr><td colSpan={7} className="text-center py-4 text-muted">{!showMovements ? "Selecione os filtros e clique em Consultar para visualizar os movimentos." : "Nenhum movimento encontrado para os filtros selecionados."}</td></tr>
                 )}
                 {filteredMovements.map((item) => {
                   const index = financeData.indexOf(item);
