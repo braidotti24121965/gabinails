@@ -221,7 +221,7 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
                       {money.format(Math.abs(item.value))}{item.value < 0 ? " (−)" : ""}
                     </td>
                     <td>
-                      <RowActions onView={() => item.type === "Despesa" ? setExpenseDialog(item) : onAction("view", index)} onEdit={() => item.type === "Despesa" ? setExpenseDialog(item) : onAction("edit", index)} onDelete={item.type === "Despesa" ? undefined : () => handleReverse(item.id, index)} deleteLabel="Estornar" />
+                      {item.type === "Despesa" ? <button type="button" className="btn-outline" onClick={() => setExpenseDialog(item)}>Editar despesa</button> : <RowActions onView={() => onAction("view", index)} onEdit={() => onAction("edit", index)} onDelete={() => handleReverse(item.id, index)} deleteLabel="Estornar" />}
                     </td>
                   </tr>
                 ))}
