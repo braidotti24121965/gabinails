@@ -52,7 +52,7 @@ export function ExpenseManager({ close, saved, expense }: { close: () => void; s
       if (!recurrence.success) { setError("Cadastro salvo, mas recorrência não ativada: " + ("error" in recurrence ? recurrence.error : "Erro desconhecido")); await refresh(); return; }
     } else if (editing !== "new" && editing?.recurring_monthly) {
       const recurrence = await saveRecurringExpense({templateId: editing.id, enabled: false, day: recurringDay, amount: 0});
-      if (!recurrence.success) { setError(("error" in recurrence ? recurrence.error : "Erro ao desativar recorrência")); return; }
+      if (!recurrence.success) { setError(("error" in recurrence ? recurrence.error : undefined) || "Erro ao desativar recorrência"); return; }
     }
     await refresh();
     setEditing(null);
