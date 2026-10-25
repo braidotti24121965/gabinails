@@ -1,8 +1,12 @@
 -- Expansão aditiva: nenhum lançamento existente é modificado.
 alter table public.expense_templates
  add column if not exists recurring_monthly boolean not null default false,
- add column if not exists recurring_day smallint,
- add constraint recurring_day_range check (recurring_day is null or recurring_day between 1 and 31);
+ add column if not exists recurring_day smallint;
+do $ begin
+ if not exists (select 1 from pg_constraint where conrelid = 'public.expense_templates'::regclass and conname = 'recurring_day_range') then
+  alter table public.expense_templates add constraint recurring_day_range check (recurring_day is null or recurring_day between 1 and 31);
+ end if;
+end $;
 alter table public.expenses
  add column if not exists recurring_template_id uuid references public.expense_templates(id) on delete set null;
 create unique index if not exists expenses_recurring_unique_month
