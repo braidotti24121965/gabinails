@@ -188,6 +188,7 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
                 <div className="flex justify-between gap-2"><span className="font-medium">{c.category}</span><span>{money.format(total)}</span></div>
                 <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-teal-600" style={{width: `${Math.min(100, 100 * total / max)}%`}} /></div>
                 <p className="mt-1 text-xs text-muted">Pagas: {money.format(Number(c.paid))} · Pendentes: {money.format(Number(c.pending))}</p>
+                <div className="mt-3 space-y-2 border-t border-slate-100 pt-2">{(c.expenses || []).map((e: any) => <div key={e.id} className="flex flex-wrap items-center justify-between gap-2 text-xs"><span className="text-slate-700">{e.description} <span className="text-muted">· {String(e.due_date).split("-").reverse().join("/")}</span></span><span className="font-medium">{money.format(Number(e.amount))} <span className={e.status === "paid" ? "text-emerald-700" : "text-amber-700"}>· {e.status === "paid" ? "Paga" : "Pendente"}</span></span></div>)}</div>
               </div>;
             })}
           </div>
