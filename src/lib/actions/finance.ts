@@ -459,7 +459,7 @@ export async function getPayablesAndCategories(period?: string) {
     if (e.status === "pending") current.pending += Number(e.amount);
     map.set(key, current);
   }
-  return { payables, categories: [...map.values()].sort((a,b) => (b.paid+b.pending)-(a.paid+a.pending)) };
+  return { payables, categories: Array.from(map.values()).sort((a,b) => (b.paid+b.pending)-(a.paid+a.pending)) };
 }
 
 export async function markExpensePaid(id: string) {
