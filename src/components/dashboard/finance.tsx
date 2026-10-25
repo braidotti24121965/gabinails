@@ -11,6 +11,9 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
   const [financeData, setFinanceData] = useState(data);
   const [financeStats, setFinanceStats] = useState(stats);
   const [loading, setLoading] = useState(false);
+  const [payables, setPayables] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [financeError, setFinanceError] = useState("");
   const [futureRevenue, setFutureRevenue] = useState<{ total: number; lastDate: string | null; count: number } | null>(null);
 
   const loadData = React.useCallback(async () => {
@@ -19,6 +22,11 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
     const res = await getFinance(period);
     setFinanceData(res.data);
     setFinanceStats(res.stats);
+    const { getPayablesAndCategories } = await import("@/lib/actions/finance");
+    const summary = await getPayablesAndCategories(period);
+    setPayables(summary.payables || []);
+    setCategories(summary.categories || []);
+    setFinanceError(summary.error || "");
     setLoading(false);
   }, [period]);
 
@@ -144,6 +152,39 @@ export function Finance({ data, stats, onNew, onAction, onReverse }: { data: any
             </div>
           )}
         </div>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <section className="card">
+          <SectionTitle title="Contas a pagar" subtitle="Vencidas, próximas e futuras — independente do filtro do DRE" />
+          {financeError && <p role="alert" className="mt-3 text-sm text-red-600">{financeError}</p>}
+          <div className="mt-4 flex flex-wrap gap-3 text-sm">
+            <span className="rounded-md bg-red-50 px-3 py-2 text-red-700">Vencidas: {money.format(payables.filter(p => p.alert === "overdue").reduce((a,p) => a + Number(p.amount), 0))}</span>
+            <span className="rounded-md bg-amber-50 px-3 py-2 text-amber-800">Próximos 7 dias: {money.format(payables.filter(p => p.alert === "soon").reduce((a,p) => a + Number(p.amount), 0))}</span>
+            <span className="rounded-md bg-slate-100 px-3 py-2 text-slate-700">Total pendente: {money.format(payables.reduce((a,p) => a + Number(p.amount), 0))}</span>
+          </div>
+          <div className="mt-4 max-h-72 overflow-y-auto">
+            {payables.length === 0 ? <p className="text-sm text-muted">Nenhuma conta pendente.</p> : payables.map(p => <div key={p.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 py-3 text-sm">
+              <div><p className="font-semibold">{p.description}</p><p className={p.alert === "overdue" ? "text-red-700" : p.alert === "soon" ? "text-amber-700" : "text-muted"}>Vencimento: {String(p.due_date).split("-").reverse().join("/")} · {p.alert === "overdue" ? "Vencida" : p.alert === "soon" ? "Próxima" : "Futura"}</p></div>
+              <div className="flex items-center gap-3"><span className="font-semibold">{money.format(Number(p.amount))}</span><button type="button" className="btn-outline" disabled={loading} onClick={async () => { if (!confirm("Confirmar pagamento desta despesa?")) return; const { markExpensePaid } = await import("@/lib/actions/finance"); const res = await markExpensePaid(p.id); if (res.success) await loadData(); else alert(res.error || "Falha ao registrar pagamento"); }}>Marcar paga</button></div>
+            </div>)}
+          </div>
+        </section>
+        <section className="card">
+          <SectionTitle title="Despesas por categoria" subtitle={getPeriodDetailLabel()} />
+          <div className="mt-4 space-y-3">
+            {categories.length === 0 && <p className="text-sm text-muted">Nenhuma despesa no período.</p>}
+            {categories.map(c => {
+              const total = Number(c.paid) + Number(c.pending);
+              const max = Math.max(1, ...categories.map(x => Number(x.paid) + Number(x.pending)));
+              return <div key={c.category} className="text-sm">
+                <div className="flex justify-between gap-2"><span className="font-medium">{c.category}</span><span>{money.format(total)}</span></div>
+                <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-teal-600" style={{width: `${Math.min(100, 100 * total / max)}%`}} /></div>
+                <p className="mt-1 text-xs text-muted">Pagas: {money.format(Number(c.paid))} · Pendentes: {money.format(Number(c.pending))}</p>
+              </div>;
+            })}
+          </div>
+        </section>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
