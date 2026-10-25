@@ -12,8 +12,20 @@ export async function finishAppointment(data: {
   const supabase = await createClient();
   if (!supabase) return { success: false, error: "No connection" };
 
-  const { data: profile } = await supabase.from('profiles').select('organization_id').single();
-  if (!profile?.organization_id) return { success: false, error: "Organização não encontrada" };
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { success: false, error: "Sessão expirada. Faça login novamente." };
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("organization_id")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profileError || !profile?.organization_id) {
+    return { success: false, error: "Perfil ou organização não encontrado." };
+  }
 
   // 1. Get Appointment and items
   const { data: appointment, error: getErr } = await supabase
@@ -31,6 +43,7 @@ export async function finishAppointment(data: {
       )
     `)
     .eq('id', data.appointmentId)
+    .eq('organization_id', profile.organization_id)
     .single();
 
   if (getErr || !appointment) return { success: false, error: "Agendamento não encontrado" };
