@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { registerAdvancePayment, getAppointments } from "@/lib/actions/appointments";
+import { registerAdvancePayment, getAppointments, createPartialAgendaBlock, removePartialAgendaBlock } from "@/lib/actions/appointments";
 import { Plus, CalendarDays, Activity, Lock, Unlock } from "lucide-react";
 import { type Appointment } from "@/lib/demo-data";
 import { Badge, RowActions } from "../shared";
@@ -36,6 +36,11 @@ export function Agenda({
   const [advanceMethod, setAdvanceMethod] = useState("pix");
   const [advanceSaving, setAdvanceSaving] = useState(false);
   const [showBlockModal, setShowBlockModal] = useState(false);
+  const [showPartialBlock, setShowPartialBlock] = useState(false);
+  const [blockStart, setBlockStart] = useState("12:00");
+  const [blockEnd, setBlockEnd] = useState("13:00");
+  const [blockNotes, setBlockNotes] = useState("");
+  const [partialBusy, setPartialBusy] = useState(false);
 
   const uniqueProfs = Array.from(new Set(rows.map(r => r.professional))).filter(Boolean);
   const uniqueStatus = ["Aguardando sinal", "Agendado", "Confirmado", "Cliente chegou", "Em atendimento", "Concluído"];
@@ -46,9 +51,9 @@ export function Agenda({
       r.status !== "Cancelado" &&
       r.status !== "Cancelada" &&
       (
-        r.clientId === null ||
-        r.client === "Bloqueio de Agenda" ||
-        r.service?.toLowerCase().includes("bloqueio")
+        (r.clientId === null && !r.service?.startsWith("Bloqueio parcial:")) ||
+        (r.client === "Bloqueio de Agenda" && !r.service?.startsWith("Bloqueio parcial:")) ||
+        (r.service?.toLowerCase().includes("bloqueio") && !r.service?.startsWith("Bloqueio parcial:"))
       )
   );
 
@@ -188,6 +193,7 @@ export function Agenda({
               {blocking ? "Processando..." : isDayBlocked ? "Desbloquear Dia" : "Bloquear Dia Inteiro"}
             </button>
           )}
+          <button type="button" className="btn-outline" onClick={() => setShowPartialBlock(true)}><Lock size={15} /> Bloquear horário</button>
           <button onClick={() => onNew(selectedDate)} className="btn-primary">
             <Plus size={16} />
             Novo agendamento
@@ -252,6 +258,46 @@ export function Agenda({
         </div>
       )}
 
+      {showPartialBlock && (
+        <div className="fixed inset-0 z-[85] flex items-center justify-center bg-navy-dark/50 p-4">
+          <form className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl" onSubmit={async e => {
+            e.preventDefault();
+            if (partialBusy) return;
+            setPartialBusy(true);
+            try {
+              const result = await createPartialAgendaBlock({ date: selectedDate, start: blockStart, end: blockEnd, notes: blockNotes });
+              if (!result.success) { alert(result.error || "Falha ao bloquear horário"); return; }
+              onPaymentsUpdated?.(await getAppointments());
+              setShowPartialBlock(false);
+            } catch { alert("Falha de conexão ao salvar bloqueio."); }
+            finally { setPartialBusy(false); }
+          }}>
+            <h2 className="text-lg font-bold">Bloquear parte da agenda</h2>
+            <p className="mt-2 text-sm text-muted">Dia {selectedDate.split("-").reverse().join("/")} · Todas as profissionais ativas</p>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <label className="text-sm">Início<input className="field-input mt-1" type="time" required value={blockStart} onChange={e => setBlockStart(e.target.value)} /></label>
+              <label className="text-sm">Fim<input className="field-input mt-1" type="time" required value={blockEnd} onChange={e => setBlockEnd(e.target.value)} /></label>
+            </div>
+            <label className="mt-3 block text-sm">Motivo (opcional)<input className="field-input mt-1" maxLength={100} value={blockNotes} onChange={e => setBlockNotes(e.target.value)} placeholder="Ex.: almoço, compromisso" /></label>
+            <p className="mt-3 text-xs text-muted">O bloqueio não cancela agendamentos já existentes.</p>
+            <div className="mt-5 flex justify-end gap-2"><button type="button" className="btn-outline" disabled={partialBusy} onClick={() => setShowPartialBlock(false)}>Cancelar</button><button className="btn-primary" disabled={partialBusy || blockStart >= blockEnd} type="submit">{partialBusy ? "Salvando..." : "Bloquear intervalo"}</button></div>
+          </form>
+        </div>
+      )}
+      {rows.filter((r: any) => r.dateStr === selectedDate && r.service?.startsWith("Bloqueio parcial:")).filter((r: any, i: number, all: any[]) => all.findIndex(x => x.time === r.time && x.end === r.end) === i).map((r: any) => (
+        <div key={r.id} className="mb-2 flex items-center justify-between rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm">
+          <span>Horário bloqueado: {r.time}–{r.end} · {r.service.replace("Bloqueio parcial: ", "")}</span>
+          <button type="button" disabled={partialBusy} className="btn-outline !py-1 !px-2" onClick={async () => {
+            if (!confirm(`Desbloquear ${r.time}–${r.end}?`)) return;
+            setPartialBusy(true);
+            try {
+              const result = await removePartialAgendaBlock({ date: selectedDate, start: r.time, end: r.end });
+              if (!result.success) alert(result.error || "Erro ao desbloquear");
+              else onPaymentsUpdated?.(await getAppointments());
+            } finally { setPartialBusy(false); }
+          }}>Desbloquear</button>
+        </div>
+      ))}
       {showBlockModal && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
           <button type="button" onClick={() => setShowBlockModal(false)} className="fixed inset-0 bg-navy-dark/40" />
