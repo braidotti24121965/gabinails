@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { registerAdvancePayment, getAppointments } from "@/lib/actions/appointments";
 import { Plus, CalendarDays, Activity, Lock, Unlock } from "lucide-react";
 import { type Appointment } from "@/lib/demo-data";
 import { Badge, RowActions } from "../shared";
@@ -12,7 +13,8 @@ export function Agenda({
   onAction,
   onCancel,
   onStatusChange,
-  onToggleBlockDay
+  onToggleBlockDay,
+  onPaymentsUpdated
 }: {
   rows: Appointment[];
   onNew: (dateStr: string) => void;
@@ -21,6 +23,7 @@ export function Agenda({
   onCancel: (index: number, id: string) => void;
   onStatusChange: (a: Appointment, status: string) => void;
   onToggleBlockDay?: (dateStr: string) => Promise<void>;
+  onPaymentsUpdated?: (rows: Appointment[]) => void;
 }) {
   const [calendarView, setCalendarView] = useState<"dia" | "semana" | "mes">("dia");
   const [selectedDate, setSelectedDate] = useState(() => new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }));
@@ -28,6 +31,10 @@ export function Agenda({
   const [serviceFilter, setServiceFilter] = useState("Todos os serviços");
   const [statusFilter, setStatusFilter] = useState("Todos os status");
   const [blocking, setBlocking] = useState(false);
+  const [advance, setAdvance] = useState<Appointment | null>(null);
+  const [advanceAmount, setAdvanceAmount] = useState("");
+  const [advanceMethod, setAdvanceMethod] = useState("pix");
+  const [advanceSaving, setAdvanceSaving] = useState(false);
   const [showBlockModal, setShowBlockModal] = useState(false);
 
   const uniqueProfs = Array.from(new Set(rows.map(r => r.professional))).filter(Boolean);
@@ -320,6 +327,44 @@ export function Agenda({
         </select>
       </div>
 
+      {advance && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-navy-dark/50 p-4">
+          <form className="w-full max-w-md rounded-lg bg-surface p-6 shadow-xl" onSubmit={async e => {
+            e.preventDefault();
+            if (advanceSaving) return;
+            setAdvanceSaving(true);
+            try {
+              const result = await registerAdvancePayment({ appointmentId: advance.id, amount: Number(advanceAmount), method: advanceMethod });
+              if (!result.success) { alert(result.error || "Falha no recebimento"); return; }
+              const fresh = await getAppointments();
+              onPaymentsUpdated?.(fresh);
+              setAdvance(null);
+              alert("Recebimento registrado.");
+            } catch { alert("Falha de conexão. Confira os pagamentos antes de tentar novamente."); }
+            finally { setAdvanceSaving(false); }
+          }}>
+            <h2 className="text-xl font-bold">Recebimento parcial</h2>
+            <p className="mt-1 text-sm text-muted">{advance.client} · {(advance as any).dateStr?.split("-").reverse().join("/") || ""}</p>
+            <div className="mt-4 space-y-1 text-sm">
+              <p>Total: <strong>{money.format(advance.price)}</strong></p>
+              <p>Já recebido: <strong>{money.format(advance.paid || 0)}</strong></p>
+              <p>Saldo: <strong>{money.format(Math.max(0, advance.price - (advance.paid || 0)))}</strong></p>
+            </div>
+            <label className="field-label mt-4">Valor recebido (R$)</label>
+            <input required type="number" min="0.01" step="0.01" max={Math.max(0, advance.price - (advance.paid || 0)).toFixed(2)} value={advanceAmount} onChange={e => setAdvanceAmount(e.target.value)} className="field-input" />
+            <label className="field-label mt-4">Forma de pagamento</label>
+            <select className="field-input" value={advanceMethod} onChange={e => setAdvanceMethod(e.target.value)}>
+              <option value="pix">Pix</option><option value="cash">Dinheiro</option>
+              <option value="credit_card">Cartão de crédito</option><option value="debit_card">Cartão de débito</option>
+              <option value="transfer">Transferência</option>
+            </select>
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" disabled={advanceSaving} className="btn-outline" onClick={() => setAdvance(null)}>Cancelar</button>
+              <button type="submit" disabled={advanceSaving} className="btn-primary">{advanceSaving ? "Registrando..." : "Confirmar recebimento"}</button>
+            </div>
+          </form>
+        </div>
+      )}
       <section className="card !p-0 overflow-hidden">
         <div className="border-b border-[#E7EDF3] bg-[#F7F9FC] px-5 py-3 text-xs text-muted">
           {calendarView === "dia"
@@ -387,6 +432,9 @@ export function Agenda({
                   <option value="Em atendimento">Em atendimento</option>
                   <option value="Concluído">Concluído</option>
                 </select>
+                {a.status !== "Concluído" && a.status !== "Cancelado" && Number(a.price) > Number(a.paid || 0) && (
+                  <button type="button" className="btn-outline !px-2 !text-xs" onClick={() => { setAdvance(a); setAdvanceAmount(""); setAdvanceMethod("pix"); }}>Receber parcial</button>
+                )}
                 <RowActions
                   onView={() => onAction("edit", rows.indexOf(a))}
                   onEdit={() => onAction("edit", rows.indexOf(a))}
