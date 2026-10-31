@@ -62,7 +62,7 @@ export function PackageCatalogContent() {
           <label className="text-sm">Preço de venda do pacote (R$)<input className={field} type="number" min="0.01" step="0.01" value={priceEdited ? price : (total ? total.toFixed(2) : "")} onChange={e=>{setPriceEdited(true);setPrice(e.target.value);}} /></label>
           <label className="text-sm">Validade (dias, opcional)<input className={field} type="number" min="1" value={validity} onChange={e=>setValidity(e.target.value)} /></label>
         </div>
-        <div className="rounded-xl bg-[#faf7f4] p-4 text-sm"><p>Valor total dos procedimentos: <strong>{money(total)}</strong></p><p>Desconto do pacote: <strong>{money(discount)}</strong></p><p>Preço de venda: <strong>{money(salePrice)}</strong></p>{salePrice > total && <p className="text-amber-700">O preço de venda está acima do valor dos serviços.</p>}</div>
+        <div className="rounded-xl bg-[#faf7f4] p-4 text-sm"><p>Valor total dos procedimentos: <strong>{money(total)}</strong></p><p>Desconto do pacote: <strong>{money(discount)} ({total > 0 ? ((discount / total) * 100).toLocaleString("pt-BR", { maximumFractionDigits: 2 }) : "0"}%)</strong></p><p>Preço de venda: <strong>{money(salePrice)}</strong></p>{salePrice > total && <p className="text-amber-700">O preço de venda está acima do valor dos serviços.</p>}</div>
         <h3 className="font-semibold">Serviços e sessões</h3>
         {items.map((item,i)=><div className="flex flex-wrap items-center gap-3" key={i}>
           <select aria-label={"Serviço "+(i+1)} className={field + " min-w-[220px] flex-1"} value={item.serviceId} onChange={e=>updateItems(items.map((v,j)=>j===i?{...v,serviceId:e.target.value}:v))}>
