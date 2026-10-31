@@ -83,3 +83,11 @@ Após cadastrar os segredos, use **Actions → Backup diário do banco → Run w
 ## 💻 Backup semanal do sistema
 
 O fluxo `.github/workflows/weekly-project-backup.yml` roda aos **domingos às 04:15 (horário de São Paulo)**. Ele cria uma cópia criptografada de todos os arquivos versionados do sistema: código, telas, migrations, configuração de publicação e documentação. Arquivos privados, como senhas e chaves, ficam fora da cópia. As últimas 12 semanas são mantidas na mesma pasta do Drive.
+
+---
+
+## 📋 Auditoria de escopo e status do MVP (31/10/2026)
+
+Consulte [Estado atual e auditoria do MVP](docs/estado-atual-auditoria-mvp-2026-10-31.md) para a matriz de funcionalidades implementadas, evidências de testes, lacunas de validação, riscos de segurança e próximos passos. **O MVP ainda não está certificado como 100% concluído**: multi-tenant, conciliação financeira, concorrência de agenda e restauração de backup exigem validação adicional.
+
+A documentação e as melhorias são preparadas na branch `homolog`; a produção exige autorização explícita para promoção.
