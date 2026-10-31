@@ -38,7 +38,8 @@ export async function getAppointments(): Promise<Appointment[]> {
         description,
         unit_price
       ),
-      payments(amount)
+      payments(amount, status, kind),
+      package_sessions(id, status)
     `)
     .order("starts_at", { ascending: true });
 
@@ -64,7 +65,15 @@ export async function getAppointments(): Promise<Appointment[]> {
 
     // Sum prices
     const price = row.items?.reduce((acc: number, item: any) => acc + Number(item.unit_price || 0), 0) || 0;
-    const paid = row.payments?.reduce((acc: number, p: any) => acc + Number(p.amount || 0), 0) || 0;
+    const paidFromPayments = row.payments?.reduce((acc: number, p: any) => {
+      if (p.status !== "paid") return acc;
+      if (["deposit", "payment", "credit"].includes(p.kind)) return acc + Number(p.amount || 0);
+      if (["refund", "chargeback"].includes(p.kind)) return acc - Number(p.amount || 0);
+      return acc;
+    }, 0) || 0;
+    // Package sessions were paid when the package was purchased; do not create another payment.
+    const coveredByPackage = row.package_sessions?.some((session: any) => session.status === "used") || false;
+    const paid = coveredByPackage ? Math.max(price, paidFromPayments) : paidFromPayments;
 
     const serviceName = row.items?.map((i: any) => i.service?.name || i.description).filter(Boolean).join(" + ") || "Serviço";
 
