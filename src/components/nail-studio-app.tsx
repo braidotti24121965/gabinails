@@ -1309,7 +1309,7 @@ const [reportsData] = useState(() => initialReports); const [entityModal, setEnt
       }
       const res = await updateClientRecord(item.id, data);
       if (!res.success) {
-        alert("Erro ao salvar cliente: " + (res.error || "Não foi possível atualizar o cadastro."));
+        alert("Erro ao salvar cliente: " + ("error" in res ? res.error : "Não foi possível atualizar o cadastro."));
         return;
       }
       // Recarregar dados persistidos, evitando exibir valores que o banco recusou.
