@@ -405,6 +405,9 @@ export async function toggleBlockDayRecord(dateStr: string) {
   const startsAt = new Date(`${dateStr}T08:00:00-03:00`).toISOString();
   const endsAt = new Date(`${dateStr}T19:00:00-03:00`).toISOString();
 
+  const conflictCheck = await findAgendaBlockConflicts(supabase, orgId, startsAt, endsAt);
+  if (conflictCheck.error) return { success: false, error: conflictCheck.error };
+
   // Cancel any legacy block appointment rows so appointments table is completely free for manual admin bookings
   if (legacyBlockIds.length > 0) {
     await supabase.from("appointments").update({ status: "cancelled" }).in("id", legacyBlockIds);
@@ -453,6 +456,23 @@ export async function registerAdvancePayment(input: { appointmentId: string; amo
   return { success: true };
 }
 
+async function findAgendaBlockConflicts(supabase: any, orgId: string, startIso: string, endIso: string) {
+  const { data, error } = await supabase.from("appointments")
+    .select("id, starts_at, ends_at, client:clients(name)")
+    .eq("organization_id", orgId)
+    .not("status", "in", '("cancelled","no_show")')
+    .lt("starts_at", endIso).gt("ends_at", startIso)
+    .not("client_id", "is", null)
+    .order("starts_at", { ascending: true });
+  if (error) return { error: "Não foi possível verificar os agendamentos: " + error.message };
+  if (!data?.length) return { error: null };
+  const names = data.slice(0, 4).map((a: any) => {
+    const hour = new Date(a.starts_at).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" });
+    return hour + " " + (a.client?.name || "Cliente");
+  }).join(", ");
+  return { error: "Bloqueio não permitido. Existem agendamentos no período: " + names + (data.length > 4 ? " e outros." : ".") };
+}
+
 export async function createPartialAgendaBlock(input: { date: string; start: string; end: string; notes?: string }) {
   const supabase = await createClient();
   if (!supabase) return { success: false, error: "Banco indisponível" };
@@ -463,6 +483,8 @@ export async function createPartialAgendaBlock(input: { date: string; start: str
   const start = new Date(`${input.date}T${input.start}:00-03:00`);
   const end = new Date(`${input.date}T${input.end}:00-03:00`);
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start >= end) return { success: false, error: "Horários inválidos." };
+  const conflictCheck = await findAgendaBlockConflicts(supabase, orgId, start.toISOString(), end.toISOString());
+  if (conflictCheck.error) return { success: false, error: conflictCheck.error };
   const { data: professionals, error: profError } = await supabase.from("professionals").select("id").eq("organization_id", orgId).neq("active", false);
   if (profError || !professionals?.length) return { success: false, error: "Nenhuma profissional ativa encontrada." };
   const { data: conflicts, error: conflictError } = await supabase.from("professional_availability")
