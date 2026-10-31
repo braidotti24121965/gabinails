@@ -44,8 +44,8 @@ export async function getAppointments(): Promise<Appointment[]> {
     .order("starts_at", { ascending: true });
 
   if (error) {
-    console.error("Error fetching appointments:", error);
-    return [];
+    console.error("Error fetching appointments:", { code: error.code, message: error.message, details: error.details, hint: error.hint });
+    throw new Error(`Falha ao carregar agendamentos (${error.code || "consulta"}): ${error.message}`);
   }
 
   // Filter out legacy system block appointments from normal list
