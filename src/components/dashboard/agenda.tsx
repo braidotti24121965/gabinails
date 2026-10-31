@@ -501,8 +501,8 @@ export function Agenda({
                     </p>
                   </div>
                   <div className="hidden text-right md:block">
-                    <p className="font-medium">{money.format(Math.max(0, Number(a.price || 0) - Number(a.paid || 0)))}</p>
-                    <p className="text-[10px] text-muted">{Number(a.paid || 0) > 0 ? `Saldo devedor · ${money.format(Number(a.paid || 0))} recebido` : "Saldo devedor"}</p>
+                    <p className="font-medium">{money.format((a as Appointment & { packageCovered?: boolean }).packageCovered ? 0 : Math.max(0, Number(a.price || 0) - Number(a.paid || 0)))}</p>
+                    <p className="text-[10px] text-muted">{(a as Appointment & { packageCovered?: boolean }).packageCovered ? "Coberto pelo pacote" : Number(a.paid || 0) > 0 ? `Saldo devedor · ${money.format(Number(a.paid || 0))} recebido` : "Saldo devedor"}</p>
                   </div>
                 </button>
                 <select
