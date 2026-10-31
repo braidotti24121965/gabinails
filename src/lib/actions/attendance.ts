@@ -112,3 +112,27 @@ export async function finishAppointment(data: {
 
   return { success: true };
 }
+
+export async function getCheckoutCorrectionPackages(appointmentId: string) {
+  const supabase = await createClient();
+  if (!supabase) return { success: false, error: "Sem conexão", packages: [] as { id: string; name: string; remaining_sessions: number; linked: boolean }[] };
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Sessão expirada", packages: [] as { id: string; name: string; remaining_sessions: number; linked: boolean }[] };
+  const { data: profile } = await supabase.from("profiles").select("organization_id,role").eq("id",user.id).maybeSingle();
+  if (!profile || !["admin","owner","manager"].includes(profile.role)) return { success: false, error: "Acesso administrativo necessário", packages: [] as { id: string; name: string; remaining_sessions: number; linked: boolean }[] };
+  const { data: appointment } = await supabase.from("appointments").select("client_id,status").eq("id",appointmentId).eq("organization_id",profile.organization_id).maybeSingle();
+  if (!appointment || appointment.status !== "completed") return { success: false, error: "Atendimento não concluído", packages: [] as { id: string; name: string; remaining_sessions: number; linked: boolean }[] };
+  const { data: packages, error } = await supabase.from("packages").select("id,name,remaining_sessions").eq("organization_id",profile.organization_id).eq("client_id",appointment.client_id).order("created_at",{ascending:false});
+  if (error) return { success:false,error:error.message,packages:[] as { id:string;name:string;remaining_sessions:number;linked:boolean }[] };
+  const { data: sessions } = await supabase.from("package_sessions").select("package_id").eq("appointment_id",appointmentId).eq("organization_id",profile.organization_id).eq("status","used");
+  return { success:true, packages:(packages || []).map(p=>({...p,linked:!!sessions?.some(s=>s.package_id===p.id)})) };
+}
+
+export async function correctCheckoutWithPackage(appointmentId:string,packageId:string,reason:string) {
+  const supabase = await createClient();
+  if (!supabase) return { success:false,error:"Sem conexão" };
+  const { data, error } = await supabase.rpc("correct_package_checkout",{p_appointment_id:appointmentId,p_package_id:packageId,p_reason:reason});
+  if (error) return { success:false,error:error.message };
+  revalidatePath("/");
+  return { success:true,alreadyLinked:data==="already_linked" };
+}
