@@ -1,3 +1,4 @@
+import { getCheckoutCorrectionPackages, correctCheckoutWithPackage } from "@/lib/actions/attendance";
 import React, { useState } from "react";
 import { registerAdvancePayment, getAppointments, createPartialAgendaBlock, removePartialAgendaBlock } from "@/lib/actions/appointments";
 import { Plus, CalendarDays, Activity, Lock, Unlock } from "lucide-react";
@@ -25,6 +26,12 @@ export function Agenda({
   onToggleBlockDay?: (dateStr: string) => Promise<void>;
   onPaymentsUpdated?: (rows: Appointment[]) => void;
 }) {
+  const [correction, setCorrection] = useState<Appointment | null>(null);
+  const [correctionPackages, setCorrectionPackages] = useState<{id:string;name:string;remaining_sessions:number;linked:boolean}[]>([]);
+  const [correctionPackageId, setCorrectionPackageId] = useState("");
+  const [correctionReason, setCorrectionReason] = useState("");
+  const [correctionBusy, setCorrectionBusy] = useState(false);
+  const [correctionError, setCorrectionError] = useState("");
   const [calendarView, setCalendarView] = useState<"dia" | "semana" | "mes">("dia");
   const [selectedDate, setSelectedDate] = useState(() => new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }));
   const [profFilter, setProfFilter] = useState("Todas as profissionais");
@@ -373,6 +380,40 @@ export function Agenda({
         </select>
       </div>
 
+      {correction && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-navy-dark/50 p-4">
+          <form className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl" onSubmit={async e => {
+            e.preventDefault();
+            if (!correctionPackageId || correctionReason.trim().length < 10 || correctionBusy) return;
+            setCorrectionBusy(true); setCorrectionError("");
+            try {
+              const result = await correctCheckoutWithPackage(correction.id,correctionPackageId,correctionReason);
+              if (!result.success) { setCorrectionError(result.error || "Não foi possível corrigir"); return; }
+              onPaymentsUpdated?.(await getAppointments());
+              setCorrection(null);
+              alert(result.alreadyLinked ? "Atendimento já vinculado ao pacote. Nenhuma sessão adicional foi consumida." : "Fechamento corrigido e registrado.");
+            } catch { setCorrectionError("Falha de conexão. Confira o histórico antes de tentar novamente."); }
+            finally { setCorrectionBusy(false); }
+          }}>
+            <h2 className="text-lg font-bold">Corrigir fechamento</h2>
+            <p className="mt-2 text-sm text-muted">{correction.client} · {(correction as Appointment & { dateStr: string }).dateStr.split("-").reverse().join("/")} · {correction.time}</p>
+            <p className="mt-1 text-sm">Valor do atendimento: <strong>{money.format(correction.price)}</strong></p>
+            <label className="field-label mt-4">Pacote da cliente</label>
+            <select className="field-input" required value={correctionPackageId} onChange={e=>setCorrectionPackageId(e.target.value)}>
+              <option value="">Selecione um pacote</option>
+              {correctionPackages.map(p=><option key={p.id} value={p.id} disabled={!p.linked && p.remaining_sessions<=0}>{p.name} · {p.linked ? "já vinculado" : p.remaining_sessions+" sessões disponíveis"}</option>)}
+            </select>
+            <p className="mt-2 text-xs text-muted">Pacotes sem saldo só podem ser selecionados quando este atendimento já possui vínculo registrado. Nenhuma nova receita será lançada.</p>
+            <label className="field-label mt-4">Motivo da correção</label>
+            <textarea className="field-input" required minLength={10} value={correctionReason} onChange={e=>setCorrectionReason(e.target.value)} placeholder="Descreva o erro no fechamento" />
+            {correctionError && <p role="alert" className="mt-2 text-sm text-red-700">{correctionError}</p>}
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" className="btn-outline" disabled={correctionBusy} onClick={()=>setCorrection(null)}>Cancelar</button>
+              <button type="submit" className="btn-primary" disabled={correctionBusy || !correctionPackageId || correctionReason.trim().length<10}>{correctionBusy?"Salvando...":"Confirmar correção"}</button>
+            </div>
+          </form>
+        </div>
+      )}
       {advance && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-navy-dark/50 p-4">
           <form className="w-full max-w-md rounded-lg bg-surface p-6 shadow-xl" onSubmit={async e => {
@@ -480,6 +521,17 @@ export function Agenda({
                 </select>
                 {a.status !== "Concluído" && a.status !== "Cancelado" && Number(a.price) > Number(a.paid || 0) && (
                   <button type="button" className="btn-outline !px-2 !text-xs" onClick={() => { setAdvance(a); setAdvanceAmount(""); setAdvanceMethod("pix"); }}>Receber parcial</button>
+                )}
+                {a.status === "Concluído" && (
+                  <button type="button" className="btn-outline !px-2 !text-xs" disabled={correctionBusy} onClick={async()=>{
+                    setCorrectionBusy(true); setCorrectionError("");
+                    try {
+                      const result=await getCheckoutCorrectionPackages(a.id);
+                      if (!result.success) { alert(result.error || "Erro ao consultar pacotes"); return; }
+                      setCorrectionPackages(result.packages);setCorrectionPackageId("");setCorrectionReason("");setCorrection(a);
+                    } catch { alert("Erro ao consultar pacotes"); }
+                    finally { setCorrectionBusy(false); }
+                  }}>Corrigir fechamento</button>
                 )}
                 <RowActions
                   onView={() => onAction("edit", rows.indexOf(a))}
