@@ -15,6 +15,19 @@ export async function createClientRecordService(supabase: any, client: { name: s
   }
 
   const phoneNormalized = client.phone.replace(/\D/g, "");
+  // Validate duplicates before RPC; the database unique index remains the final safeguard.
+  const { data: samePhone, error: lookupError } = await supabase
+    .from("clients")
+    .select("id")
+    .eq("phone_normalized", phoneNormalized)
+    .limit(10);
+  if (lookupError) {
+    return { success: false, error: "Não foi possível verificar o WhatsApp. Tente novamente." };
+  }
+  if (samePhone?.some((row: { id: string }) => row.id !== null)) {
+    return { success: false, error: "WhatsApp já cadastrado. Este número de WhatsApp já está cadastrado neste salão. Confira o número informado ou localize o cadastro existente." };
+  }
+
 
   let text = client.notes || "";
   let anamnesisObj: any = null;
@@ -57,6 +70,19 @@ export async function createClientRecordService(supabase: any, client: { name: s
 export async function updateClientRecordService(supabase: any, id: string, client: { name: string; phone: string; notes?: string; birthDate?: string; cep?: string; street?: string; number?: string; complement?: string; neighborhood?: string; city?: string; state?: string }) {
   if (!supabase) return { success: false, error: "Supabase não conectado" };
   const phoneNormalized = client.phone.replace(/\D/g, "");
+  // Validate duplicates before RPC; the database unique index remains the final safeguard.
+  const { data: samePhone, error: lookupError } = await supabase
+    .from("clients")
+    .select("id")
+    .eq("phone_normalized", phoneNormalized)
+    .limit(10);
+  if (lookupError) {
+    return { success: false, error: "Não foi possível verificar o WhatsApp. Tente novamente." };
+  }
+  if (samePhone?.some((row: { id: string }) => row.id !== id)) {
+    return { success: false, error: "WhatsApp já cadastrado. Este número de WhatsApp já está cadastrado neste salão. Confira o número informado ou localize o cadastro existente." };
+  }
+
   
   let text = client.notes || "";
   let anamnesisObj: any = null;
