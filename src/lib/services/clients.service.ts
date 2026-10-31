@@ -5,7 +5,7 @@ function friendlyClientError(error: { code?: string; message?: string; details?:
     diagnostic.includes("clients_organization_id_phone_normalized_key") ||
     (diagnostic.includes("duplicate key") && diagnostic.includes("phone_normalized"))
   ) {
-    return "WhatsApp já cadastrado|Este número de WhatsApp já está cadastrado neste salão. Confira o número informado ou localize o cadastro existente.";
+    return "WhatsApp já cadastrado. Este número de WhatsApp já está cadastrado neste salão. Confira o número informado ou localize o cadastro existente.";
   }
   return "Não foi possível salvar a cliente. Confira os dados e tente novamente.";
 }
