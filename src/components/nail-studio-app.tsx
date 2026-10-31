@@ -1303,8 +1303,18 @@ const [reportsData] = useState(() => initialReports); const [entityModal, setEnt
       }
     } else if (entityModal.index !== undefined) {
       const item = clientRows[entityModal.index];
-      if (item.id) await updateClientRecord(item.id, data);
-      setClientRows(current => current.map((c, i) => i === entityModal.index ? { ...c, ...data } : c));
+      if (!item.id) {
+        alert("Não foi possível identificar a cliente para atualização.");
+        return;
+      }
+      const res = await updateClientRecord(item.id, data);
+      if (!res.success) {
+        alert("Erro ao salvar cliente: " + (res.error || "Não foi possível atualizar o cadastro."));
+        return;
+      }
+      // Recarregar dados persistidos, evitando exibir valores que o banco recusou.
+      const fresh = await getClients();
+      setClientRows(fresh);
     }
     setEntityModal(null); notify(creating ? "Cliente cadastrada." : "Cliente atualizada.");
   };
