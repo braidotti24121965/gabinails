@@ -415,7 +415,7 @@ export function Agenda({
                   </div>
                   <div className="hidden text-right md:block">
                     <p className="font-medium">{money.format(Math.max(0, Number(a.price || 0) - Number(a.paid || 0)))}</p>
-                    <p className="text-[10px] text-muted">{Number(a.paid || 0) > 0 ? `Saldo devedor · ${money.format(a.paid)} recebido` : "Saldo devedor"}</p>
+                    <p className="text-[10px] text-muted">{Number(a.paid || 0) > 0 ? `Saldo devedor · ${money.format(Number(a.paid || 0))} recebido` : "Saldo devedor"}</p>
                   </div>
                 </button>
                 <select
