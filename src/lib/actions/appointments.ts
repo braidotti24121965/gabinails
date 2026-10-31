@@ -449,3 +449,47 @@ export async function registerAdvancePayment(input: { appointmentId: string; amo
   revalidatePath("/");
   return { success: true };
 }
+
+export async function createPartialAgendaBlock(input: { date: string; start: string; end: string; notes?: string }) {
+  const supabase = await createClient();
+  if (!supabase) return { success: false, error: "Banco indisponível" };
+  const orgId = await getAuthenticatedOrganizationId(supabase);
+  if (!orgId) return { success: false, error: "Organização não encontrada" };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date) || !/^\d{2}:\d{2}$/.test(input.start) || !/^\d{2}:\d{2}$/.test(input.end) || input.start >= input.end)
+    return { success: false, error: "Informe uma data e um intervalo válido." };
+  const start = new Date(`${input.date}T${input.start}:00-03:00`);
+  const end = new Date(`${input.date}T${input.end}:00-03:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start >= end) return { success: false, error: "Horários inválidos." };
+  const { data: professionals, error: profError } = await supabase.from("professionals").select("id").eq("organization_id", orgId).neq("active", false);
+  if (profError || !professionals?.length) return { success: false, error: "Nenhuma profissional ativa encontrada." };
+  const { data: conflicts, error: conflictError } = await supabase.from("professional_availability")
+    .select("id, professional_id").eq("organization_id", orgId).eq("kind", "block")
+    .lt("starts_at", end.toISOString()).gt("ends_at", start.toISOString());
+  if (conflictError) return { success: false, error: conflictError.message };
+  if (conflicts?.length) return { success: false, error: "Já existe bloqueio sobreposto nesse intervalo." };
+  const { error } = await supabase.from("professional_availability").insert(professionals.map(p => ({
+    organization_id: orgId, professional_id: p.id, kind: "block",
+    starts_at: start.toISOString(), ends_at: end.toISOString(),
+    notes: `Bloqueio parcial: ${(input.notes || "Indisponível").trim().slice(0, 100)}`
+  })));
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/");
+  return { success: true };
+}
+
+export async function removePartialAgendaBlock(input: { date: string; start: string; end: string }) {
+  const supabase = await createClient();
+  if (!supabase) return { success: false, error: "Banco indisponível" };
+  const orgId = await getAuthenticatedOrganizationId(supabase);
+  if (!orgId) return { success: false, error: "Organização não encontrada" };
+  const start = new Date(`${input.date}T${input.start}:00-03:00`);
+  const end = new Date(`${input.date}T${input.end}:00-03:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start >= end) return { success: false, error: "Intervalo inválido" };
+  const { error } = await supabase.from("professional_availability").delete()
+    .eq("organization_id", orgId).eq("kind", "block")
+    .eq("starts_at", start.toISOString()).eq("ends_at", end.toISOString())
+    .ilike("notes", "Bloqueio parcial:%");
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/");
+  return { success: true };
+}
