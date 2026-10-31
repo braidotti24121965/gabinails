@@ -396,7 +396,7 @@ export function Agenda({
             finally { setCorrectionBusy(false); }
           }}>
             <h2 className="text-lg font-bold">Corrigir fechamento</h2>
-            <p className="mt-2 text-sm text-muted">{correction.client} · {correction.dateStr.split("-").reverse().join("/")} · {correction.time}</p>
+            <p className="mt-2 text-sm text-muted">{correction.client} · {(correction as Appointment & { dateStr: string }).dateStr.split("-").reverse().join("/")} · {correction.time}</p>
             <p className="mt-1 text-sm">Valor do atendimento: <strong>{money.format(correction.price)}</strong></p>
             <label className="field-label mt-4">Pacote da cliente</label>
             <select className="field-input" required value={correctionPackageId} onChange={e=>setCorrectionPackageId(e.target.value)}>
