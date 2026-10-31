@@ -1298,7 +1298,12 @@ const [reportsData] = useState(() => initialReports); const [entityModal, setEnt
         const fresh = await getClients();
         setClientRows(fresh);
       } else {
-        alert("Erro ao salvar cliente: " + ("error" in res ? res.error : "Erro desconhecido"));
+        const message = "error" in res ? res.error : "Não foi possível salvar o cadastro.";
+        if (message.startsWith("WhatsApp já cadastrado")) {
+          setSystemAlertMessage("Este número já está vinculado a outra cliente deste salão. Confira o telefone informado ou consulte o cadastro existente.");
+        } else {
+          setSystemAlertMessage(message);
+        }
         return;
       }
     } else if (entityModal.index !== undefined) {
@@ -1309,7 +1314,12 @@ const [reportsData] = useState(() => initialReports); const [entityModal, setEnt
       }
       const res = await updateClientRecord(item.id, data);
       if (!res.success) {
-        alert("Erro ao salvar cliente: " + ("error" in res ? res.error : "Não foi possível atualizar o cadastro."));
+        const message = "error" in res ? res.error : "Não foi possível salvar o cadastro.";
+        if (message.startsWith("WhatsApp já cadastrado")) {
+          setSystemAlertMessage("Este número já está vinculado a outra cliente deste salão. Confira o telefone informado ou consulte o cadastro existente.");
+        } else {
+          setSystemAlertMessage(message);
+        }
         return;
       }
       // Recarregar dados persistidos, evitando exibir valores que o banco recusou.
@@ -1681,7 +1691,7 @@ const [reportsData] = useState(() => initialReports); const [entityModal, setEnt
       {booking && <BookingModal initialDate={bookingDate} clients={clientRows} professionals={professionalRows} services={serviceRows} close={() => setBooking(false)} save={async (a, rawData) => { if(rawData) { const res = await createAppointmentRecord(rawData); if (res.success) { const fresh = await getAppointments(); setRows(fresh); setBooking(false); notify("Agendamento criado com sucesso."); } else { alert(("error" in res ? res.error : "Erro desconhecido")); } } else { setRows(v => [...v, a]); setBooking(false); notify("Agendamento criado (demo)."); } }} />}
       {finish && activeAppointment && <FinishModal appointment={activeAppointment} close={() => setFinish(false)} done={async (method, val, pkgId) => { const res = await finishAppointment({ appointmentId: activeAppointment.id, amount: val, paymentMethod: method, packageId: pkgId }); if (res.success) { setRows(v => v.map(a => a.id === activeAppointment.id ? { ...a, status: "Concluído", paid: (a.paid || 0) + (pkgId ? 0 : val) } : a)); setFinish(false); setActiveAppointment(null); setView("agenda"); notify("Atendimento concluído e pagamento registrado com sucesso."); } else { alert(("error" in res ? res.error : "Erro desconhecido")); } }} />}
       {toast && <Toast text={toast} />}
-      {systemAlertMessage && <SystemAlertModal message={systemAlertMessage} close={() => setSystemAlertMessage(null)} />}
+      {systemAlertMessage && <SystemAlertModal title={systemAlertMessage.startsWith("Este número já está vinculado") ? "WhatsApp já cadastrado" : "Aviso do Sistema"} message={systemAlertMessage} close={() => setSystemAlertMessage(null)} />}
     </div>
   );
 }
