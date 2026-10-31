@@ -7,7 +7,7 @@ import { getServices, type ServiceItem } from "@/lib/actions/services";
 type Item = { serviceId: string; sessions: number };
 type Template = Awaited<ReturnType<typeof getPackageTemplates>>[number];
 
-export default function PackageCatalogPage() {
+export function PackageCatalogContent() {
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [name, setName] = useState("");
@@ -37,10 +37,10 @@ export default function PackageCatalogPage() {
     await refresh();
   }
   const field = "w-full rounded-xl border border-[#e8d7cb] bg-white p-3 text-[#3d3037]";
-  return <main className="min-h-screen bg-[#faf7f4] p-6 text-[#3d3037]">
-    <div className="mx-auto max-w-3xl space-y-6">
-      <a href="/" className="text-sm underline">Voltar ao sistema</a>
-      <h1 className="text-3xl font-semibold">Catálogo de Pacotes e Combos</h1>
+  return <div className="p-5 text-ink md:p-8">
+    <div className="mx-auto max-w-5xl space-y-6">
+      
+      
       <p className="text-sm">Configure pacotes vinculados aos serviços do salão. A venda e o consumo automático serão habilitados após a validação financeira.</p>
       <section className="space-y-4 rounded-2xl bg-white p-6 shadow-sm">
         <h2 className="text-xl font-semibold">Novo pacote</h2>
@@ -71,5 +71,5 @@ export default function PackageCatalogPage() {
         </div>)}
       </section>
     </div>
-  </main>;
+  </div>;
 }
