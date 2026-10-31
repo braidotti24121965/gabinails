@@ -1298,7 +1298,7 @@ const [reportsData] = useState(() => initialReports); const [entityModal, setEnt
         const fresh = await getClients();
         setClientRows(fresh);
       } else {
-        const message = "error" in res ? res.error : "Não foi possível salvar o cadastro.";
+        const message: string = ("error" in res && typeof res.error === "string" && res.error) ? res.error : "Não foi possível salvar o cadastro.";
         if (message.startsWith("WhatsApp já cadastrado")) {
           setSystemAlertMessage("Este número já está vinculado a outra cliente deste salão. Confira o telefone informado ou consulte o cadastro existente.");
         } else {
@@ -1314,7 +1314,7 @@ const [reportsData] = useState(() => initialReports); const [entityModal, setEnt
       }
       const res = await updateClientRecord(item.id, data);
       if (!res.success) {
-        const message = "error" in res ? res.error : "Não foi possível salvar o cadastro.";
+        const message: string = ("error" in res && typeof res.error === "string" && res.error) ? res.error : "Não foi possível salvar o cadastro.";
         if (message.startsWith("WhatsApp já cadastrado")) {
           setSystemAlertMessage("Este número já está vinculado a outra cliente deste salão. Confira o telefone informado ou consulte o cadastro existente.");
         } else {
