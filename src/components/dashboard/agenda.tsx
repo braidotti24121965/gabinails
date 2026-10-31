@@ -15,7 +15,7 @@ export function Agenda({
   onToggleBlockDay
 }: {
   rows: Appointment[];
-  onNew: () => void;
+  onNew: (dateStr: string) => void;
   onAttendance: (a: Appointment) => void;
   onAction: (mode: "view" | "edit", index: number) => void;
   onCancel: (index: number, id: string) => void;
@@ -181,7 +181,7 @@ export function Agenda({
               {blocking ? "Processando..." : isDayBlocked ? "Desbloquear Dia" : "Bloquear Dia Inteiro"}
             </button>
           )}
-          <button onClick={onNew} className="btn-primary">
+          <button onClick={() => onNew(selectedDate)} className="btn-primary">
             <Plus size={16} />
             Novo agendamento
           </button>
@@ -369,8 +369,8 @@ export function Agenda({
                     </p>
                   </div>
                   <div className="hidden text-right md:block">
-                    <p className="font-medium">{money.format(a.price)}</p>
-                    <p className="text-[10px] text-muted">{a.paid ? `${money.format(a.paid)} recebido` : "Pagamento pendente"}</p>
+                    <p className="font-medium">{money.format(Math.max(0, Number(a.price || 0) - Number(a.paid || 0)))}</p>
+                    <p className="text-[10px] text-muted">{Number(a.paid || 0) > 0 ? `Saldo devedor · ${money.format(Number(a.paid || 0))} recebido` : "Saldo devedor"}</p>
                   </div>
                 </button>
                 <select
