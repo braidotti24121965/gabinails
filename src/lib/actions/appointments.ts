@@ -421,3 +421,31 @@ export async function toggleBlockDayRecord(dateStr: string) {
   revalidatePath("/");
   return { success: true, action: "blocked" as const };
 }
+
+/** Registra um recebimento antecipado sem concluir o atendimento. */
+export async function registerAdvancePayment(input: { appointmentId: string; amount: number; method: string }) {
+  const supabase = await createClient();
+  if (!supabase) return { success: false, error: "Banco indisponível." };
+  const orgId = await getAuthenticatedOrganizationId(supabase);
+  if (!orgId) return { success: false, error: "Sessão ou organização inválida." };
+  const amount = Math.round(input.amount * 100) / 100;
+  if (!Number.isFinite(amount) || amount <= 0) return { success: false, error: "Informe um valor positivo." };
+  if (!["pix", "cash", "credit_card", "debit_card", "transfer"].includes(input.method)) return { success: false, error: "Forma de pagamento inválida." };
+  const { data: appointment, error: lookupError } = await supabase.from("appointments")
+    .select("id, client_id, starts_at, status, appointment_items(unit_price, quantity, discount, surcharge), payments(amount, status, kind)")
+    .eq("id", input.appointmentId).eq("organization_id", orgId).single();
+  if (lookupError || !appointment) return { success: false, error: "Agendamento não encontrado." };
+  if (["cancelled", "completed", "no_show"].includes(appointment.status)) return { success: false, error: "O atendimento não está aberto para recebimentos antecipados." };
+  const total = (appointment.appointment_items || []).reduce((sum: number, item: any) =>
+    sum + Number(item.unit_price || 0) * Number(item.quantity || 1) - Number(item.discount || 0) + Number(item.surcharge || 0), 0);
+  const paid = (appointment.payments || []).filter((p: any) => p.status === "paid" && ["deposit", "payment", "credit"].includes(p.kind))
+    .reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
+  if (amount > Math.round((total - paid) * 100) / 100) return { success: false, error: "O valor excede o saldo a receber." };
+  const { error } = await supabase.from("payments").insert({
+    organization_id: orgId, appointment_id: appointment.id, client_id: appointment.client_id,
+    amount, method: input.method, kind: "deposit", status: "paid", paid_at: new Date().toISOString()
+  });
+  if (error) return { success: false, error: "Não foi possível registrar o recebimento: " + error.message };
+  revalidatePath("/");
+  return { success: true };
+}
