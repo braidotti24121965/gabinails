@@ -38,7 +38,8 @@ export async function getAppointments(): Promise<Appointment[]> {
         description,
         unit_price
       ),
-      payments(amount)
+      payments(amount),
+      package_sessions(id, status)
     `)
     .order("starts_at", { ascending: true });
 
@@ -65,6 +66,7 @@ export async function getAppointments(): Promise<Appointment[]> {
     // Sum prices
     const price = row.items?.reduce((acc: number, item: any) => acc + Number(item.unit_price || 0), 0) || 0;
     const paid = row.payments?.reduce((acc: number, p: any) => acc + Number(p.amount || 0), 0) || 0;
+    const packageCovered = row.status === 'completed' && row.package_sessions?.some((session: any) => session.status === 'used') === true;
 
     const serviceName = row.items?.map((i: any) => i.service?.name || i.description).filter(Boolean).join(" + ") || "Serviço";
 
@@ -96,6 +98,7 @@ export async function getAppointments(): Promise<Appointment[]> {
       status: (statusMap[row.status] || "Pendente") as AppointmentStatus,
       price,
       paid,
+      packageCovered,
       source: row.source === "online" ? "Online" : "Interno",
       items: row.items?.map((i: any) => ({ id: i.id, name: i.service?.name || i.description || "Serviço", price: Number(i.unit_price) })) || []
     };
