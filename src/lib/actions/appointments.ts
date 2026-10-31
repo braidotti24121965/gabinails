@@ -150,6 +150,19 @@ export async function getAppointments(): Promise<Appointment[]> {
   return [...mappedAppointments, ...mappedAvailBlocks];
 }
 
+async function checkProfessionalBlock(supabase: any, organizationId: string, professionalId: string, startsAt: string, endsAt: string) {
+  const { data, error } = await supabase.from("professional_availability")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .eq("professional_id", professionalId)
+    .eq("kind", "block")
+    .lt("starts_at", endsAt)
+    .gt("ends_at", startsAt)
+    .limit(1);
+  if (error) return "Não foi possível verificar a disponibilidade da profissional: " + error.message;
+  return data?.length ? "A profissional possui um bloqueio de agenda nesse horário." : null;
+}
+
 export async function createAppointmentRecord(data: {
   clientId: string;
   professionalId: string;
@@ -168,6 +181,9 @@ export async function createAppointmentRecord(data: {
   // Calculate timestamps
   const startsAt = new Date(`${data.dateStr}T${data.timeStr}:00-03:00`).toISOString();
   const endsAt = new Date(new Date(startsAt).getTime() + data.durationMinutes * 60000).toISOString();
+
+  const blockError = await checkProfessionalBlock(supabase, organizationId, data.professionalId, startsAt, endsAt);
+  if (blockError) return { success: false, error: blockError };
 
   // Insert appointment
   const { data: appointment, error: appError } = await supabase
@@ -265,6 +281,9 @@ export async function updateAppointmentRecord(appointmentId: string, data: {
 
   const startsAt = new Date(`${data.dateStr}T${data.timeStr}:00-03:00`).toISOString();
   const endsAt = new Date(new Date(startsAt).getTime() + data.durationMinutes * 60000).toISOString();
+
+  const blockError = await checkProfessionalBlock(supabase, organizationId, data.professionalId, startsAt, endsAt);
+  if (blockError) return { success: false, error: blockError };
 
   // Update appointment
   const { error: appError } = await supabase
