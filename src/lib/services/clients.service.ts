@@ -1,3 +1,11 @@
+function friendlyClientError(error: { code?: string; message?: string }): string {
+  if (error.code === "23505" && (error.message || "").includes("clients_organization_id_phone_normalized_key")) {
+    return "Este número de WhatsApp já está cadastrado neste salão. Confira o número informado ou localize o cadastro existente.";
+  }
+  if (error.code === "23505") return "Já existe um cadastro com esses dados. Confira as informações e tente novamente.";
+  return "Não foi possível salvar a cliente. Confira os dados e tente novamente.";
+}
+
 export async function createClientRecordService(supabase: any, client: { name: string; phone: string; notes?: string; birthDate?: string; cep?: string; street?: string; number?: string; complement?: string; neighborhood?: string; city?: string; state?: string }) {
   if (!supabase) {
     return { success: false, error: "Supabase não conectado" };
@@ -37,7 +45,7 @@ export async function createClientRecordService(supabase: any, client: { name: s
   });
 
   if (error) {
-    return { success: false, error: error.message };
+    return { success: false, error: friendlyClientError(error) };
   }
 
   return { success: true, mode: "supabase", data: { id: clientId } };
@@ -79,7 +87,7 @@ export async function updateClientRecordService(supabase: any, id: string, clien
   });
 
   if (error) {
-    return { success: false, error: error.message };
+    return { success: false, error: friendlyClientError(error) };
   }
 
   return { success: true };
