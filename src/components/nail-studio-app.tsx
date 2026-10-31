@@ -995,11 +995,11 @@ function Dashboard({ go, stats, onAttendance, appointments = [], clients = [], t
 
 
 
-function BookingModal({ clients, professionals, services, close, save }: { clients: any[]; professionals: any[]; services: any[]; close: () => void; save: (a: Appointment, rawData?: any) => void }) {
+function BookingModal({ initialDate, clients, professionals, services, close, save }: { initialDate: string; clients: any[]; professionals: any[]; services: any[]; close: () => void; save: (a: Appointment, rawData?: any) => void }) {
   const [clientId, setClientId] = useState(clients[0]?.id || "");
   const [profId, setProfId] = useState(professionals[0]?.id || "");
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([services[0]?.id || ""]);
-  const [dateStr, setDateStr] = useState(new Date().toISOString().split("T")[0]);
+  const [dateStr, setDateStr] = useState(initialDate);
   const [timeStr, setTimeStr] = useState("09:00");
   const [submitting, setSubmitting] = useState(false);
 
@@ -1229,7 +1229,7 @@ function SettingsView({ tenant, updateToast }: { tenant: any; updateToast: (t: s
 }
 
 export function NailStudioApp({ tenant = { profileName: "Gabi", orgName: "Gabi Ludwig Nail Studio" }, initialClients = demoClients, initialProfessionals = demoProfessionals, initialSpecialties = [], initialAppointments = [], initialInventory = [], initialServices = demoServices as any[], initialFinancials = [], initialStats = { revenue: 0, expenses: 0, commissions: 0, balance: 0 }, initialReports = {} }: { tenant?: { profileName: string; orgName: string; email?: string; }; initialClients?: ClientItem[]; initialProfessionals?: ProfessionalItem[]; initialSpecialties?: {id: string, name: string}[]; initialAppointments?: Appointment[]; initialServices?: any[]; initialInventory?: any[]; initialFinancials?: any[]; initialStats?: any; initialReports?: any }) {
-  const [view, setView] = useState<View>("dashboard"); const [menu, setMenu] = useState(false); const [booking, setBooking] = useState(false); const [finish, setFinish] = useState(false); const [activeAppointment, setActiveAppointment] = useState<Appointment | null>(null); const [toast, setToast] = useState(""); const [rows, setRows] = useState(initialAppointments);
+  const [view, setView] = useState<View>("dashboard"); const [menu, setMenu] = useState(false); const [booking, setBooking] = useState(false); const [bookingDate, setBookingDate] = useState(() => new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" })); const [finish, setFinish] = useState(false); const [activeAppointment, setActiveAppointment] = useState<Appointment | null>(null); const [toast, setToast] = useState(""); const [rows, setRows] = useState(initialAppointments);
   const [systemAlertMessage, setSystemAlertMessage] = useState<string | null>(null);
 
   // Catch native alert calls and display styled SystemAlertModal instead
@@ -1398,7 +1398,7 @@ const [reportsData] = useState(() => initialReports); const [entityModal, setEnt
   const content = (() => {
     if (view === "dashboard") return <Dashboard stats={initialStats} go={setView} appointments={rows} clients={clientRows} tenant={tenant} onAttendance={(a) => { setActiveAppointment(a); setView("attendance"); }} />;
     if (view === "settings") return <SettingsView tenant={tenant} updateToast={(t) => { setToast(t); setTimeout(() => setToast(""), 3000); }} />;
-    if (view === "agenda") return <Agenda rows={rows} onNew={() => setBooking(true)} onAttendance={(a) => { setActiveAppointment(a); setView("attendance"); }} onAction={(mode, index) => openEntity("appointment", mode, index)} onToggleBlockDay={async (dateStr) => {
+    if (view === "agenda") return <Agenda rows={rows} onNew={(dateStr) => { setBookingDate(dateStr); setBooking(true); }} onAttendance={(a) => { setActiveAppointment(a); setView("attendance"); }} onAction={(mode, index) => openEntity("appointment", mode, index)} onToggleBlockDay={async (dateStr) => {
       const res = await toggleBlockDayRecord(dateStr);
       if (res.success) {
         const fresh = await getAppointments();
@@ -1668,7 +1668,7 @@ const [reportsData] = useState(() => initialReports); const [entityModal, setEnt
         />
       )}
 
-      {booking && <BookingModal clients={clientRows} professionals={professionalRows} services={serviceRows} close={() => setBooking(false)} save={async (a, rawData) => { if(rawData) { const res = await createAppointmentRecord(rawData); if (res.success) { const fresh = await getAppointments(); setRows(fresh); setBooking(false); notify("Agendamento criado com sucesso."); } else { alert(("error" in res ? res.error : "Erro desconhecido")); } } else { setRows(v => [...v, a]); setBooking(false); notify("Agendamento criado (demo)."); } }} />}
+      {booking && <BookingModal initialDate={bookingDate} clients={clientRows} professionals={professionalRows} services={serviceRows} close={() => setBooking(false)} save={async (a, rawData) => { if(rawData) { const res = await createAppointmentRecord(rawData); if (res.success) { const fresh = await getAppointments(); setRows(fresh); setBooking(false); notify("Agendamento criado com sucesso."); } else { alert(("error" in res ? res.error : "Erro desconhecido")); } } else { setRows(v => [...v, a]); setBooking(false); notify("Agendamento criado (demo)."); } }} />}
       {finish && activeAppointment && <FinishModal appointment={activeAppointment} close={() => setFinish(false)} done={async (method, val, pkgId) => { const res = await finishAppointment({ appointmentId: activeAppointment.id, amount: val, paymentMethod: method, packageId: pkgId }); if (res.success) { setRows(v => v.map(a => a.id === activeAppointment.id ? { ...a, status: "Concluído", paid: (a.paid || 0) + (pkgId ? 0 : val) } : a)); setFinish(false); setActiveAppointment(null); setView("agenda"); notify("Atendimento concluído e pagamento registrado com sucesso."); } else { alert(("error" in res ? res.error : "Erro desconhecido")); } }} />}
       {toast && <Toast text={toast} />}
       {systemAlertMessage && <SystemAlertModal message={systemAlertMessage} close={() => setSystemAlertMessage(null)} />}
