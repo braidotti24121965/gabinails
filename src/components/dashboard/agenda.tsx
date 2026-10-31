@@ -53,7 +53,7 @@ export function Agenda({
       (
         (r.clientId === null && !r.service?.startsWith("Bloqueio parcial:")) ||
         (r.client === "Bloqueio de Agenda" && !r.service?.startsWith("Bloqueio parcial:")) ||
-        r.service?.toLowerCase().includes("bloqueio")
+        (r.service?.toLowerCase().includes("bloqueio") && !r.service?.startsWith("Bloqueio parcial:"))
       )
   );
 
