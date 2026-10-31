@@ -344,7 +344,7 @@ export function Agenda({
             finally { setAdvanceSaving(false); }
           }}>
             <h2 className="text-xl font-bold">Recebimento parcial</h2>
-            <p className="mt-1 text-sm text-muted">{advance.client} · {advance.dateStr.split("-").reverse().join("/")}</p>
+            <p className="mt-1 text-sm text-muted">{advance.client} · {(advance as any).dateStr?.split("-").reverse().join("/") || ""}</p>
             <div className="mt-4 space-y-1 text-sm">
               <p>Total: <strong>{money.format(advance.price)}</strong></p>
               <p>Já recebido: <strong>{money.format(advance.paid || 0)}</strong></p>
