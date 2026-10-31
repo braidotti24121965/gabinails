@@ -4,26 +4,25 @@
 
 @layer base {
   :root {
-    --blue: #1e4066; --blue-xl: #102a43; --accent: #148779;
-    --accent-hover: #0f766e; --accent-soft: #e8f6f3; --bg-page: #f3f7fb;
-    --border: #dbe3ec; --text: #102a43; --text-muted: #526173; --text-soft: #7f8ea3;
+    --blue: #33264a; --blue-xl: #241a35; --accent: #7c3aed;
+    --accent-hover: #6d28d9; --accent-soft: #f3e8ff; --bg-page: #faf8fc;
+    --border: #e8e0ee; --text: #2d2438; --text-muted: #73677d; --text-soft: #94899e;
   }
   * { box-sizing: border-box; }
-  body { @apply bg-bg text-ink antialiased; font-size: 14px; overflow-x: hidden; }
+  body { @apply bg-bg text-ink antialiased font-sans; font-size: 14px; overflow-x: hidden; }
   button:disabled { @apply cursor-not-allowed opacity-60; }
 }
-
 @layer components {
-  .btn-primary { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-[13.5px] font-medium text-white transition hover:bg-primary-dark sm:min-h-[38px]; }
-  .btn-outline { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-[#DBE3EC] bg-white px-4 text-[13.5px] font-medium text-ink transition hover:border-primary hover:text-primary sm:min-h-[38px]; }
-  .btn-ghost { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary-light px-4 text-[13.5px] font-medium text-primary transition hover:bg-[#D7EFEA] sm:min-h-[38px]; }
-  .card { @apply rounded-md border border-[#DBE3EC] bg-surface p-4 shadow-card sm:p-5; }
+  .btn-primary { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-[13.5px] font-semibold text-white shadow-sm transition-colors hover:bg-primary-dark sm:min-h-[38px]; }
+  .btn-outline { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#E8E0EE] bg-white px-4 text-[13.5px] font-semibold text-ink transition-colors hover:border-primary hover:text-primary sm:min-h-[38px]; }
+  .btn-ghost { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary-light px-4 text-[13.5px] font-semibold text-primary transition-colors hover:bg-[#E9D5FF] sm:min-h-[38px]; }
+  .card { @apply rounded-lg border border-[#E8E0EE] bg-surface p-4 shadow-card sm:p-5; }
   .field-label { @apply mb-1.5 block text-xs font-medium text-muted; }
-  .field-input { @apply h-11 w-full rounded-md border border-[#DBE3EC] bg-white px-3 text-base text-ink placeholder:text-[#7F8EA3] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15 sm:h-10 sm:text-sm; }
+  .field-input { @apply h-11 w-full rounded-md border border-[#E8E0EE] bg-white px-3 text-base text-ink placeholder:text-[#94899E] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15 sm:h-10 sm:text-sm; }
   .page-content { @apply mx-auto w-full max-w-[1600px] p-3 sm:p-6 lg:p-7; }
   .data-table { @apply w-full min-w-[720px] text-[13px]; }
-  .data-table thead { @apply bg-[#F7F9FC] text-left text-xs text-muted; }
+  .data-table thead { @apply bg-[#FAF8FC] text-left text-xs text-muted; }
   .data-table th { @apply px-4 py-3 font-medium; }
-  .data-table td { @apply border-t border-[#E7EDF3] px-4 py-3; }
+  .data-table td { @apply border-t border-[#EEE8F2] px-4 py-3; }
   .badge { @apply inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium; }
 }
