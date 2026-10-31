@@ -1398,7 +1398,7 @@ const [reportsData] = useState(() => initialReports); const [entityModal, setEnt
   const content = (() => {
     if (view === "dashboard") return <Dashboard stats={initialStats} go={setView} appointments={rows} clients={clientRows} tenant={tenant} onAttendance={(a) => { setActiveAppointment(a); setView("attendance"); }} />;
     if (view === "settings") return <SettingsView tenant={tenant} updateToast={(t) => { setToast(t); setTimeout(() => setToast(""), 3000); }} />;
-    if (view === "agenda") return <Agenda rows={rows} onNew={(dateStr) => { setBookingDate(dateStr); setBooking(true); }} onAttendance={(a) => { setActiveAppointment(a); setView("attendance"); }} onAction={(mode, index) => openEntity("appointment", mode, index)} onToggleBlockDay={async (dateStr) => {
+    if (view === "agenda") return <Agenda rows={rows} onPaymentsUpdated={(fresh) => setRows(fresh)} onNew={(dateStr) => { setBookingDate(dateStr); setBooking(true); }} onAttendance={(a) => { setActiveAppointment(a); setView("attendance"); }} onAction={(mode, index) => openEntity("appointment", mode, index)} onToggleBlockDay={async (dateStr) => {
       const res = await toggleBlockDayRecord(dateStr);
       if (res.success) {
         const fresh = await getAppointments();
