@@ -5,14 +5,14 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        primary: { DEFAULT: "#148779", dark: "#0F766E", light: "#E8F6F3" },
-        navy: "#1E4066", "navy-dark": "#102A43", ink: "#102A43",
-        muted: "#526173", surface: "#FFFFFF", bg: "#F3F7FB",
-        success: "#148779", warning: "#D97706", danger: "#C2414B"
+        primary: { DEFAULT: "#804663", dark: "#69364F", light: "#F3E8E9" },
+        navy: "#4D3942", "navy-dark": "#33252C", ink: "#30262A",
+        muted: "#756970", surface: "#FFFCF8", bg: "#FAF6F0",
+        success: "#39705C", warning: "#B66B23", danger: "#AE4A4A"
       },
-      borderRadius: { sm: "6px", md: "8px", lg: "10px" },
-      boxShadow: { card: "0 1px 2px rgba(16,42,67,0.04)" },
-      fontFamily: { sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"] }
+      borderRadius: { sm: "10px", md: "16px", lg: "20px" },
+      boxShadow: { card: "0 2px 3px rgba(63,42,32,0.04)" },
+      fontFamily: { sans: ["Arial", "Helvetica", "ui-sans-serif", "sans-serif"], serif: ["Georgia", "Times New Roman", "serif"] }
     }
   },
   plugins: []
