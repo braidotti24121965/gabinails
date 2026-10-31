@@ -51,36 +51,35 @@ export async function calculateAvailability({
     .eq("status", "awaiting_deposit")
     .lt("hold_expires_at", new Date().toISOString());
 
-  // Check if date is blocked for online booking via professional_availability or legacy blocks
-  const { data: dayBlocks } = await supabase
+  // Load block intervals. A partial block must only exclude overlapping slots.
+  const { data: dayBlocks, error: blockErr } = await supabase
     .from("professional_availability")
-    .select("professional_id")
+    .select("professional_id, starts_at, ends_at")
     .eq("organization_id", orgId)
     .in("professional_id", eligibleProfIds)
     .eq("kind", "block")
-    .gte("starts_at", new Date(startOfDaySP).toISOString())
-    .lte("starts_at", new Date(endOfDaySP).toISOString());
+    .lt("starts_at", new Date(endOfDaySP).toISOString())
+    .gt("ends_at", new Date(startOfDaySP).toISOString());
+  if (blockErr) throw new Error(blockErr.message);
 
+  // Legacy appointment-based blocks are full-day only.
   const { data: legacyAppts } = await supabase
     .from("appointments")
-    .select("id")
+    .select("id, client_id")
     .eq("organization_id", orgId)
     .gte("starts_at", new Date(startOfDaySP).toISOString())
     .lte("starts_at", new Date(endOfDaySP).toISOString())
     .neq("status", "cancelled");
 
-  let isLegacyBlocked = false;
-  if (legacyAppts && legacyAppts.length > 0) {
+  if (legacyAppts?.length) {
     const { data: items } = await supabase
       .from("appointment_items")
       .select("appointment_id")
       .in("appointment_id", legacyAppts.map(a => a.id))
       .ilike("description", "%bloqueio%");
-    if (items && items.length > 0) isLegacyBlocked = true;
-  }
-
-  if ((dayBlocks && dayBlocks.length >= eligibleProfIds.length) || isLegacyBlocked) {
-    return { availableSlots: [], debug: { reason: "Dia bloqueado para agendamentos online" } };
+    const legacyBlocked = legacyAppts.some(a => a.client_id === null) ||
+      Boolean(items?.some(i => legacyAppts.some(a => a.id === i.appointment_id)));
+    if (legacyBlocked) return { availableSlots: [], debug: { reason: "Bloqueio legado do dia inteiro" } };
   }
 
   // Buscar todos os agendamentos do dia para os profissionais elegíveis da organização
@@ -137,7 +136,11 @@ export async function calculateAvailability({
         return Math.max(slotStartIso, appStart) < Math.min(slotEndIso, appEnd);
       });
 
-      if (!hasConflict) {
+      const hasBlock = (dayBlocks || []).some(block => block.professional_id === pId &&
+        slotStartIso < new Date(block.ends_at).getTime() &&
+        slotEndIso > new Date(block.starts_at).getTime());
+
+      if (!hasConflict && !hasBlock) {
         slotAvailable = true;
         break;
       }
@@ -179,18 +182,15 @@ export async function findAvailableProfessionalForSlot({
   const startOfDaySP = `${date}T00:00:00-03:00`;
   const endOfDaySP = `${date}T23:59:59-03:00`;
 
-  const { data: dayBlocks } = await supabase
+  const { data: dayBlocks, error: blockErr } = await supabase
     .from("professional_availability")
-    .select("professional_id")
+    .select("professional_id, starts_at, ends_at")
     .eq("organization_id", orgId)
     .in("professional_id", eligibleProfIds)
     .eq("kind", "block")
-    .gte("starts_at", new Date(startOfDaySP).toISOString())
-    .lte("starts_at", new Date(endOfDaySP).toISOString());
-
-  if (dayBlocks && dayBlocks.length >= eligibleProfIds.length) {
-    return null;
-  }
+    .lt("starts_at", new Date(endOfDaySP).toISOString())
+    .gt("ends_at", new Date(startOfDaySP).toISOString());
+  if (blockErr) throw new Error(blockErr.message);
 
   const { data: appointments } = await supabase
     .from("appointments")
@@ -213,7 +213,10 @@ export async function findAvailableProfessionalForSlot({
       return Math.max(slotStartIso, appStart) < Math.min(slotEndIso, appEnd);
     });
 
-    if (!hasConflict) return pId;
+    const hasBlock = (dayBlocks || []).some(block => block.professional_id === pId &&
+      slotStartIso < new Date(block.ends_at).getTime() &&
+      slotEndIso > new Date(block.starts_at).getTime());
+    if (!hasConflict && !hasBlock) return pId;
   }
 
   return null;
